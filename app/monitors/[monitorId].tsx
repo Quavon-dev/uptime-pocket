@@ -33,6 +33,7 @@ import {
   RotateCw,
   Pause,
   Play,
+  Pencil,
 } from 'lucide-react-native';
 
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
@@ -171,6 +172,10 @@ export default function MonitorDetailScreen() {
     void Linking.openURL(server.url);
   }, [server]);
 
+  const handleEdit = useCallback(() => {
+    router.push(`/monitors/${monitorId}/edit`);
+  }, [router, monitorId]);
+
   // --- Render guards ------------------------------------------------------
 
   if (!Number.isFinite(monitorId)) {
@@ -203,9 +208,14 @@ export default function MonitorDetailScreen() {
           </Pressable>
         }
         right={
-          <Pressable onPress={handleOpenInKuma} hitSlop={10}>
-            <ExternalLink size={22} color={colors.surface.light.text} strokeWidth={1.5} />
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[3] }}>
+            <Pressable onPress={handleEdit} hitSlop={10}>
+              <Pencil size={22} color={colors.surface.light.text} strokeWidth={1.5} />
+            </Pressable>
+            <Pressable onPress={handleOpenInKuma} hitSlop={10}>
+              <ExternalLink size={22} color={colors.surface.light.text} strokeWidth={1.5} />
+            </Pressable>
+          </View>
         }
       />
 

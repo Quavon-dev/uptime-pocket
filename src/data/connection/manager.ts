@@ -36,6 +36,14 @@ import { createSession, decodeJwtExpiry, type AuthSession } from '@/data/api/aut
 import { loadCredentials } from '@/data/secure/credentials';
 import { useMonitors } from '@/data/store/monitors';
 import { useServers } from '@/data/store/servers';
+import type {
+  MonitorDraft,
+  KumaMonitorBean,
+  AddMonitorResult,
+  EditMonitorResult,
+  DeleteMonitorResult,
+  GetMonitorResult,
+} from '@/data/api/monitors';
 
 interface ActiveConnection {
   socket: KumaSocket;
@@ -208,6 +216,94 @@ export class KumaConnectionManager {
   recheckMonitor(serverId: string, monitorId: number): void {
     if (this.current?.serverId !== serverId) return;
     this.current.socket.forceHeartbeat(monitorId);
+  }
+
+  /**
+   * Create a new monitor on the given server.
+   *
+   * Returns the new monitor id on success, or an error message on
+   * failure. The caller is expected to refresh the monitor list
+   * (or wait for the next `monitorList` event from the socket).
+   */
+  async addMonitor(serverId: string, draft: MonitorDraft): Promise<AddMonitorResult> {
+    if (this.current?.serverId !== serverId) {
+      return { ok: false, msg: 'Server is not connected' };
+    }
+    try {
+      return await this.current.socket.writer.add(draft);
+    } catch (err) {
+      return {
+        ok: false,
+        msg: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+
+  /**
+   * Edit a monitor on the given server.
+   *
+   * IMPORTANT: Kuma 2.3.2 requires the FULL monitor bean (all 113
+   * fields) — partial edits are silently dropped. The pattern is:
+   *   1. Fetch the current monitor with `getMonitor(serverId, id)`
+   *   2. Mutate the fields the user wants to change
+   *   3. Pass the whole bean here
+   */
+  async editMonitor(
+    serverId: string,
+    bean: KumaMonitorBean
+  ): Promise<EditMonitorResult> {
+    if (this.current?.serverId !== serverId) {
+      return { ok: false, msg: 'Server is not connected' };
+    }
+    try {
+      return await this.current.socket.writer.edit(bean);
+    } catch (err) {
+      return {
+        ok: false,
+        msg: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+
+  /** Delete a monitor on the given server. */
+  async deleteMonitor(
+    serverId: string,
+    monitorId: number
+  ): Promise<DeleteMonitorResult> {
+    if (this.current?.serverId !== serverId) {
+      return { ok: false, msg: 'Server is not connected' };
+    }
+    try {
+      return await this.current.socket.writer.delete(monitorId);
+    } catch (err) {
+      return {
+        ok: false,
+        msg: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+
+  /**
+   * Fetch a single monitor by id.
+   * Returns `{ ok: false, monitor: null }` if the monitor doesn't
+   * exist (e.g. was just deleted). On a Kuma error, returns the
+   * raw error message.
+   */
+  async getMonitor(
+    serverId: string,
+    monitorId: number
+  ): Promise<GetMonitorResult> {
+    if (this.current?.serverId !== serverId) {
+      return { ok: false, msg: 'Server is not connected' };
+    }
+    try {
+      return await this.current.socket.writer.get(monitorId);
+    } catch (err) {
+      return {
+        ok: false,
+        msg: err instanceof Error ? err.message : String(err),
+      };
+    }
   }
 
   /**

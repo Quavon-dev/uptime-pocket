@@ -19,7 +19,7 @@ import { useState, useMemo } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronDown, Server, WifiOff, Loader } from 'lucide-react-native';
+import { ChevronDown, Server, WifiOff, Loader, Plus } from 'lucide-react-native';
 
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import { Chip, EmptyState, SafeScrollView } from '@/components/ui';
@@ -81,19 +81,30 @@ export default function MonitorsScreen() {
         title="Monitors"
         large
         right={
-          <Pressable
-            onPress={() => router.push('/servers/switch')}
-            style={({ pressed }) => [
-              styles.serverChip,
-              { opacity: pressed ? 0.7 : 1 },
-            ]}
-            hitSlop={6}>
-            <Server size={14} color={colors.brand[500]} strokeWidth={2} />
-            <Text style={[typography.captionEmphasized, { color: colors.brand[500] }]}>
-              {active?.name ?? 'Server'}
-            </Text>
-            <ChevronDown size={14} color={colors.brand[500]} strokeWidth={2} />
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
+            <Pressable
+              onPress={() => router.push('/monitors/add')}
+              style={({ pressed }) => [
+                styles.addBtn,
+                { opacity: pressed ? 0.7 : 1 },
+              ]}
+              hitSlop={6}>
+              <Plus size={18} color="white" strokeWidth={2.5} />
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/servers/switch')}
+              style={({ pressed }) => [
+                styles.serverChip,
+                { opacity: pressed ? 0.7 : 1 },
+              ]}
+              hitSlop={6}>
+              <Server size={14} color={colors.brand[500]} strokeWidth={2} />
+              <Text style={[typography.captionEmphasized, { color: colors.brand[500] }]}>
+                {active?.name ?? 'Server'}
+              </Text>
+              <ChevronDown size={14} color={colors.brand[500]} strokeWidth={2} />
+            </Pressable>
+          </View>
         }
       />
 
@@ -202,6 +213,14 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[2],
     borderRadius: semanticRadius.pill,
     backgroundColor: `${colors.brand[500]}14`,
+  },
+  addBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.brand[500],
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   banner: {
     flexDirection: 'row',

@@ -37,6 +37,7 @@ import { io, Socket } from 'socket.io-client';
 import type { AuthSession, SocketLoginFn } from '../api/auth';
 import type { Server, Monitor, Incident, MonitorStatus } from '@/domain/models';
 import type { KumaClient } from '../api/client';
+import { KumaMonitorWriter } from '../api/monitors';
 import {
   normalizeMonitorList,
   normalizeHeartbeat,
@@ -112,6 +113,19 @@ export class KumaSocket {
   private destroyed = false;
   /** True once socket-level login has completed (for password auth). */
   private loggedIn = false;
+
+  /**
+   * Returns a writer bound to the current live socket. The socket
+   * is null until `connect()` has fired, in which case the writer
+   * will throw — the UI should not be calling write methods on a
+   * non-connected server anyway.
+   */
+  get writer(): KumaMonitorWriter {
+    if (!this.socket) {
+      throw new Error('Cannot write to Kuma: socket is not connected');
+    }
+    return new KumaMonitorWriter(this.socket);
+  }
 
   constructor(
     public readonly server: Server,

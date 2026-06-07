@@ -220,6 +220,12 @@
     "recheck": "Re-check",
     "pause": "Pause",
     "resume": "Resume",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteConfirm": {
+      "title": "Delete monitor?",
+      "body": "Delete \"{name}\" from {server}? This will stop all checks for this monitor and cannot be undone."
+    },
     "responseTime": "Response time",
     "uptime": "Uptime",
     "incidents": "Recent incidents",
@@ -234,6 +240,82 @@
       "uptime7d": "Uptime 7d",
       "uptime30d": "Uptime 30d",
       "response": "Response"
+    }
+  },
+  "monitorForm": {
+    "addTitle": "Add monitor",
+    "editTitle": "Edit monitor",
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "My service",
+      "type": "Type",
+      "url": "URL",
+      "urlPlaceholder": "https://example.com",
+      "hostname": "Hostname",
+      "hostnamePlaceholder": "example.com",
+      "port": "Port",
+      "method": "HTTP method",
+      "interval": "Check interval (seconds)",
+      "retryInterval": "Retry interval (seconds)",
+      "maxretries": "Max retries",
+      "upsideDown": "Invert status (treat DOWN as UP)",
+      "active": "Active",
+      "description": "Description (optional)",
+      "tags": "Tags (comma-separated)",
+      "basicAuth": "Basic auth (user:pass)",
+      "ignoreTls": "Ignore TLS errors",
+      "maxredirects": "Max redirects"
+    },
+    "types": {
+      "http": "HTTP(s)",
+      "ping": "Ping",
+      "port": "TCP port",
+      "dns": "DNS",
+      "keyword": "Keyword",
+      "json-query": "JSON query",
+      "grpc-keyword": "gRPC keyword",
+      "push": "Push",
+      "docker": "Docker",
+      "mqtt": "MQTT",
+      "sqlserver": "SQL Server",
+      "postgres": "Postgres",
+      "mysql": "MySQL",
+      "mongodb": "MongoDB",
+      "redis": "Redis",
+      "snmp": "SNMP",
+      "smtp": "SMTP",
+      "sip": "SIP",
+      "steam": "Steam",
+      "gamedig": "Game",
+      "websocket": "WebSocket",
+      "tailscale-ping": "Tailscale ping",
+      "radius": "RADIUS"
+    },
+    "validation": {
+      "nameRequired": "Name is required",
+      "urlRequired": "URL is required",
+      "hostnameRequired": "Hostname is required",
+      "portRequired": "Port is required",
+      "portInvalid": "Port must be 1-65535",
+      "intervalMin": "Interval must be at least 20 seconds"
+    },
+    "actions": {
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleting": "Deleting…"
+    },
+    "error": {
+      "loadFailed": "Couldn't load monitor: {msg}",
+      "saveFailed": "Couldn't save monitor: {msg}",
+      "deleteFailed": "Couldn't delete monitor: {msg}",
+      "notConnected": "Server is not connected. Reconnect and try again."
+    },
+    "success": {
+      "added": "Monitor added",
+      "edited": "Monitor saved",
+      "deleted": "Monitor deleted"
     }
   },
   "serverSwitcher": {
