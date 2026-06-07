@@ -1,0 +1,134 @@
+{
+  "app": {
+    "name": "Uptime Pocket",
+    "tagline": "Uptime Kuma in your pocket"
+  },
+  "tabs": {
+    "monitors": "Monitors",
+    "incidents": "Incidents",
+    "servers": "Servers",
+    "settings": "Settings"
+  },
+  "status": {
+    "up": "Up",
+    "down": "Down",
+    "pending": "Pending",
+    "maintenance": "Maintenance",
+    "paused": "Paused"
+  },
+  "common": {
+    "loading": "Loading…",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "back": "Back",
+    "done": "Done",
+    "yes": "Yes",
+    "no": "No",
+    "search": "Search",
+    "filter": "Filter",
+    "all": "All",
+    "none": "None",
+    "openInKuma": "Open in Kuma"
+  },
+  "monitors": {
+    "empty": {
+      "title": "No monitors yet",
+      "body": "Add a Kuma server to start monitoring.",
+      "action": "Add server"
+    },
+    "list": {
+      "title": "Monitors",
+      "filterAll": "All",
+      "filterDown": "Down",
+      "filterUp": "Up",
+      "searchPlaceholder": "Search monitors…"
+    },
+    "detail": {
+      "responseTime": "Response time",
+      "uptime": "Uptime",
+      "incidents": "Recent incidents",
+      "actions": {
+        "recheck": "Re-check now",
+        "pause": "Pause",
+        "resume": "Resume",
+        "openInKuma": "Open in Kuma"
+      },
+      "ranges": {
+        "24h": "24h",
+        "7d": "7d",
+        "30d": "30d"
+      }
+    }
+  },
+  "servers": {
+    "list": {
+      "title": "Servers",
+      "addServer": "Add server"
+    },
+    "add": {
+      "title": "Add Kuma server",
+      "name": "Name",
+      "namePlaceholder": "My Kuma",
+      "url": "Server URL",
+      "urlPlaceholder": "https://kuma.example.com",
+      "authMethod": "Authentication",
+      "bearer": "Bearer token (recommended)",
+      "bearerHint": "Kuma 2.0+ supports API tokens. Create one in Kuma's settings.",
+      "bearerToken": "API token",
+      "password": "Username & password",
+      "username": "Username",
+      "password": "Password",
+      "test": "Test connection",
+      "save": "Save server",
+      "error": {
+        "invalidUrl": "Please enter a valid URL",
+        "unreachable": "Couldn't reach the server",
+        "authFailed": "Authentication failed",
+        "outdatedKuma": "Kuma version {version} is below the minimum (2.0.0). Some features may not work."
+      }
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "mode": {
+      "title": "Notification mode",
+      "none": "Off",
+      "noneHint": "No notifications, app is a pure viewer",
+      "direct": "Direct",
+      "directHint": "App keeps a connection to Kuma, local notifications only",
+      "relay": "Relay",
+      "relayHint": "Full push notifications, requires the optional relay"
+    },
+    "relay": {
+      "url": "Relay URL",
+      "token": "Relay token",
+      "testConnection": "Test relay"
+    },
+    "quiet": {
+      "title": "Quiet hours",
+      "description": "Mute notifications during this window"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": "Appearance",
+    "notifications": "Notifications",
+    "security": "Security",
+    "about": "About",
+    "theme": {
+      "title": "Theme",
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "accent": "Accent color",
+    "biometric": {
+      "title": "Lock with biometrics",
+      "description": "Require Face ID, Touch ID, or fingerprint to open the app"
+    }
+  }
+}

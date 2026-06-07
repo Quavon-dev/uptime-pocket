@@ -1,0 +1,10 @@
+/**
+ * Global stylesheet for NativeWind v5.
+ *
+ * This is processed at build time by `withNativeWind` (metro.config.js)
+ * and imported once at the top of `app/_layout.tsx`.
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
