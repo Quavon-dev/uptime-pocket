@@ -68,7 +68,13 @@ export interface Server {
   id: string; // local UUID
   name: string;
   url: string; // base URL of Kuma instance
-  auth: AuthStrategy;
+  /**
+   * The kind of authentication this server uses.
+   * The actual credentials (token / password) are stored in
+   * expo-secure-store, keyed by server id — see
+   * `src/data/secure/credentials.ts`.
+   */
+  authKind: 'bearer' | 'password';
   kumaVersion?: string; // detected on connect
   connected: boolean;
   lastConnectedAt?: Date;

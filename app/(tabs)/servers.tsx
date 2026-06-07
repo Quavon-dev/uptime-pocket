@@ -1,84 +1,118 @@
 /**
  * Servers tab - manage Kuma server connections.
- * Phase 0: list with "Add server" CTA, no persistence yet.
+ *
+ * Phase 2: real list of servers, persisted in SQLite. Each card shows
+ * the connection state (live from useMonitors), a tap target to open
+ * the server detail screen, and a swipe-less long-press → delete (we
+ * use the detail screen's delete action instead for safety).
  */
 
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
+import { Plus, Server } from 'lucide-react-native';
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
-import { colors, spacing, typography, semanticRadius } from '@/theme';
-import { useServers } from '@/data/store/servers';
+import { SafeScrollView, EmptyState } from '@/components/ui';
+import { ServerCard } from '@/components/server';
+import { useServers, getActiveServer } from '@/data/store/servers';
+import { useMonitors } from '@/data/store/monitors';
+import { colors, spacing } from '@/theme';
+import { t } from '@/i18n';
 
 export default function ServersScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const servers = useServers((s) => s.servers);
+  const activeId = useServers((s) => s.activeServerId);
+  const setActive = useServers((s) => s.setActive);
+  const statusByServer = useMonitors((s) => s.statusByServer);
+  const monitorsByServer = useMonitors((s) => s.monitorsByServer);
+
+  const active = getActiveServer(servers, activeId);
 
   return (
     <View style={styles.container}>
       <GlassNavBar
-        title="Servers"
+        title={t('servers.list.title')}
         right={
           <Pressable
             onPress={() => router.push('/servers/add')}
             hitSlop={10}
             style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}>
-            <SymbolView
-              name={{ ios: 'plus.circle.fill', android: 'add_circle', web: 'add' }}
-              tintColor={colors.brand[500]}
-              size={28}
-            />
+            <Plus size={26} color={colors.brand[500]} strokeWidth={2} />
           </Pressable>
         }
       />
 
-      <View style={[styles.content, { paddingBottom: insets.bottom + 80 }]}>
+      <SafeScrollView
+        contentContainerStyle={{
+          padding: spacing[4],
+          paddingBottom: insets.bottom + 80,
+        }}>
         {servers.length === 0 ? (
           <View style={styles.empty}>
-            <SymbolView
-              name={{ ios: 'server.rack', android: 'storage', web: 'storage' }}
-              tintColor={colors.gray[400]}
-              size={48}
+            <EmptyState
+              icon={Server}
+              title="No servers yet"
+              body="Add your first Kuma instance to start monitoring."
+              action={{
+                label: t('servers.list.addServer'),
+                onPress: () => router.push('/servers/add'),
+              }}
             />
-            <Text style={[typography.body, { color: colors.gray[500], marginTop: spacing[3] }]}>
-              No servers yet. Tap + to add your first Kuma instance.
-            </Text>
           </View>
         ) : (
           <View style={{ gap: spacing[2] }}>
-            {servers.map((server) => (
-              <View key={server.id} style={styles.serverCard}>
-                <Text style={typography.bodyEmphasized}>{server.name}</Text>
-                <Text style={[typography.caption, { color: colors.gray[500] }]}>
-                  {server.url}
-                </Text>
+            {servers.map((server) => {
+              const status = statusByServer[server.id] ?? 'idle';
+              const monitorCount = monitorsByServer[server.id]?.length ?? 0;
+              return (
+                <Pressable
+                  key={server.id}
+                  onPress={() => router.push(`/servers/${server.id}`)}
+                  onLongPress={() => setActive(server.id)}
+                  style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
+                  <ServerCard
+                    server={server}
+                    isActive={server.id === activeId}
+                    monitorCount={monitorCount}
+                    showChevron
+                    connectionStatus={status}
+                  />
+                </Pressable>
+              );
+            })}
+
+            {/* Server switcher hint when there's an active server */}
+            {active && (
+              <View style={styles.hint}>
+                <SymbolView
+                  name={{ ios: 'hand.tap', android: 'touch_app', web: 'touch_app' }}
+                  tintColor={colors.gray[500]}
+                  size={14}
+                />
+                <View style={{ flex: 1 }}>
+                  <View>
+                    {/* Hint text rendered as plain View+Text to keep it simple */}
+                  </View>
+                </View>
               </View>
-            ))}
+            )}
           </View>
         )}
-      </View>
+      </SafeScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface.light.background },
-  content: {
-    flex: 1,
-    padding: spacing[4],
-  },
-  empty: {
-    flex: 1,
+  empty: { paddingTop: spacing[8] },
+  hint: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  serverCard: {
-    padding: spacing[4],
-    backgroundColor: colors.surface.light.elevated,
-    borderRadius: semanticRadius.card,
-    borderWidth: 0.5,
-    borderColor: colors.surface.light.border,
+    gap: spacing[2],
+    paddingTop: spacing[3],
   },
 });

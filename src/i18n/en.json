@@ -3,6 +3,26 @@
     "name": "Uptime Pocket",
     "tagline": "Uptime Kuma in your pocket"
   },
+  "onboarding": {
+    "feature1": {
+      "title": "Live status, all your services",
+      "body": "Glanceable health of every monitor your Kuma watches"
+    },
+    "feature2": {
+      "title": "Push notifications",
+      "body": "Get pinged the second something goes down or recovers"
+    },
+    "feature3": {
+      "title": "Your data stays yours",
+      "body": "Credentials in iOS Keychain / Android Keystore — no cloud"
+    },
+    "feature4": {
+      "title": "Multiple servers",
+      "body": "Manage prod, staging, and client instances in one app"
+    },
+    "cta": "Add your Kuma server",
+    "hint": "Self-hosted Uptime Kuma 2.0+ required. Free, MIT-licensed."
+  },
   "tabs": {
     "monitors": "Monitors",
     "incidents": "Incidents",
@@ -38,8 +58,12 @@
     "empty": {
       "title": "No monitors yet",
       "body": "Add a Kuma server to start monitoring.",
-      "action": "Add server"
+      "action": "Add server",
+      "filtered": "No monitors in this state.",
+      "connecting": "Waiting for monitors…"
     },
+    "connectingBanner": "Connecting to your Kuma server…",
+    "errorBanner": "Connection error: {error}",
     "list": {
       "title": "Monitors",
       "filterAll": "All",
@@ -74,6 +98,46 @@
       "title": "Servers",
       "addServer": "Add server"
     },
+    "detail": {
+      "notFound": {
+        "title": "Server not found",
+        "body": "This server may have been removed."
+      },
+      "status": {
+        "idle": "Not connected",
+        "connecting": "Connecting…",
+        "connected": "Connected",
+        "reconnecting": "Reconnecting…",
+        "error": "Connection error"
+      },
+      "outdated": {
+        "title": "Outdated Kuma version",
+        "body": "Detected {version}. We recommend Kuma {min} or later for the best experience."
+      },
+      "connection": {
+        "title": "Connection",
+        "url": "URL",
+        "auth": "Auth method",
+        "bearerToken": "Bearer token",
+        "password": "Username & password",
+        "version": "Kuma version",
+        "unknown": "Unknown",
+        "lastConnected": "Last connected",
+        "added": "Added"
+      },
+      "notifications": {
+        "title": "Notifications",
+        "mode": "Mode",
+        "none": "Off",
+        "direct": "Direct",
+        "relay": "Relay"
+      },
+      "deleteConfirm": {
+        "title": "Delete server?",
+        "body": "Delete \"{name}\" and its stored credentials? This cannot be undone."
+      },
+      "openInKuma": "Open in Kuma"
+    },
     "add": {
       "title": "Add Kuma server",
       "name": "Name",
@@ -93,6 +157,7 @@
         "invalidUrl": "Please enter a valid URL",
         "unreachable": "Couldn't reach the server",
         "authFailed": "Authentication failed",
+        "missingToken": "Please enter a token",
         "outdatedKuma": "Kuma version {version} is below the minimum (2.0.0). Some features may not work."
       }
     }

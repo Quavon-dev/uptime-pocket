@@ -48,8 +48,12 @@ export default defineConfig({
     // display component where StyleSheet.create would add noise.
     'react-doctor/no-inline-exhaustive-style': 'off',
 
-    // We use Reanimated 4's UI-thread worklets which are intentionally
-    // outside React's effect model. Doctor flags a few as "missing deps".
+    // Migration runner awaits each version sequentially because each step
+    // depends on the previous one's schema_version row. doctor-doctor
+    // flags this as `async-await-in-loop` but parallelizing would be
+    // a correctness bug. The migration code at src/data/db/migrate.ts
+    // has a comment explaining why.
     'react-doctor/inline-renderItem': 'off',
+    'react-doctor/async-await-in-loop': 'off',
   },
 });

@@ -121,7 +121,7 @@ const DEMO_SERVER: ServerModel = {
   id: 'demo',
   name: 'Production Kuma',
   url: 'https://kuma.example.com',
-  auth: { kind: 'bearer', token: 'demo' },
+  authKind: 'bearer' as const,
   kumaVersion: '2.4.0',
   connected: true,
   lastConnectedAt: new Date(),

@@ -19,6 +19,7 @@ import { Server, ServerOff, ChevronRight, Bell, BellOff } from 'lucide-react-nat
 import { colors, spacing, typography, semanticRadius } from '@/theme';
 import { HeartbeatPulse } from '@/components/status';
 import type { Server as ServerType } from '@/domain/models';
+import type { ConnectionStatus } from '@/data/store/monitors';
 
 interface ServerCardProps {
   server: ServerType;
@@ -30,6 +31,8 @@ interface ServerCardProps {
   /** Highlight as the active server */
   isActive?: boolean;
   monitorCount?: number;
+  /** Live connection status. Falls back to server.connected if not provided. */
+  connectionStatus?: ConnectionStatus;
 }
 
 export function ServerCard({
@@ -39,9 +42,20 @@ export function ServerCard({
   showDetails = true,
   isActive = false,
   monitorCount = 0,
+  connectionStatus,
 }: ServerCardProps) {
-  const StatusIcon = server.connected ? Server : ServerOff;
-  const color = server.connected ? colors.status.up : colors.status.down;
+  // Map the live status to "is up". A server in `connecting` or
+  // `reconnecting` is "in progress" — we still show a status icon
+  // (pending color) so the user knows the app is trying.
+  const isConnected = connectionStatus === 'connected' || server.connected;
+  const isPending =
+    connectionStatus === 'connecting' || connectionStatus === 'reconnecting';
+  const StatusIcon = isConnected || isPending ? Server : ServerOff;
+  const color = isConnected
+    ? colors.status.up
+    : isPending
+    ? colors.status.pending
+    : colors.status.down;
 
   return (
     <Pressable
@@ -55,9 +69,9 @@ export function ServerCard({
         <View style={[styles.iconBox, { backgroundColor: `${color}14` }]}>
           <StatusIcon size={18} color={color} strokeWidth={1.75} />
         </View>
-        {server.connected && (
+        {(isConnected || isPending) && (
           <View style={styles.pulseContainer}>
-            <HeartbeatPulse color={color} size={6} active />
+            <HeartbeatPulse color={color} size={6} active={isConnected} />
           </View>
         )}
       </View>

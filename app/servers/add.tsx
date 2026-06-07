@@ -21,8 +21,10 @@ import { SafeScrollView } from '@/components/ui';
 import { colors, spacing, typography, semanticRadius } from '@/theme';
 import { t, tn } from '@/i18n';
 import { useServers } from '@/data/store/servers';
+import { useSettings } from '@/data/store/settings';
 import { createClient } from '@/data/api/client';
 import { createSession } from '@/data/api/auth';
+import { z } from 'zod';
 
 type AuthMethod = 'bearer' | 'password';
 
@@ -65,9 +67,39 @@ function formReducer(state: FormState, action: FormAction): FormState {
   }
 }
 
+/** Zod schema for form-level validation (used by handleSave). */
+const FormSchema = z
+  .object({
+    name: z.string().trim().min(1, 'name').max(50, 'name'),
+    url: z
+      .string()
+      .trim()
+      .min(1, 'url')
+      .url('url')
+      .refine((u) => /^https?:\/\//i.test(u), 'url'),
+    authMethod: z.enum(['bearer', 'password']),
+    token: z.string(),
+    username: z.string(),
+    password: z.string(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.authMethod === 'bearer' && data.token.trim().length === 0) {
+      ctx.addIssue({ code: 'custom', path: ['token'], message: 'token' });
+    }
+    if (data.authMethod === 'password') {
+      if (data.username.trim().length === 0) {
+        ctx.addIssue({ code: 'custom', path: ['username'], message: 'username' });
+      }
+      if (data.password.length === 0) {
+        ctx.addIssue({ code: 'custom', path: ['password'], message: 'password' });
+      }
+    }
+  });
+
 export default function AddServerScreen() {
   const router = useRouter();
   const addServer = useServers((s) => s.addServer);
+  const setOnboarded = useSettings((s) => s.setOnboarded);
 
   const [form, dispatch] = useReducer(formReducer, initialForm);
   const { name, url, authMethod, token, username, password } = form;
@@ -94,10 +126,7 @@ export default function AddServerScreen() {
         id: 'temp',
         name: name || 'Test',
         url,
-        auth:
-          authMethod === 'bearer'
-            ? { kind: 'bearer' as const, token: token || 'placeholder' }
-            : { kind: 'password' as const, username, password },
+        authKind: authMethod,
         connected: false,
         notificationMode: 'direct' as const,
         createdAt: new Date(),
@@ -124,40 +153,70 @@ export default function AddServerScreen() {
 
   const handleSave = async () => {
     setError(null);
-    if (!name.trim() || !url.trim()) {
-      setError(t('servers.add.error.invalidUrl'));
-      return;
-    }
-    if (authMethod === 'bearer' && !token.trim()) {
-      setError('Please enter a token');
-      return;
-    }
-    if (authMethod === 'password' && (!username.trim() || !password)) {
-      setError('Please enter username and password');
+    const parsed = FormSchema.safeParse({ name, url, authMethod, token, username, password });
+    if (!parsed.success) {
+      const first = parsed.error.issues[0];
+      const key = `servers.add.error.${first.message === 'url' ? 'invalidUrl' : 'missingToken'}`;
+      setError(t(key));
       return;
     }
     setSaving(true);
+    const trimmedUrl = url.trim().replace(/\/+$/, '');
+    let detectedVersion: string | null = null;
+    try {
+      // Optionally probe the version so we can show the outdated-Kuma
+      // warning on the server detail screen later. We use a placeholder
+      // token if the user didn't enter one yet, but the /api/status
+      // endpoint doesn't require auth on Kuma 2.0+.
+      const probeSession = createSession(
+        { kind: 'bearer', token: token || 'probe' },
+        trimmedUrl
+      );
+      const probeServer = {
+        id: 'probe',
+        name: name,
+        url: trimmedUrl,
+        authKind: 'bearer' as const,
+        connected: false,
+        notificationMode: 'direct' as const,
+        createdAt: new Date(),
+      };
+      const probe = await createClient(probeServer, probeSession).ping();
+      if (probe.connected && probe.version) {
+        detectedVersion = probe.version;
+      }
+    } catch {
+      // Probe failure is non-fatal; we just don't pre-populate the version.
+    }
     try {
       const id = `srv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      addServer({
-        id,
-        name: name.trim(),
-        url: url.trim().replace(/\/+$/, ''),
-        auth:
-          authMethod === 'bearer'
-            ? { kind: 'bearer', token: token.trim() }
-            : { kind: 'password', username: username.trim(), password },
-        connected: false,
-        notificationMode: 'direct',
-        createdAt: new Date(),
-      });
+      const auth =
+        authMethod === 'bearer'
+          ? ({ kind: 'bearer' as const, token: token.trim() })
+          : ({ kind: 'password' as const, username: username.trim(), password });
+      await addServer(
+        {
+          id,
+          name: name.trim(),
+          url: trimmedUrl,
+          authKind: auth.kind,
+          kumaVersion: detectedVersion ?? undefined,
+          connected: false,
+          notificationMode: 'direct',
+          createdAt: new Date(),
+        },
+        auth
+      );
+      // Mark onboarding complete if not already, so the welcome gate
+      // doesn't re-route us back here on next launch.
+      setOnboarded(true);
       router.back();
     } catch {
       setError(t('servers.add.error.unreachable'));
     } finally {
       setSaving(false);
     }
-  };
+    };
 
   return (
     <View style={styles.container}>
