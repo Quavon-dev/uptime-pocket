@@ -11,6 +11,12 @@ import { io, Socket } from 'socket.io-client';
 import type { AuthSession } from '../api/auth';
 import type { Server, Monitor, Incident, MonitorStatus } from '@/domain/models';
 import type { KumaClient } from '../api/client';
+import {
+  normalizeMonitorList,
+  normalizeHeartbeat,
+  normalizeMonitorStatus,
+  normalizeIncident,
+} from './normalize';
 
 export type KumaEvent =
   | { type: 'connected' }
@@ -67,42 +73,39 @@ export class KumaSocket {
       this.scheduleReconnect();
     });
 
-    // Kuma-specific events
-    this.socket.on('monitorList', (data: any) => {
+    // Kuma-specific events.
+    //
+    // All payload normalization lives in ./normalize so it can be
+    // tested with real captured payloads and no mocks. This file
+    // only handles the socket lifecycle and dispatches normalized
+    // events to listeners.
+    this.socket.on('monitorList', (data: unknown) => {
       this.emit({
         type: 'monitorList',
-        monitors: this.normalizeMonitorList(data),
+        monitors: normalizeMonitorList(data),
       });
     });
 
     this.socket.on('monitorStatus', (data: any) => {
-      this.emit({
-        type: 'monitorStatus',
-        monitorId: data.monitor_id,
-        status: this.normalizeStatus(data.status),
-        timestamp: data.timestamp ?? Date.now(),
-      });
+      const norm = normalizeMonitorStatus(data);
+      if (!norm) return;
+      this.emit({ type: 'monitorStatus', ...norm });
     });
 
     this.socket.on('heartbeat', (data: any) => {
-      this.emit({
-        type: 'heartbeat',
-        monitorId: data.monitor_id,
-        status: this.normalizeStatus(data.status),
-        responseTime: data.ping ?? 0,
-        timestamp: data.time ?? Date.now(),
-      });
+      const norm = normalizeHeartbeat(data);
+      if (!norm) return;
+      this.emit({ type: 'heartbeat', ...norm });
     });
 
     this.socket.on('incident', (data: any) => {
+      const norm = normalizeIncident(data);
+      if (!norm) return;
       this.emit({
         type: 'incident',
         incident: {
-          id: `${data.monitor_id}-${data.time}`,
-          monitorId: data.monitor_id,
+          ...norm,
           serverId: this.server.id,
-          startedAt: new Date(data.time),
-          cause: data.status === 0 ? 'down' : 'recovery',
         },
       });
     });
@@ -165,58 +168,8 @@ export class KumaSocket {
     }, delay + jitter);
   }
 
-  private normalizeMonitorList(data: any): Monitor[] {
-    if (!Array.isArray(data)) return [];
-    return data.map((m) => this.normalizeMonitor(m));
-  }
-
-  private normalizeMonitor(m: any): Monitor {
-    return {
-      id: m.id,
-      parent: m.parent ?? null,
-      type: m.type,
-      name: m.name,
-      url: m.url,
-      hostname: m.hostname,
-      port: m.port,
-      status: this.normalizeStatus(m.status),
-      active: m.active ?? true,
-      interval: m.interval ?? 60,
-      retryInterval: m.retryInterval ?? 60,
-      maxretries: m.maxretries ?? 0,
-      upsideDown: m.upsideDown ?? false,
-      tags: [],
-      notificationIDList: m.notificationIDList ?? {},
-    };
-  }
-
-  private normalizeStatus(status: any): MonitorStatus {
-    // Kuma uses:
-    // 0 = down
-    // 1 = up
-    // 2 = pending
-    // 3 = maintenance
-    if (typeof status === 'number') {
-      switch (status) {
-        case 0: return 'down';
-        case 1: return 'up';
-        case 2: return 'pending';
-        case 3: return 'maintenance';
-        default: return 'pending';
-      }
-    }
-    if (typeof status === 'string') {
-      switch (status.toLowerCase()) {
-        case 'up': return 'up';
-        case 'down': return 'down';
-        case 'pending': return 'pending';
-        case 'maintenance': return 'maintenance';
-        case 'paused': return 'paused';
-        default: return 'pending';
-      }
-    }
-    return 'pending';
-  }
+  // Note: payload normalization is in ./normalize (pure functions, fully
+  // unit-tested). This class only handles the socket lifecycle.
 }
 
 export function createSocket(
