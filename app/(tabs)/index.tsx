@@ -81,7 +81,16 @@ export default function MonitorsScreen() {
         title="Monitors"
         large
         right={
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
+          // flexShrink:1 on the chip so the + button is always
+          // visible even with a long server name. The chip will
+          // truncate its name rather than push the + off-screen.
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing[2],
+              flexShrink: 1,
+            }}>
             <Pressable
               onPress={() => router.push('/monitors/add')}
               style={({ pressed }) => [
@@ -99,7 +108,12 @@ export default function MonitorsScreen() {
               ]}
               hitSlop={6}>
               <Server size={14} color={colors.brand[500]} strokeWidth={2} />
-              <Text style={[typography.captionEmphasized, { color: colors.brand[500] }]}>
+              <Text
+                numberOfLines={1}
+                style={[
+                  typography.captionEmphasized,
+                  { color: colors.brand[500], maxWidth: 120 },
+                ]}>
                 {active?.name ?? 'Server'}
               </Text>
               <ChevronDown size={14} color={colors.brand[500]} strokeWidth={2} />

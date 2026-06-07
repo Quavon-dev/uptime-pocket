@@ -137,18 +137,26 @@ export default function AddServerScreen() {
       const client = createClient(server, session);
       const result = await client.ping();
       if (!result.connected) {
-        setError(t('servers.add.error.unreachable'));
-      } else {
-        const minVersion = '2.0.0';
-        if (result.version && thisIsOlder(result.version, minVersion)) {
-          setError(tn('servers.add.error.outdatedKuma', { version: result.version }));
-        } else {
-          setError(null);
-          // Success! Could navigate back or auto-save
-        }
+        // Surface the actual reason — much more useful than
+        // "Couldn't reach the server" (which could mean ATS block,
+        // DNS, 404, timeout, or wrong Kuma version).
+        const detail = result.error ?? t('servers.add.error.unreachable');
+        setError(detail);
+        return;
       }
-    } catch {
-      setError(t('servers.add.error.unreachable'));
+      const minVersion = '2.0.0';
+      if (result.version && thisIsOlder(result.version, minVersion)) {
+        setError(tn('servers.add.error.outdatedKuma', { version: result.version }));
+      } else {
+        setError(null);
+        // Success! Could navigate back or auto-save
+      }
+    } catch (err) {
+      // This catch is now reachable for unexpected errors thrown
+      // by the ping itself (rare — ping() catches its own errors).
+      // Surface the message so the user isn't left guessing.
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message || t('servers.add.error.unreachable'));
     } finally {
       setTesting(false);
     }

@@ -8,10 +8,10 @@
  * Phase 0: just renders a styled header bar with title and optional back/menu.
  */
 
-import { View, Text, Platform } from 'react-native';
+import { View, Text, PlatformColor } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassSurface } from './GlassSurface';
-import { typography, spacing, colors } from '@/theme';
+import { typography, spacing } from '@/theme';
 
 interface GlassNavBarProps {
   title: string;
@@ -47,9 +47,13 @@ export function GlassNavBar({ title, subtitle, large = false, left, right }: Gla
           {!large && (
             <Text
               numberOfLines={1}
+              // PlatformColor('label') auto-adapts to iOS light/dark
+              // mode and is the recommended iOS-native way to pick
+              // the "primary text on a background" color. Falls back
+              // to a static value on Android.
               style={{
                 ...typography.bodyEmphasized,
-                color: Platform.OS === 'ios' ? colors.surface.light.text : colors.surface.light.text,
+                color: PlatformColor('label'),
               }}>
               {title}
             </Text>
@@ -64,7 +68,7 @@ export function GlassNavBar({ title, subtitle, large = false, left, right }: Gla
           <Text
             style={{
               ...typography.display,
-              color: colors.surface.light.text,
+              color: PlatformColor('label'),
             }}>
             {title}
           </Text>
@@ -72,7 +76,7 @@ export function GlassNavBar({ title, subtitle, large = false, left, right }: Gla
             <Text
               style={{
                 ...typography.body,
-                color: colors.surface.light.textMuted,
+                color: PlatformColor('secondaryLabel'),
                 marginTop: spacing[1],
               }}>
               {subtitle}

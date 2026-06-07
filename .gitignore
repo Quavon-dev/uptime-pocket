@@ -73,3 +73,8 @@ Thumbs.db
 # Local relay data
 relay/data/
 relay/.env
+
+# Skills / agents tooling
+.agents/
+skills-lock.json
+
