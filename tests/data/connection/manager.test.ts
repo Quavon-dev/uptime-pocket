@@ -25,6 +25,7 @@ jest.mock('@/data/socket/client', () => {
         disconnect: jest.fn(),
         pauseMonitor: jest.fn(),
         resumeMonitor: jest.fn(),
+        forceHeartbeat: jest.fn(),
         on: jest.fn((cb: mockListener) => {
           mockListeners.add(cb);
           return () => {
@@ -32,9 +33,14 @@ jest.mock('@/data/socket/client', () => {
           };
         }),
       };
-      // Attach the listeners set so tests can push events.
       (mockSocket as unknown as { __listeners: Set<mockListener> }).__listeners = mockListeners;
       return mockSocket;
+    }),
+    // For tests: the buildSocketLogin fn is never used because the
+    // test stubs `openRawSocket` to skip the real socket path. We
+    // provide a no-op fallback so the import doesn't blow up.
+    buildSocketLogin: jest.fn(() => async () => {
+      throw new Error('buildSocketLogin not used in tests');
     }),
   };
 });
@@ -63,6 +69,8 @@ describe('KumaConnectionManager', () => {
       statusByServer: {},
       errorByServer: {},
       incidentsByServer: {},
+      heartbeatHistoryByServer: {},
+      uptimeByServer: {},
     });
     loadCredentialsMock.mockReset();
   });
@@ -86,10 +94,34 @@ describe('KumaConnectionManager', () => {
     loadCredentialsMock.mockResolvedValue({ kind: 'bearer', token: 'tk_test' });
 
     const manager = new KumaConnectionManager();
+    // Stub the raw socket: emit 'connect' synchronously, then never
+    // call back. The manager's connect() resolves on the connect
+    // event; the JWT for bearer auth is the static token, so the
+    // promise resolves immediately.
+    manager.openRawSocket = () => {
+      const handlers: Record<string, Array<(...a: unknown[]) => void>> = {};
+      const sock: any = {
+        once: (evt: string, cb: (...a: unknown[]) => void) => {
+          (handlers[evt] ??= []).push(cb);
+        },
+        off: () => {},
+        emit: () => {},
+        disconnect: () => {},
+        removeAllListeners: () => {},
+        on: () => {},
+      };
+      queueMicrotask(() => handlers['connect']?.[0]?.());
+      return sock as never;
+    };
     await manager.connect('srv_a');
 
     expect(loadCredentialsMock).toHaveBeenCalledWith('srv_a');
+    // The mocked KumaSocket never emits a 'connected' event (it
+    // would normally do so on real socket connect). Verify the
+    // initial 'connecting' state was set, and that the manager
+    // didn't error out.
     expect(useMonitors.getState().statusByServer.srv_a).toBe('connecting');
+    expect(useMonitors.getState().errorByServer.srv_a ?? null).toBeNull();
   });
 
   it('reports an error when no credentials are stored', async () => {
@@ -144,6 +176,22 @@ describe('KumaConnectionManager', () => {
     loadCredentialsMock.mockResolvedValue({ kind: 'bearer', token: 'tk_test' });
 
     const manager = new KumaConnectionManager();
+    // Same stub as the first test — synchronous 'connect' emit.
+    manager.openRawSocket = () => {
+      const handlers: Record<string, Array<(...a: unknown[]) => void>> = {};
+      const sock: any = {
+        once: (evt: string, cb: (...a: unknown[]) => void) => {
+          (handlers[evt] ??= []).push(cb);
+        },
+        off: () => {},
+        emit: () => {},
+        disconnect: () => {},
+        removeAllListeners: () => {},
+        on: () => {},
+      };
+      queueMicrotask(() => handlers['connect']?.[0]?.());
+      return sock as never;
+    };
     await manager.connect('srv_c');
     manager.disconnect('srv_c');
 

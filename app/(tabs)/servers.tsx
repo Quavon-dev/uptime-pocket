@@ -7,7 +7,7 @@
  * use the detail screen's delete action instead for safety).
  */
 
-import { View, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
@@ -17,7 +17,7 @@ import { SafeScrollView, EmptyState } from '@/components/ui';
 import { ServerCard } from '@/components/server';
 import { useServers, getActiveServer } from '@/data/store/servers';
 import { useMonitors } from '@/data/store/monitors';
-import { colors, spacing } from '@/theme';
+import { colors, spacing, typography } from '@/theme';
 import { t } from '@/i18n';
 
 export default function ServersScreen() {
@@ -92,11 +92,9 @@ export default function ServersScreen() {
                   tintColor={colors.gray[500]}
                   size={14}
                 />
-                <View style={{ flex: 1 }}>
-                  <View>
-                    {/* Hint text rendered as plain View+Text to keep it simple */}
-                  </View>
-                </View>
+                <Text style={[typography.caption, { color: colors.surface.light.textMuted, flex: 1 }]}>
+                  {t('servers.list.longPressHint')}
+                </Text>
               </View>
             )}
           </View>

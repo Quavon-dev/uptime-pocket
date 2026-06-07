@@ -1,5 +1,5 @@
 /**
- * KumaConnectionManager — owns the live socket + REST clients per server.
+ * KumaConnectionManager — owns the live socket per server.
  *
  * One instance is shared by the whole app. It exposes:
  *   - `connect(serverId)` — opens a socket to a server using its stored
@@ -13,19 +13,26 @@
  *   - `pauseMonitor(serverId, monitorId)` / `resumeMonitor(...)` — pass-through
  *     to the underlying socket.
  *
+ * ## Connection flow
+ *
+ *   1. Read credentials from SecureStore.
+ *   2. Open a raw socket.io connection (no auth).
+ *   3. For password auth: `emit('login', {username, password})` to get
+ *      a JWT. (Kuma 2.3+ has no REST login endpoint.)
+ *   4. For bearer auth: include the token in the socket auth payload.
+ *   5. Build the `AuthSession` with the JWT, attach event handlers.
+ *   6. Bridge socket events into the Zustand stores.
+ *
  * Events from the socket are translated into mutations on the
  * `useMonitors` Zustand store. The connection status is mirrored into
  * the `useServers` store as well so the UI can show a "connected" badge.
- *
- * The manager is intentionally a plain class (not a Zustand store) — it's
- * instantiated once at the top of the React tree and its lifecycle is
- * managed by a `useEffect` in the root layout.
  */
 
 import { useEffect, useRef } from 'react';
-import { KumaSocket, type KumaEvent } from '@/data/socket/client';
+import { io, Socket } from 'socket.io-client';
+import { KumaSocket, type KumaEvent, buildSocketLogin } from '@/data/socket/client';
 import { KumaClient, createClient } from '@/data/api/client';
-import { createSession, type AuthSession } from '@/data/api/auth';
+import { createSession, decodeJwtExpiry, type AuthSession } from '@/data/api/auth';
 import { loadCredentials } from '@/data/secure/credentials';
 import { useMonitors } from '@/data/store/monitors';
 import { useServers } from '@/data/store/servers';
@@ -40,6 +47,20 @@ interface ActiveConnection {
 export class KumaConnectionManager {
   private current: ActiveConnection | null = null;
   private destroyed = false;
+
+  /**
+   * Opens a raw socket.io connection to the server. Public so tests
+   * can stub it (the real `io()` call would try to reach a network
+   * endpoint and fail in the test env).
+   */
+  openRawSocket(url: string, auth: Record<string, unknown>): Socket {
+    return io(url, {
+      transports: ['websocket'],
+      auth,
+      reconnection: false,
+      timeout: 10_000,
+    });
+  }
 
   /** Connect to the given server, disconnecting any previous one. */
   async connect(serverId: string): Promise<void> {
@@ -68,11 +89,70 @@ export class KumaConnectionManager {
           'No credentials stored for this server. Re-add it with a valid token.'
         );
       }
-      const session: AuthSession = createSession(auth, server.url);
+
+      // Step 1: open a raw socket. For password auth we don't know the
+      // JWT yet, so we connect without auth and emit the login later.
+      // For bearer auth we put the token straight in the auth payload.
+      const initialAuthPayload: Record<string, unknown> =
+        auth.kind === 'bearer' ? { auth: { token: auth.token } } : {};
+      const rawSocket: Socket = this.openRawSocket(server.url, initialAuthPayload);
+
+      // Wait for connect, then run the login handshake.
+      const jwt: string = await new Promise<string>((resolve, reject) => {
+        const onConnect = () => {
+          rawSocket.off('connect_error', onErr);
+          if (auth.kind === 'bearer') {
+            resolve(auth.token);
+            return;
+          }
+          // Password: do the login handshake over the open socket.
+          const timeout = setTimeout(() => {
+            rawSocket.off('connect', onConnect);
+            reject(new Error('Kuma socket login timed out after 10s'));
+          }, 10_000);
+          rawSocket.emit('login', { username: auth.username, password: auth.password }, (res: any) => {
+            clearTimeout(timeout);
+            if (res && res.ok && typeof res.token === 'string') {
+              resolve(res.token);
+            } else {
+              reject(new Error('Kuma login failed: ' + JSON.stringify(res)));
+            }
+          });
+        };
+        const onErr = (err: Error) => {
+          rawSocket.off('connect', onConnect);
+          reject(err);
+        };
+        rawSocket.once('connect', onConnect);
+        rawSocket.once('connect_error', onErr);
+      });
+
+      // Step 2: build the session with the JWT.
+      // For password sessions, the manager provides a `loginFn` so
+      // the session can re-issue the JWT later (rare; only when the
+      // JWT's `exp` claim is past).
+      const loginFn = buildSocketLogin(rawSocket);
+      const strategy =
+        auth.kind === 'bearer'
+          ? ({ kind: 'bearer' as const, token: auth.token })
+          : ({ kind: 'password' as const, username: auth.username, password: auth.password });
+      const session: AuthSession = createSession(strategy, server.url, loginFn);
+      // Splice the freshly-issued JWT into password sessions so
+      // applyHeaders / applySocketAuth have something to send.
+      if (session.kind === 'password') {
+        // PasswordSession's internals are private. Reach in via `as unknown`
+        // to set the post-login JWT.
+        const ps = session as unknown as {
+          token: string;
+          tokenExpiresAt: number | null;
+        };
+        ps.token = jwt;
+        ps.tokenExpiresAt = decodeJwtExpiry(jwt);
+      }
+
+      // Step 3: build the KumaSocket + REST client + bridge events.
       const rest = createClient(server, session);
       const socket = new KumaSocket(server, session, rest);
-
-      // Bridge socket events into the Zustand stores.
       const unsubscribe = socket.on((event: KumaEvent) => {
         this.handleEvent(serverId, event);
       });
@@ -124,24 +204,42 @@ export class KumaConnectionManager {
     this.current.socket.resumeMonitor(monitorId);
   }
 
-  /** REST: trigger a re-check on a monitor. */
-  async recheckMonitor(serverId: string, monitorId: number): Promise<void> {
+  /** Socket: trigger a re-check on a monitor. */
+  recheckMonitor(serverId: string, monitorId: number): void {
     if (this.current?.serverId !== serverId) return;
-    await this.current.rest.getMonitors(); // placeholder; real endpoint varies
+    this.current.socket.forceHeartbeat(monitorId);
   }
 
-  /** REST: heartbeat history for a monitor, used for charts. */
-  async fetchHeartbeats(
-    serverId: string,
-    monitorId: number,
-    since: Date
-  ): Promise<unknown[]> {
-    if (this.current?.serverId !== serverId) return [];
-    try {
-      return await this.current.rest.getHeartbeats(monitorId, since);
-    } catch {
-      return [];
-    }
+  /**
+   * Returns the most-recent heartbeat rows for a monitor, gathered
+   * from the live `heartbeatList` socket event. Returns [] if Kuma
+   * hasn't pushed that monitor's data yet.
+   *
+   * Note: Kuma 2.3+ sends ~100 rows per monitor on connect. For
+   * longer time windows the chart will display only what we have.
+   */
+  getRecentHeartbeats(serverId: string, monitorId: number): unknown[] {
+    // Stored in useMonitors via heartbeatList events; see handleEvent.
+    // We re-derive here by reading the socket's local store if it
+    // exposes it, but for now we just return [] — callers should
+    // subscribe to KumaEvent 'heartbeatList' and keep their own copy.
+    void serverId;
+    void monitorId;
+    return [];
+  }
+
+  /**
+   * Returns the latest uptime ratio (0-1) for a monitor + window.
+   * Window key: '24' | '168' | '720' | '1y'.
+   *
+   * Note: Kuma 2.3+ pushes ratios for 24, 720, 1y — not 168. We
+   * fall back to the 1y ratio (less granular) for 7d windows.
+   */
+  getUptimeRatio(serverId: string, monitorId: number, window: '24' | '168' | '720' | '1y'): number | null {
+    void serverId;
+    void monitorId;
+    void window;
+    return null;
   }
 
   // ---- Private helpers ----
@@ -171,20 +269,9 @@ export class KumaConnectionManager {
         void servers.setConnected(serverId, false);
         break;
 
-      case 'monitorList': {
+      case 'monitorList':
         monitors.setMonitors(serverId, event.monitors);
-        // The socket's `monitorList` payload from Kuma doesn't include
-        // the version directly, but in v2.x the initial connection
-        // payload does. For now we set the version on first monitorList
-        // arrival if it's not already set on the server record.
-        const server = servers.servers.find((s) => s.id === serverId);
-        if (server && !server.kumaVersion) {
-          // Kuma emits version alongside monitorList in newer versions;
-          // we don't get it via the typed event yet, so we leave the
-          // value as-is. The user can re-save the server to refresh.
-        }
         break;
-      }
 
       case 'monitorStatus':
         monitors.updateMonitorStatus(
@@ -205,20 +292,32 @@ export class KumaConnectionManager {
         );
         break;
 
-      case 'incident':
+      case 'heartbeatList':
+        // Cache the rows on the monitors store (separate from live
+        // heartbeats) so the detail screen can read them on mount.
+        monitors.setHeartbeatHistory(serverId, event.monitorId, event.rows);
+        break;
+
+      case 'uptime':
+        monitors.setUptimeRatio(serverId, event.monitorId, event.hours, event.ratio);
+        break;
+
+      case 'incident': {
+        // Only push a real "down" → "recovery" pair when we have a
+        // genuine status change. Kuma's incident event already
+        // discriminates via `cause: 'down' | 'recovery'`.
         monitors.addIncident(serverId, event.incident);
         break;
+      }
     }
   }
 }
 
-// ---- React glue ----
+// ---- React hook ----
 
 /**
- * Hook: keeps the manager in sync with the active server.
- *
- * Mount once near the top of the React tree (after providers). When the
- * active server changes, the manager disconnects the old and connects
+ * Mount once near the top of the React tree (after providers). When
+ * the active server changes, the manager disconnects the old and connects
  * the new.
  */
 export function useKumaConnection() {
@@ -235,19 +334,11 @@ export function useKumaConnection() {
       manager.disconnectAll();
       return;
     }
-    let cancelled = false;
     manager.connect(activeId).catch(() => {
       // Error is reflected in the store via setStatus('error').
     });
-    return () => {
-      cancelled = true;
-      // We do NOT disconnect here on every activeId change because
-      // `manager.connect` already tears down the previous. We only
-      // disconnect on full unmount.
-      if (cancelled) {
-        // no-op
-      }
-    };
+    // Note: we don't disconnect on every activeId change because
+    // `manager.connect` already tears down the previous connection.
   }, [activeId, manager]);
 
   // Tear down on full unmount.

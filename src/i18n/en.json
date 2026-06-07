@@ -74,8 +74,8 @@
     "detail": {
       "title": "Monitor #{id}",
       "notFound": {
-        "title": "No monitor data yet",
-        "body": "Connect a Kuma server in the Servers tab to see live monitor data here."
+        "title": "Monitor not found",
+        "body": "This monitor may have been removed or the connection was lost."
       },
       "responseTime": "Response time",
       "uptime": "Uptime",
@@ -90,13 +90,15 @@
         "24h": "24h",
         "7d": "7d",
         "30d": "30d"
-      }
+      },
+      "chartRange": "{count} heartbeats · oldest from {span}"
     }
   },
   "servers": {
     "list": {
       "title": "Servers",
-      "addServer": "Add server"
+      "addServer": "Add server",
+      "longPressHint": "Long-press a server to make it the active one."
     },
     "detail": {
       "notFound": {
@@ -132,6 +134,13 @@
         "direct": "Direct",
         "relay": "Relay"
       },
+      "monitors": {
+        "title": "Monitors",
+        "total": "Total",
+        "totalCount": "{count}",
+        "up": "Up",
+        "down": "Down"
+      },
       "deleteConfirm": {
         "title": "Delete server?",
         "body": "Delete \"{name}\" and its stored credentials? This cannot be undone."
@@ -146,7 +155,7 @@
       "urlPlaceholder": "https://kuma.example.com",
       "authMethod": "Authentication",
       "bearer": "Bearer token (recommended)",
-      "bearerHint": "Kuma 2.0+ supports API tokens. Create one in Kuma's settings.",
+      "bearerHint": "Kuma 2.0+ supports API tokens. Create one in Settings → API Keys in Kuma's dashboard.",
       "bearerToken": "API token",
       "password": "Username & password",
       "username": "Username",

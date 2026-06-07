@@ -19,6 +19,7 @@ import {
   View,
   Text,
   Alert,
+  Linking,
   Pressable,
   StyleSheet,
 } from 'react-native';
@@ -41,6 +42,10 @@ export default function ServerDetailScreen() {
   const removeServer = useServers((s) => s.removeServer);
   const status = useMonitors((s) => (id ? s.statusByServer[id] : 'idle') ?? 'idle');
   const error = useMonitors((s) => (id ? s.errorByServer[id] : null) ?? null);
+  const monitorList = useMonitors((s) => (id ? s.monitorsByServer[id] : undefined));
+  const monitorCount = monitorList?.length ?? 0;
+  const upCount = monitorList?.filter((m) => m.status === 'up').length ?? 0;
+  const downCount = monitorList?.filter((m) => m.status === 'down').length ?? 0;
 
   const [deleting, setDeleting] = useState(false);
 
@@ -189,12 +194,28 @@ export default function ServerDetailScreen() {
           />
         </Section>
 
+        {/* Live monitor summary */}
+        {monitorCount > 0 && (
+          <Section title={t('servers.detail.monitors.title')}>
+            <Row
+              label={t('servers.detail.monitors.total')}
+              value={tn('servers.detail.monitors.totalCount', { count: monitorCount })}
+            />
+            <Row
+              label={t('servers.detail.monitors.up')}
+              value={String(upCount)}
+            />
+            <Row
+              label={t('servers.detail.monitors.down')}
+              value={String(downCount)}
+            />
+          </Section>
+        )}
+
         {/* Open in Kuma button */}
         <Pressable
           onPress={() => {
-            // In Phase 3 we use Linking.openURL(server.url). For now this
-            // is a no-op — but having the button makes the screen feel
-            // complete.
+            void Linking.openURL(server.url);
           }}
           style={({ pressed }) => [styles.openBtn, { opacity: pressed ? 0.85 : 1 }]}>
           <ExternalLink size={18} color={colors.brand[500]} strokeWidth={1.75} />

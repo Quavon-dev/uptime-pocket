@@ -110,13 +110,32 @@ export class KumaClient {
     );
   }
 
-  /** Fetch a monitor's uptime stats */
-  async getUptimeStats(
-    monitorId: number
-  ): Promise<{ uptime24h: number; uptime7d: number; uptime30d: number }> {
-    return this.request<any>(
+  /**
+   * Fetch a monitor's uptime stats for 24h / 7d / 30d windows.
+   * Kuma returns `{ "24": 0.998, "168": 0.991, "720": 0.985 }` (ratios 0-1).
+   * The `any` return is intentional — `normalizeUptime()` does the
+   * validation + 0-100 conversion in the domain layer.
+   */
+  async getUptimeStats(monitorId: number): Promise<unknown> {
+    return this.request<unknown>(
       'GET',
       `/api/uptime/${monitorId}?type=hour&hours=24,168,720`
+    );
+  }
+
+  /**
+   * Force an immediate re-check of a monitor.
+   * Kuma 2.x has no dedicated "recheck" REST endpoint, but the socket
+   * supports a `forceHeartbeat` event. We expose this for callers that
+   * want to re-check via REST (rare — most paths go through the socket
+   * via `KumaConnectionManager.recheckMonitor`).
+   */
+  async recheckMonitor(monitorId: number): Promise<void> {
+    // Best-effort: hit a heartbeat endpoint that forces a fresh check.
+    // Kuma 2.x accepts `?force=1` on the heartbeat endpoint.
+    return this.request<void>(
+      'GET',
+      `/api/heartbeat/${monitorId}?force=1`
     );
   }
 

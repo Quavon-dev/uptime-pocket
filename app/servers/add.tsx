@@ -23,7 +23,7 @@ import { t, tn } from '@/i18n';
 import { useServers } from '@/data/store/servers';
 import { useSettings } from '@/data/store/settings';
 import { createClient } from '@/data/api/client';
-import { createSession } from '@/data/api/auth';
+import { BearerSession, PasswordSession } from '@/data/api/auth';
 import { z } from 'zod';
 
 type AuthMethod = 'bearer' | 'password';
@@ -116,12 +116,15 @@ export default function AddServerScreen() {
     setTesting(true);
     setError(null);
     try {
-      const session = createSession(
+      // Build a transient session for the ping probe. The Test button
+      // only checks connectivity (no auth actually fires), so the
+      // password session gets a dummy loginFn it will never use.
+      const throwawayLogin: () => Promise<string> = () =>
+        Promise.reject(new Error('Test connection never refreshes auth'));
+      const session =
         authMethod === 'bearer'
-          ? { kind: 'bearer', token: token || 'placeholder' }
-          : { kind: 'password', username, password },
-        url
-      );
+          ? new BearerSession(token || 'placeholder')
+          : new PasswordSession(username, password, '', throwawayLogin);
       const server = {
         id: 'temp',
         name: name || 'Test',
@@ -165,13 +168,10 @@ export default function AddServerScreen() {
     let detectedVersion: string | null = null;
     try {
       // Optionally probe the version so we can show the outdated-Kuma
-      // warning on the server detail screen later. We use a placeholder
-      // token if the user didn't enter one yet, but the /api/status
-      // endpoint doesn't require auth on Kuma 2.0+.
-      const probeSession = createSession(
-        { kind: 'bearer', token: token || 'probe' },
-        trimmedUrl
-      );
+      // warning on the server detail screen later. The /api/status
+      // endpoint doesn't require auth on Kuma 2.0+, so a placeholder
+      // bearer session is enough.
+      const probeSession = new BearerSession(token || 'probe');
       const probeServer = {
         id: 'probe',
         name: name,
@@ -216,7 +216,7 @@ export default function AddServerScreen() {
     } finally {
       setSaving(false);
     }
-    };
+  };
 
   return (
     <View style={styles.container}>

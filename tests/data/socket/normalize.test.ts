@@ -21,6 +21,9 @@ import {
   normalizeHeartbeat,
   normalizeMonitorStatus,
   normalizeIncident,
+  normalizeHeartbeatRow,
+  normalizeHeartbeatHistory,
+  normalizeUptime,
 } from '@/data/socket/normalize';
 
 // --- Captured live payloads (uptime.quavon.de, Kuma 2.3.2, 2026-06-07) ---
@@ -350,5 +353,112 @@ describe('normalizeIncident', () => {
   it('returns null if monitor id or time is missing', () => {
     expect(normalizeIncident({ status: 0, time: '2026-06-07 19:21:43.512' })).toBeNull();
     expect(normalizeIncident({ monitorID: 1, status: 0 })).toBeNull();
+  });
+});
+
+// ---- REST /api/heartbeat/:id normalizers ------------------------------
+
+describe('normalizeHeartbeatRow', () => {
+  it('normalizes a single live heartbeat row', () => {
+    const row = normalizeHeartbeatRow({
+      status: 1,
+      time: '2026-06-07 19:21:43.512',
+      ping: 59,
+      msg: '200 - OK',
+      important: false,
+    });
+    expect(row).not.toBeNull();
+    expect(row!.status).toBe('up');
+    expect(row!.responseTime).toBe(59);
+    expect(row!.timestamp).toBe(Date.parse('2026-06-07T19:21:43.512'));
+    expect(row!.important).toBe(false);
+  });
+
+  it('treats a missing ping as 0', () => {
+    const row = normalizeHeartbeatRow({
+      status: 1,
+      time: 1749312000000,
+    });
+    expect(row!.responseTime).toBe(0);
+  });
+
+  it('reads important: true correctly', () => {
+    const row = normalizeHeartbeatRow({
+      status: 0,
+      time: 1749312000000,
+      important: true,
+    });
+    expect(row!.important).toBe(true);
+    expect(row!.status).toBe('down');
+  });
+
+  it('returns null for unparseable time', () => {
+    expect(normalizeHeartbeatRow({ status: 1, time: 'not-a-date' })).toBeNull();
+  });
+
+  it('returns null for non-object input', () => {
+    expect(normalizeHeartbeatRow(null)).toBeNull();
+    expect(normalizeHeartbeatRow('x')).toBeNull();
+    expect(normalizeHeartbeatRow(42)).toBeNull();
+  });
+});
+
+describe('normalizeHeartbeatHistory', () => {
+  it('normalizes a live Kuma response (array, newest-first)', () => {
+    const live = [
+      { status: 1, time: '2026-06-07 19:21:43.512', ping: 59 },
+      { status: 0, time: '2026-06-07 19:20:43.512', ping: 0 },
+      { status: 1, time: '2026-06-07 19:19:43.512', ping: 42 },
+    ];
+    const out = normalizeHeartbeatHistory(live);
+    expect(out).toHaveLength(3);
+    // Sorted oldest-first so the chart line is left-to-right.
+    expect(out[0].responseTime).toBe(42);
+    expect(out[1].status).toBe('down');
+    expect(out[2].responseTime).toBe(59);
+  });
+
+  it('drops unparseable rows but keeps the rest', () => {
+    const out = normalizeHeartbeatHistory([
+      { status: 1, time: '2026-06-07 19:21:43.512', ping: 59 },
+      { status: 1, time: 'oops' },
+      { status: 1, time: '2026-06-07 19:19:43.512', ping: 42 },
+    ]);
+    expect(out).toHaveLength(2);
+  });
+
+  it('returns [] for non-array payloads', () => {
+    expect(normalizeHeartbeatHistory(null)).toEqual([]);
+    expect(normalizeHeartbeatHistory({})).toEqual([]);
+    expect(normalizeHeartbeatHistory('garbage')).toEqual([]);
+  });
+});
+
+describe('normalizeUptime', () => {
+  it('converts ratio values to 0-100 percentages', () => {
+    const out = normalizeUptime({ '24': 0.9986, '168': 0.9912, '720': 0.9854 });
+    expect(out.uptime24h).toBeCloseTo(99.86, 2);
+    expect(out.uptime7d).toBeCloseTo(99.12, 2);
+    expect(out.uptime30d).toBeCloseTo(98.54, 2);
+  });
+
+  it('returns null for missing keys', () => {
+    const out = normalizeUptime({ '24': 0.99 });
+    expect(out.uptime24h).toBeCloseTo(99, 2);
+    expect(out.uptime7d).toBeNull();
+    expect(out.uptime30d).toBeNull();
+  });
+
+  it('returns all-nulls for a non-object', () => {
+    const out = normalizeUptime(null);
+    expect(out).toEqual({ uptime24h: null, uptime7d: null, uptime30d: null });
+    const out2 = normalizeUptime('x');
+    expect(out2).toEqual({ uptime24h: null, uptime7d: null, uptime30d: null });
+  });
+
+  it('returns null for non-numeric values', () => {
+    const out = normalizeUptime({ '24': 'oops', '168': null });
+    expect(out.uptime24h).toBeNull();
+    expect(out.uptime7d).toBeNull();
   });
 });
