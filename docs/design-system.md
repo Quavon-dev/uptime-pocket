@@ -1,6 +1,6 @@
 # Design System
 
-> ⚠️ **Phase 0 — initial tokens.** Final design system after the logo is locked in.
+> v0.2.0 — full design system in place. Live at `/design-system` in the app.
 
 ## Philosophy
 
@@ -86,25 +86,59 @@ spring.bouncy  // status changes
 spring.gentle  // large surfaces
 ```
 
+## Icon set
+
+We use **Lucide** (`lucide-react-native@1.17.0`) — 1000+ icons in a consistent stroke-based style.
+
+```typescript
+import { Globe, Server, Plus, monitorTypeIcon } from '@/components/ui';
+
+// All Lucide icons are re-exported from our ui module
+// Plus a few helpers like monitorTypeIcon() that maps Kuma types to icons
+```
+
+Lucide gives us cross-platform consistency. We use the same icons on iOS and Android, sized at 16/20/24/32/48 from our token scale.
+
 ## Components
 
-Use these instead of building from scratch.
+All components in `src/components/`. Use these instead of building from scratch.
 
-### `<StatusPill status="up" />`
+### Status & feedback
 
-Colored dot + label. Use everywhere a status is shown.
+- **`<StatusPill status="up" size="md" />`** — colored dot + label. The most-used component in the app.
+- **`<HeartbeatPulse color="..." active />`** — animated pulsing dot. Use to indicate "live" data.
+- **`<EmptyState icon={Server} title="..." body="..." action={...} />`** — illustrated placeholder.
+- **`<ErrorState title="..." body="..." onRetry={...} />`** — error display with retry.
 
-### `<HeartbeatPulse color="..." active />`
+### Buttons & selection
 
-A pulsing dot that animates. Use to indicate "live" data.
+- **`<Button label="..." variant="primary" size="md" />`** — primary / secondary / ghost / destructive variants. With iOS press scale + Material ripple + haptics.
+- **`<Chip label="..." selected onPress={...} />`** — for filters.
+- **`<SegmentedControl options={...} value onChange />`** — for range pickers and binary toggles. Animated sliding indicator.
 
-### `<GlassSurface variant="regular" />`
+### Surfaces
 
-A cross-platform glass surface. Liquid Glass on iOS 26+, BlurView on older iOS, elevated surface on Android.
+- **`<GlassSurface variant="regular" radius={16} />`** — Liquid Glass on iOS 26+, BlurView fallback for older iOS, Material 3 Expressive on Android.
+- **`<GlassNavBar title="..." large />`** — top app bar with Liquid Glass. Back/menu support.
 
-### `<GlassNavBar title="Monitors" />`
+### Monitors
 
-Top app bar with Liquid Glass. Supports back/menu buttons and a large title variant.
+- **`<MonitorCard monitor={...} onPress={...} />`** — large card for featured monitors and detail header.
+- **`<MonitorRow monitor={...} onPress={...} />`** — dense list row.
+
+### Server
+
+- **`<ServerCard server={...} isActive monitorCount={...} />`** — single server display.
+- **`<ServerSwitcher onClose={...} />`** — bottom-sheet-style server switcher.
+
+### Charts
+
+- **`<ResponseTimeChart data={...} width height color />`** — SVG line chart with Reanimated path-draw animation. Color = status.
+- **`<UptimeBar data={...} segments={50} />`** — segmented bar showing uptime over time. Each segment is a colored bucket.
+
+### Tags
+
+- **`<Tag tag={{ id, name, color }} showDot />`** — small colored label for monitor tags.
 
 ## Conventions
 
@@ -113,12 +147,15 @@ Top app bar with Liquid Glass. Supports back/menu buttons and a large title vari
 - **Animations should be subtle.** If the user notices the animation, you've gone too far.
 - **Hit areas are 44pt minimum.** Tap targets should be finger-sized.
 - **Respect the platform.** iOS gestures on iOS, Material gestures on Android.
+- **Never invent your own components.** If a component doesn't exist, add it to `src/components/ui/` first.
 
-## What's next
+## How to see the design system
 
-- Chart components (`<ResponseTimeChart>`, `<UptimeBar>`)
-- `<MonitorCard>`, `<MonitorRow>`
-- `<ServerCard>`, `<ServerSwitcher>`
-- A Storybook page in the app showing every component
+Run the app and open **Settings → Design system**. You'll see every component in light + dark variants, with sample data.
 
-These land in **Phase 1** of the build.
+## What's next (Phase 2+)
+
+- `<IncidentCard>` for the Incidents tab
+- `<NotificationSettings>` form components
+- A more complete `<Monitor type="..." />` for monitor type-specific displays
+- A `<LiquidGlassHero>` for special promo cards

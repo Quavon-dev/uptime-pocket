@@ -34,6 +34,17 @@ npm run android
 npm run web
 ```
 
+The first time you launch the app, a sample server ("Production Kuma") is seeded so you can see the UI with sample monitors. To clear it, remove the sample seed in `app/_layout.tsx`.
+
+## What's in the app
+
+- **Monitors tab** — list of all monitors with status pills, uptime, response time. Tap to see detail with response time chart, uptime bar, and recent incidents.
+- **Incidents tab** — placeholder for v1.0; will show history of monitor down/recovery events.
+- **Servers tab** — manage Kuma server connections. Tap the **+** to add a new server.
+- **Settings tab** — theme switcher, app info, and a link to the **Design System** screen (showcase of every component in light + dark).
+- **Add Server** — form with bearer token (recommended) or username/password auth.
+- **Server switcher** — accessible from the Monitors tab header.
+
 ## Requirements
 
 - Node.js 20+

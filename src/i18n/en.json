@@ -119,6 +119,8 @@
     "notifications": "Notifications",
     "security": "Security",
     "about": "About",
+    "developer": "Developer",
+    "designSystem": "Design system",
     "theme": {
       "title": "Theme",
       "system": "System",
@@ -130,5 +132,34 @@
       "title": "Lock with biometrics",
       "description": "Require Face ID, Touch ID, or fingerprint to open the app"
     }
+  },
+  "designSystem": {
+    "title": "Design System",
+    "subtitle": "v0.2.0"
+  },
+  "monitorDetail": {
+    "recheck": "Re-check",
+    "pause": "Pause",
+    "resume": "Resume",
+    "responseTime": "Response time",
+    "uptime": "Uptime",
+    "incidents": "Recent incidents",
+    "noIncidents": "No incidents in the last 24 hours.",
+    "ranges": {
+      "24h": "24 hours",
+      "7d": "7 days",
+      "30d": "30 days"
+    },
+    "stats": {
+      "uptime24h": "Uptime 24h",
+      "uptime7d": "Uptime 7d",
+      "uptime30d": "Uptime 30d",
+      "response": "Response"
+    }
+  },
+  "serverSwitcher": {
+    "title": "Switch server",
+    "active": "Active",
+    "addNew": "Add new server"
   }
 }

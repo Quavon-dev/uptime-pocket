@@ -45,6 +45,7 @@
     "expo-symbols": "56.0.6",
     "expo-task-manager": "56.0.17",
     "expo-web-browser": "56.0.5",
+    "lucide-react-native": "^1.17.0",
     "nativewind": "4.2.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",

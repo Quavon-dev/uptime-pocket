@@ -1,17 +1,19 @@
 /**
  * Settings tab - app preferences.
- * Phase 0: shows app info, theme switcher.
+ * Phase 0.2: shows app info, theme switcher, and link to design system.
  */
 
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
+import { Sparkles, ChevronRight } from 'lucide-react-native';
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import { colors, spacing, typography, semanticRadius } from '@/theme';
 import { useSettings, type ThemeMode } from '@/data/store/settings';
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const theme = useSettings((s) => s.theme);
   const setTheme = useSettings((s) => s.setTheme);
 
@@ -20,22 +22,29 @@ export default function SettingsScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <GlassNavBar title="Settings" />
 
-      <View style={[styles.content, { paddingBottom: insets.bottom + 80 }]}>
+      <ScrollView
+        contentContainerStyle={{
+          padding: spacing[4],
+          paddingBottom: insets.bottom + 80,
+          gap: spacing[5],
+        }}>
         {/* App info */}
-        <View style={styles.section}>
-          <Text style={[typography.micro, styles.sectionTitle]}>ABOUT</Text>
-          <View style={styles.card}>
-            <Row label="Version" value="0.1.0" />
+        <Section title="About">
+          <Card>
+            <Row label="Version" value="0.2.0" />
             <Row label="Kuma target" value="2.0+" />
             <Row label="License" value="MIT" />
-          </View>
-        </View>
+          </Card>
+        </Section>
 
         {/* Theme */}
-        <View style={styles.section}>
-          <Text style={[typography.micro, styles.sectionTitle]}>APPEARANCE</Text>
-          <View style={styles.card}>
-            <Text style={[typography.body, { paddingHorizontal: spacing[4], paddingTop: spacing[3] }]}>
+        <Section title="Appearance">
+          <Card>
+            <Text
+              style={[
+                typography.body,
+                { paddingHorizontal: spacing[4], paddingTop: spacing[3] },
+              ]}>
               Theme
             </Text>
             <View style={styles.themeRow}>
@@ -61,11 +70,57 @@ export default function SettingsScreen() {
                 </Pressable>
               ))}
             </View>
-          </View>
-        </View>
+          </Card>
+        </Section>
 
-        {/* Spacer for future sections */}
-      </View>
+        {/* Developer */}
+        <Section title="Developer">
+          <Card>
+            <Pressable
+              onPress={() => router.push('/design-system')}
+              style={({ pressed }) => [
+                styles.row,
+                { opacity: pressed ? 0.6 : 1 },
+              ]}>
+              <View style={styles.rowLeft}>
+                <Sparkles size={18} color={colors.brand[500]} strokeWidth={1.75} />
+                <Text style={typography.body}>Design system</Text>
+              </View>
+              <ChevronRight size={18} color={colors.surface.light.textMuted} strokeWidth={1.5} />
+            </Pressable>
+          </Card>
+        </Section>
+      </ScrollView>
+    </View>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <View style={{ gap: spacing[2] }}>
+      <Text
+        style={[
+          typography.micro,
+          { color: colors.gray[500], paddingHorizontal: spacing[2] },
+        ]}>
+        {title.toUpperCase()}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
+function Card({ children }: { children: React.ReactNode }) {
+  return (
+    <View
+      style={{
+        backgroundColor: colors.surface.light.elevated,
+        borderRadius: semanticRadius.card,
+        borderWidth: 0.5,
+        borderColor: colors.surface.light.border,
+        paddingBottom: spacing[3],
+      }}>
+      {children}
     </View>
   );
 }
@@ -81,25 +136,17 @@ function Row({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface.light.background },
-  content: { flex: 1, padding: spacing[4], gap: spacing[5] },
-  section: { gap: spacing[2] },
-  sectionTitle: {
-    color: colors.gray[500],
-    paddingHorizontal: spacing[2],
-  },
-  card: {
-    backgroundColor: colors.surface.light.elevated,
-    borderRadius: semanticRadius.card,
-    borderWidth: 0.5,
-    borderColor: colors.surface.light.border,
-    paddingBottom: spacing[3],
-  },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
+  },
+  rowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
   },
   themeRow: {
     flexDirection: 'row',

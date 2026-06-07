@@ -23,6 +23,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts } from 'expo-font';
 
 import { useSettings } from '@/data/store/settings';
+import { useServers } from '@/data/store/servers';
+import { SAMPLE_SERVER } from '@/lib/sample-data';
 import { colors } from '@/theme';
 
 // Prevent splash from auto-hiding until we're ready
@@ -33,9 +35,20 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const theme = useSettings((s) => s.theme);
+  const servers = useServers((s) => s.servers);
+  const addServer = useServers((s) => s.addServer);
   const [loaded, error] = useFonts({
     // We don't load custom fonts in Phase 0; system fonts only.
   });
+
+  // Dev seed: add a sample server if there are none.
+  // This makes the app demo-able without a real Kuma connection.
+  useEffect(() => {
+    if (servers.length === 0) {
+      addServer(SAMPLE_SERVER);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (error) throw error;
