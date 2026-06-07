@@ -1,21 +1,23 @@
 /**
  * Add Server screen - form to add a Kuma instance.
  * Phase 0: UI scaffolding with two auth methods. Logic comes in Phase 2.
+ *
+ * Form state is grouped in a useReducer to avoid 9 separate re-renders
+ * (see react-doctor's `prefer-useReducer` rule).
  */
 
-import { useState } from 'react';
+import { useReducer, useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   Pressable,
   StyleSheet,
-  ScrollView,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter , Stack } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
+import { SafeScrollView } from '@/components/ui';
 import { colors, spacing, typography, semanticRadius } from '@/theme';
 import { t, tn } from '@/i18n';
 import { useServers } from '@/data/store/servers';
@@ -24,28 +26,63 @@ import { createSession } from '@/data/api/auth';
 
 type AuthMethod = 'bearer' | 'password';
 
+interface FormState {
+  name: string;
+  url: string;
+  authMethod: AuthMethod;
+  token: string;
+  username: string;
+  password: string;
+}
+
+type FormAction =
+  | { type: 'setName'; value: string }
+  | { type: 'setUrl'; value: string }
+  | { type: 'setAuthMethod'; value: AuthMethod }
+  | { type: 'setToken'; value: string }
+  | { type: 'setUsername'; value: string }
+  | { type: 'setPassword'; value: string }
+  | { type: 'reset' };
+
+const initialForm: FormState = {
+  name: '',
+  url: '',
+  authMethod: 'bearer',
+  token: '',
+  username: '',
+  password: '',
+};
+
+function formReducer(state: FormState, action: FormAction): FormState {
+  switch (action.type) {
+    case 'setName':      return { ...state, name: action.value };
+    case 'setUrl':       return { ...state, url: action.value };
+    case 'setAuthMethod':return { ...state, authMethod: action.value };
+    case 'setToken':     return { ...state, token: action.value };
+    case 'setUsername':  return { ...state, username: action.value };
+    case 'setPassword':  return { ...state, password: action.value };
+    case 'reset':        return initialForm;
+  }
+}
+
 export default function AddServerScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const addServer = useServers((s) => s.addServer);
 
-  const [name, setName] = useState('');
-  const [url, setUrl] = useState('');
-  const [authMethod, setAuthMethod] = useState<AuthMethod>('bearer');
-  const [token, setToken] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [form, dispatch] = useReducer(formReducer, initialForm);
+  const { name, url, authMethod, token, username, password } = form;
+
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleTest = async () => {
-    setError(null);
     if (!url.trim()) {
       setError(t('servers.add.error.invalidUrl'));
       return;
     }
     setTesting(true);
+    setError(null);
     try {
       const session = createSession(
         authMethod === 'bearer'
@@ -136,11 +173,10 @@ export default function AddServerScreen() {
         }
       />
 
-      <ScrollView
+      <SafeScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
           padding: spacing[4],
-          paddingBottom: insets.bottom + 80,
           gap: spacing[4],
         }}
         keyboardShouldPersistTaps="handled">
@@ -148,7 +184,7 @@ export default function AddServerScreen() {
         <Field label={t('servers.add.name')}>
           <TextInput
             value={name}
-            onChangeText={setName}
+            onChangeText={(v) => dispatch({ type: 'setName', value: v })}
             placeholder={t('servers.add.namePlaceholder')}
             placeholderTextColor={colors.gray[400]}
             style={styles.input}
@@ -161,7 +197,7 @@ export default function AddServerScreen() {
         <Field label={t('servers.add.url')}>
           <TextInput
             value={url}
-            onChangeText={setUrl}
+            onChangeText={(v) => dispatch({ type: 'setUrl', value: v })}
             placeholder={t('servers.add.urlPlaceholder')}
             placeholderTextColor={colors.gray[400]}
             style={styles.input}
@@ -177,7 +213,7 @@ export default function AddServerScreen() {
             {(['bearer', 'password'] as AuthMethod[]).map((m) => (
               <Pressable
                 key={m}
-                onPress={() => setAuthMethod(m)}
+                onPress={() => dispatch({ type: 'setAuthMethod', value: m })}
                 style={[
                   styles.segment,
                   authMethod === m && styles.segmentActive,
@@ -201,7 +237,7 @@ export default function AddServerScreen() {
             <Field label={t('servers.add.bearerToken')} hint={t('servers.add.bearerHint')}>
               <TextInput
                 value={token}
-                onChangeText={setToken}
+                onChangeText={(v) => dispatch({ type: 'setToken', value: v })}
                 placeholder="••••••••"
                 placeholderTextColor={colors.gray[400]}
                 style={styles.input}
@@ -216,7 +252,7 @@ export default function AddServerScreen() {
             <Field label={t('servers.add.username')}>
               <TextInput
                 value={username}
-                onChangeText={setUsername}
+                onChangeText={(v) => dispatch({ type: 'setUsername', value: v })}
                 placeholder="admin"
                 placeholderTextColor={colors.gray[400]}
                 style={styles.input}
@@ -227,7 +263,7 @@ export default function AddServerScreen() {
             <Field label={t('servers.add.password')}>
               <TextInput
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(v) => dispatch({ type: 'setPassword', value: v })}
                 placeholder="••••••••"
                 placeholderTextColor={colors.gray[400]}
                 style={styles.input}
@@ -278,7 +314,7 @@ export default function AddServerScreen() {
             )}
           </Pressable>
         </View>
-      </ScrollView>
+      </SafeScrollView>
     </View>
   );
 }

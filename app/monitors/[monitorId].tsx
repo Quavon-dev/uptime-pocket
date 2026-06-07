@@ -19,13 +19,12 @@
  */
 
 import { useState } from 'react';
-import { View, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { View, Pressable, StyleSheet } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ExternalLink, Server } from 'lucide-react-native';
 
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
-import { Button, SegmentedControl, EmptyState } from '@/components/ui';
+import { Button, SegmentedControl, EmptyState, SafeScrollView } from '@/components/ui';
 import { colors, spacing } from '@/theme';
 import { t, tn } from '@/i18n';
 
@@ -33,7 +32,6 @@ type Range = '24h' | '7d' | '30d';
 
 export default function MonitorDetailScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { monitorId } = useLocalSearchParams<{ monitorId: string }>();
 
   const [range, setRange] = useState<Range>('24h');
@@ -59,10 +57,9 @@ export default function MonitorDetailScreen() {
         }
       />
 
-      <ScrollView
+      <SafeScrollView
         contentContainerStyle={{
           paddingHorizontal: spacing[4],
-          paddingBottom: insets.bottom + 100,
         }}
         showsVerticalScrollIndicator={false}>
         {/* Time range (shown for layout continuity; the chart will render in Phase 2) */}
@@ -105,7 +102,7 @@ export default function MonitorDetailScreen() {
             fullWidth
           />
         </View>
-      </ScrollView>
+      </SafeScrollView>
     </View>
   );
 }

@@ -11,6 +11,7 @@ export { SegmentedControl, type SegmentOption } from './SegmentedControl';
 export { Tag } from './Tag';
 export { EmptyState } from './EmptyState';
 export { ErrorState } from './ErrorState';
+export { SafeScrollView, type SafeScrollViewProps } from './SafeScrollView';
 
 // Icons - explicit named exports to avoid clashing with our components
 export {

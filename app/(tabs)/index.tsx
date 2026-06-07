@@ -24,7 +24,7 @@ import { ChevronDown, Server } from 'lucide-react-native';
 
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import { Chip } from '@/components/ui/Chip';
-import { EmptyState } from '@/components/ui';
+import { EmptyState, SafeScrollView } from '@/components/ui';
 import { useServers } from '@/data/store/servers';
 import { colors, spacing, typography, semanticRadius } from '@/theme';
 import { t } from '@/i18n';
@@ -86,10 +86,9 @@ export default function MonitorsScreen() {
         }
       />
 
-      <ScrollView
+      <SafeScrollView
         contentContainerStyle={{
           paddingHorizontal: spacing[4],
-          paddingBottom: insets.bottom + 100,
         }}
         showsVerticalScrollIndicator={false}>
         {/* Filter chips */}
@@ -124,7 +123,7 @@ export default function MonitorsScreen() {
             No monitors in this state.
           </Text>
         </View>
-      </ScrollView>
+      </SafeScrollView>
     </View>
   );
 }

@@ -12,8 +12,7 @@
  * connection manager.
  */
 
-import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 
@@ -29,6 +28,7 @@ import {
   ErrorState,
   Server,
   ServerOff,
+  SafeScrollView,
 } from '@/components/ui';
 import { MonitorCard, MonitorRow } from '@/components/monitor';
 import { ServerCard } from '@/components/server';
@@ -130,7 +130,6 @@ const DEMO_SERVER: ServerModel = {
 };
 
 export default function DesignSystemScreen() {
-  const insets = useSafeAreaInsets();
   const [variant, setVariant] = useState<ThemeVariant>('light');
   const isDark = variant === 'dark';
 
@@ -158,10 +157,9 @@ export default function DesignSystemScreen() {
         }
       />
 
-      <ScrollView
+      <SafeScrollView
         contentContainerStyle={{
           padding: spacing[4],
-          paddingBottom: insets.bottom + 80,
           gap: spacing[6],
         }}
         showsVerticalScrollIndicator={false}>
@@ -340,7 +338,7 @@ export default function DesignSystemScreen() {
           <ColorRow label="status.maintenance" color={colors.status.maintenance} hex="#3B82F6" />
           <ColorRow label="status.paused" color={colors.status.paused} hex="#6B7280" />
         </Section>
-      </ScrollView>
+      </SafeScrollView>
     </View>
   );
 }

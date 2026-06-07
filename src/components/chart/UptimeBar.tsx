@@ -32,12 +32,12 @@ export function UptimeBar({
 }: UptimeBarProps) {
   const { bars, upPct } = useMemo(() => {
     if (data.length === 0) {
-      return { bars: [] as { color: string; up: boolean }[], upPct: 0 };
+      return { bars: [] as { id: string; color: string; up: boolean }[], upPct: 0 };
     }
 
     // Bucket data into N segments
     const bucketSize = Math.max(1, Math.floor(data.length / segments));
-    const bars: { color: string; up: boolean }[] = [];
+    const bars: { id: string; color: string; up: boolean }[] = [];
 
     for (let i = 0; i < segments; i++) {
       const start = i * bucketSize;
@@ -45,7 +45,7 @@ export function UptimeBar({
       const slice = data.slice(start, end);
 
       if (slice.length === 0) {
-        bars.push({ color: colors.surface.light.sunken, up: true });
+        bars.push({ id: `seg-${i}`, color: colors.surface.light.sunken, up: true });
         continue;
       }
 
@@ -65,7 +65,8 @@ export function UptimeBar({
         color = statusColor('down');
       }
 
-      bars.push({ color, up });
+      // Use the bucket's first timestamp as a stable id — survives reorders
+      bars.push({ id: `seg-${i}-${slice[0].timestamp.getTime()}`, color, up });
     }
 
     const upPct = data.length > 0
@@ -78,9 +79,9 @@ export function UptimeBar({
   return (
     <View style={styles.container}>
       <View style={[styles.bar, { height }]}>
-        {bars.map((b, i) => (
+        {bars.map((b) => (
           <View
-            key={i}
+            key={b.id}
             style={[
               styles.segment,
               { backgroundColor: b.color, flex: 1 },

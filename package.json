@@ -19,6 +19,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "lint:doctor": "react-doctor --no-telemetry",
+    "lint:doctor:fix": "react-doctor install --no-telemetry",
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -69,6 +71,7 @@
     "eslint": "^9.0.0",
     "eslint-config-expo": "~9.0.0",
     "prettier": "^3.3.0",
+    "react-doctor": "^0.4.2",
     "typescript": "6.0.3"
   }
 }

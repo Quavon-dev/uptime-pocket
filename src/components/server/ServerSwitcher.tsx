@@ -10,12 +10,12 @@
  * - Navigate to a server's detail/settings
  */
 
-import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, Plus, X } from 'lucide-react-native';
 import { colors, spacing, typography, semanticRadius } from '@/theme';
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
+import { SafeScrollView } from '@/components/ui';
 import { ServerCard } from './ServerCard';
 import { useServers } from '@/data/store/servers';
 
@@ -25,7 +25,6 @@ interface ServerSwitcherProps {
 
 export function ServerSwitcher({ onClose }: ServerSwitcherProps) {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const servers = useServers((s) => s.servers);
   const activeId = useServers((s) => s.activeServerId);
   const setActive = useServers((s) => s.setActive);
@@ -48,10 +47,9 @@ export function ServerSwitcher({ onClose }: ServerSwitcherProps) {
         }
       />
 
-      <ScrollView
+      <SafeScrollView
         contentContainerStyle={{
           padding: spacing[4],
-          paddingBottom: insets.bottom + spacing[6],
           gap: spacing[2],
         }}>
         {servers.length === 0 ? (
@@ -96,7 +94,7 @@ export function ServerSwitcher({ onClose }: ServerSwitcherProps) {
             Add new server
           </Text>
         </Pressable>
-      </ScrollView>
+      </SafeScrollView>
     </View>
   );
 }

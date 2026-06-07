@@ -3,16 +3,15 @@
  * Phase 0.2: shows app info, theme switcher, and link to design system.
  */
 
-import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Sparkles, ChevronRight } from 'lucide-react-native';
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
+import { SafeScrollView } from '@/components/ui/SafeScrollView';
 import { colors, spacing, typography, semanticRadius } from '@/theme';
 import { useSettings, type ThemeMode } from '@/data/store/settings';
 
 export default function SettingsScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const theme = useSettings((s) => s.theme);
   const setTheme = useSettings((s) => s.setTheme);
@@ -22,10 +21,9 @@ export default function SettingsScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <GlassNavBar title="Settings" />
 
-      <ScrollView
+      <SafeScrollView
         contentContainerStyle={{
           padding: spacing[4],
-          paddingBottom: insets.bottom + 80,
           gap: spacing[5],
         }}>
         {/* App info */}
@@ -90,7 +88,7 @@ export default function SettingsScreen() {
             </Pressable>
           </Card>
         </Section>
-      </ScrollView>
+      </SafeScrollView>
     </View>
   );
 }

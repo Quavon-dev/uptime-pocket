@@ -129,11 +129,7 @@ const styles = StyleSheet.create({
     top: 3,
     left: 3,
     backgroundColor: colors.surface.light.elevated,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
   },
   segment: {
     flex: 1,
