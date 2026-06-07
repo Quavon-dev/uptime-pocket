@@ -48,6 +48,11 @@
       "searchPlaceholder": "Search monitors…"
     },
     "detail": {
+      "title": "Monitor #{id}",
+      "notFound": {
+        "title": "No monitor data yet",
+        "body": "Connect a Kuma server in the Servers tab to see live monitor data here."
+      },
       "responseTime": "Response time",
       "uptime": "Uptime",
       "incidents": "Recent incidents",

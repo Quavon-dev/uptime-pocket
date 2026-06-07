@@ -1,9 +1,9 @@
 /**
  * Monitors tab - the main screen of the app.
  *
- * Phase 0.2: Now shows a list of sample monitors using the new design
- * system components. When real Kuma servers are connected, we'll swap
- * the sample data for live socket.io data.
+ * Phase 0.2 / Phase 1: Layout is fully built with our design system components.
+ * Real data from the Kuma connection manager will be wired in during Phase 2
+ * (task 7: active server drives connection).
  *
  * Layout:
  * - Glass nav bar with large title
@@ -11,9 +11,12 @@
  * - Filter chips (All / Up / Down)
  * - List of monitor rows
  * - Empty state when no servers
+ *
+ * Without a connected server, we show the onboarding empty state with a CTA
+ * to add a server.
  */
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,10 +25,8 @@ import { ChevronDown, Server } from 'lucide-react-native';
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import { Chip } from '@/components/ui/Chip';
 import { EmptyState } from '@/components/ui';
-import { MonitorRow, MonitorCard } from '@/components/monitor';
-import { SAMPLE_MONITORS } from '@/lib/sample-data';
-import { colors, spacing, typography, semanticRadius } from '@/theme';
 import { useServers } from '@/data/store/servers';
+import { colors, spacing, typography, semanticRadius } from '@/theme';
 import { t } from '@/i18n';
 
 type FilterMode = 'all' | 'up' | 'down';
@@ -37,11 +38,9 @@ export default function MonitorsScreen() {
   const activeId = useServers((s) => s.activeServerId);
   const [filter, setFilter] = useState<FilterMode>('all');
 
-  const filteredMonitors = useMemo(() => {
-    if (filter === 'up') return SAMPLE_MONITORS.filter((m) => m.status === 'up' || m.status === 'maintenance');
-    if (filter === 'down') return SAMPLE_MONITORS.filter((m) => m.status === 'down' || m.status === 'pending');
-    return SAMPLE_MONITORS;
-  }, [filter]);
+  // TODO(phase-2): replace with live monitor data from the Kuma connection
+  // manager. For now the list is empty and we show a single empty state
+  // regardless of which filter is selected.
 
   // No servers connected — show the onboarding empty state
   if (servers.length === 0) {
@@ -64,7 +63,7 @@ export default function MonitorsScreen() {
     );
   }
 
-  // Real servers connected — show monitor list
+  // Server(s) connected, but no live monitor data yet
   return (
     <View style={[styles.container, { backgroundColor: colors.surface.light.background }]}>
       <GlassNavBar
@@ -119,34 +118,12 @@ export default function MonitorsScreen() {
           <Chip label="Maintenance" onPress={() => {}} />
         </ScrollView>
 
-        {/* Featured: the first monitor as a large card */}
-        {filteredMonitors.length > 0 && (
-          <View style={{ marginTop: spacing[3] }}>
-            <MonitorCard
-              monitor={filteredMonitors[0]}
-              onPress={() => router.push(`/monitors/${filteredMonitors[0].id}`)}
-            />
-          </View>
-        )}
-
-        {/* The rest as dense rows */}
-        <View style={{ marginTop: spacing[4], gap: spacing[2] }}>
-          {filteredMonitors.slice(1).map((monitor) => (
-            <MonitorRow
-              key={monitor.id}
-              monitor={monitor}
-              onPress={() => router.push(`/monitors/${monitor.id}`)}
-            />
-          ))}
+        {/* Empty list — the connection manager will populate this in Phase 2 */}
+        <View style={styles.noResults}>
+          <Text style={[typography.body, { color: colors.surface.light.textMuted, textAlign: 'center' }]}>
+            No monitors in this state.
+          </Text>
         </View>
-
-        {filteredMonitors.length === 0 && (
-          <View style={styles.noResults}>
-            <Text style={[typography.body, { color: colors.surface.light.textMuted, textAlign: 'center' }]}>
-              No monitors in this state.
-            </Text>
-          </View>
-        )}
       </ScrollView>
     </View>
   );

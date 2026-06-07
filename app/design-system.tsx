@@ -6,6 +6,10 @@
  *
  * This is a "phase showcase" — once we have real data flowing,
  * some of these will be replaced by actual app screens.
+ *
+ * The fixtures here are tiny inline examples used to demonstrate
+ * the components in context. Real app data flows from the Kuma
+ * connection manager.
  */
 
 import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
@@ -30,14 +34,100 @@ import { MonitorCard, MonitorRow } from '@/components/monitor';
 import { ServerCard } from '@/components/server';
 import { ResponseTimeChart, UptimeBar } from '@/components/chart';
 import {
-  SAMPLE_MONITORS,
   generateResponseTimeData,
   generateUptimeData,
-  SAMPLE_SERVER,
-} from '@/lib/sample-data';
+} from '@/lib/chart-fixtures';
 import { colors, spacing, typography, semanticRadius } from '@/theme';
+import type { Monitor, Server as ServerModel, Tag as TagModel } from '@/domain/models';
 
 type ThemeVariant = 'light' | 'dark';
+
+// Tiny inline fixtures for the showcase only. Real data comes from Kuma.
+const DEMO_TAGS: TagModel[] = [
+  { id: 1, name: 'production', color: '#EF4444' },
+  { id: 2, name: 'api', color: '#3B82F6' },
+];
+
+const DEMO_MONITOR_UP: Monitor = {
+  id: 0,
+  parent: null,
+  type: 'http',
+  name: 'API Production',
+  url: 'https://api.example.com/health',
+  status: 'up',
+  active: true,
+  interval: 60,
+  retryInterval: 60,
+  maxretries: 0,
+  upsideDown: false,
+  tags: DEMO_TAGS,
+  notificationIDList: {},
+  lastCheckAt: new Date(Date.now() - 30_000),
+  responseTime: 124,
+  uptime24h: 99.98,
+  uptime7d: 99.95,
+  uptime30d: 99.92,
+};
+
+const DEMO_MONITOR_DOWN: Monitor = {
+  ...DEMO_MONITOR_UP,
+  id: 1,
+  name: 'Database Primary',
+  type: 'ping',
+  status: 'down',
+  responseTime: undefined,
+  uptime24h: 87.5,
+  uptime7d: 92.1,
+  uptime30d: 95.4,
+  msg: 'Connection timed out',
+};
+
+const DEMO_MONITOR_MAINT: Monitor = {
+  ...DEMO_MONITOR_UP,
+  id: 2,
+  name: 'Staging API',
+  status: 'maintenance',
+  responseTime: 156,
+  tags: [{ id: 5, name: 'staging', color: '#F59E0B' }],
+};
+
+const DEMO_MONITOR_PENDING: Monitor = {
+  ...DEMO_MONITOR_UP,
+  id: 3,
+  name: 'Redis',
+  type: 'port',
+  status: 'pending',
+  responseTime: undefined,
+};
+
+const DEMO_MONITOR_PAUSED: Monitor = {
+  ...DEMO_MONITOR_UP,
+  id: 4,
+  name: 'Old API v1 (deprecated)',
+  status: 'paused',
+  active: false,
+  responseTime: undefined,
+  tags: [{ id: 6, name: 'deprecated', color: '#6B7280' }],
+};
+
+const DEMO_MONITORS_FOR_ROWS: Monitor[] = [
+  DEMO_MONITOR_DOWN,
+  DEMO_MONITOR_MAINT,
+  DEMO_MONITOR_PENDING,
+  DEMO_MONITOR_PAUSED,
+];
+
+const DEMO_SERVER: ServerModel = {
+  id: 'demo',
+  name: 'Production Kuma',
+  url: 'https://kuma.example.com',
+  auth: { kind: 'bearer', token: 'demo' },
+  kumaVersion: '2.4.0',
+  connected: true,
+  lastConnectedAt: new Date(),
+  notificationMode: 'relay',
+  createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+};
 
 export default function DesignSystemScreen() {
   const insets = useSafeAreaInsets();
@@ -151,7 +241,7 @@ export default function DesignSystemScreen() {
         {/* ═══════════════ TAGS ═══════════════ */}
         <Section title="Tags" themeColors={themeColors}>
           <View style={[styles.row, { flexWrap: 'wrap' }]}>
-            {SAMPLE_MONITORS[0].tags.map((tag) => (
+            {DEMO_TAGS.map((tag) => (
               <Tag key={tag.id} tag={tag} />
             ))}
             <Tag tag={{ id: 99, name: 'no-dot', color: '#6B7280' }} showDot={false} />
@@ -177,13 +267,13 @@ export default function DesignSystemScreen() {
 
         {/* ═══════════════ MONITOR CARD ═══════════════ */}
         <Section title="Monitor card" themeColors={themeColors}>
-          <MonitorCard monitor={SAMPLE_MONITORS[0]} />
+          <MonitorCard monitor={DEMO_MONITOR_UP} />
         </Section>
 
         {/* ═══════════════ MONITOR ROWS ═══════════════ */}
         <Section title="Monitor rows" themeColors={themeColors}>
           <View style={{ gap: spacing[2] }}>
-            {SAMPLE_MONITORS.slice(1, 5).map((m) => (
+            {DEMO_MONITORS_FOR_ROWS.map((m) => (
               <MonitorRow key={m.id} monitor={m} />
             ))}
           </View>
@@ -208,10 +298,10 @@ export default function DesignSystemScreen() {
         {/* ═══════════════ SERVER CARD ═══════════════ */}
         <Section title="Server card" themeColors={themeColors}>
           <View style={{ gap: spacing[2] }}>
-            <ServerCard server={SAMPLE_SERVER} isActive monitorCount={SAMPLE_MONITORS.length} showChevron />
+            <ServerCard server={DEMO_SERVER} isActive monitorCount={12} showChevron />
             <ServerCard
-              server={{ ...SAMPLE_SERVER, connected: false, name: 'Staging Kuma' }}
-              monitorCount={12}
+              server={{ ...DEMO_SERVER, connected: false, name: 'Staging Kuma' }}
+              monitorCount={4}
               showChevron
             />
           </View>

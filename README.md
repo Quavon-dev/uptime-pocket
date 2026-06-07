@@ -34,7 +34,7 @@ npm run android
 npm run web
 ```
 
-The first time you launch the app, a sample server ("Production Kuma") is seeded so you can see the UI with sample monitors. To clear it, remove the sample seed in `app/_layout.tsx`.
+The first time you launch the app, you'll see the **Add a server** empty state in the Monitors tab. Tap the **+** in the Servers tab, paste your Kuma URL + API token, and you're connected. The dev sample seed has been removed; Uptime Pocket now boots into a clean state.
 
 ## What's in the app
 
