@@ -125,6 +125,18 @@ export function Button({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       disabled={disabled || loading}
+      // a11y: the label IS the visible text, so we use it as the
+      // accessibility label and role=button so VoiceOver / TalkBack
+      // announce it correctly. Loading + disabled states are
+      // explicit so the screen reader reports them.
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}
+      // Make sure the tap target is at least 44pt high so the
+      // component meets the iOS HIG / Android Material minimum
+      // touch target. We do this via hitSlop rather than minHeight
+      // so the visual size can still be compact for sm buttons.
+      hitSlop={size === 'sm' ? { top: 8, bottom: 8 } : undefined}
       style={[
         styles.base,
         sizeStyles.container,

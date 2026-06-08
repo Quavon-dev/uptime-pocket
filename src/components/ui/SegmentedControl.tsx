@@ -73,6 +73,9 @@ export function SegmentedControl<T extends string>({
   return (
     <View
       onLayout={onLayout}
+      // a11y: wrap the segments in a radiogroup so VoiceOver / TalkBack
+      // announces "X of Y" when the user steps through.
+      accessibilityRole="radiogroup"
       style={[
         styles.container,
         {
@@ -107,6 +110,14 @@ export function SegmentedControl<T extends string>({
           <Pressable
             key={option.value}
             onPress={() => handlePress(option.value)}
+            // a11y: a segmented control is a radio group, so each
+            // segment is a radio button. VoiceOver / TalkBack will
+            // announce the label and whether it's selected.
+            accessibilityRole="radio"
+            accessibilityLabel={option.label}
+            accessibilityState={{ selected: isActive }}
+            // min tap target 44pt: small variants get a hitSlop bump.
+            hitSlop={size === 'sm' ? { top: 8, bottom: 8 } : undefined}
             style={[
               styles.segment,
               { paddingVertical: size === 'sm' ? spacing[1] : spacing[2] },

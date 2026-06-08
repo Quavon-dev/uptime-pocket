@@ -23,6 +23,7 @@ import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/them
 import { HeartbeatPulse } from '@/components/status';
 import type { Server as ServerType } from '@/domain/models';
 import type { ConnectionStatus } from '@/data/store/monitors';
+import { t } from '@/i18n';
 
 interface ServerCardProps {
   server: ServerType;
@@ -70,6 +71,14 @@ export function ServerCard({
   return (
     <Pressable
       onPress={onPress}
+      // a11y: composite label so the screen reader gets the server
+      // name + connection state + active flag in one read instead of
+      // a stutter of separate <Text> nodes.
+      accessibilityRole="button"
+      accessibilityLabel={[server.name, t(`servers.detail.status.${status}`), isActive && t('serverSwitcher.active')]
+        .filter(Boolean)
+        .join(', ')}
+      accessibilityState={{ selected: isActive }}
       style={({ pressed }) => [
         styles.card,
         {

@@ -29,6 +29,7 @@ import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { StatusPill, HeartbeatPulse } from '@/components/status';
 import { monitorTypeIcon } from '@/components/ui/icons';
 import { statusColor } from '@/domain/status';
+import { t } from '@/i18n';
 import {
   formatResponseTime,
   formatUptime,
@@ -65,6 +66,22 @@ export function MonitorCard({
   return (
     <Pressable
       onPress={onPress}
+      // a11y: a single composite label tells the screen reader user
+      // what this monitor is, what its status is, and the key stats
+      // they care about. Without this, VoiceOver / TalkBack would
+      // read each <Text> node separately.
+      accessibilityRole="button"
+      accessibilityLabel={[
+        monitor.name,
+        showUrl && (monitor.url || monitor.hostname),
+        t(`status.${monitor.status}`),
+        monitor.uptime24h != null &&
+          `${t('monitorDetail.stats.uptime24h')} ${(monitor.uptime24h * 100).toFixed(2)}%`,
+        monitor.responseTime != null &&
+          `${t('monitorDetail.stats.response')} ${monitor.responseTime} ms`,
+      ]
+        .filter(Boolean)
+        .join(', ')}
       style={({ pressed }) => [
         styles.card,
         {

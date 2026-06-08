@@ -19,6 +19,7 @@ import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { HeartbeatPulse } from '@/components/status';
 import { monitorTypeIcon } from '@/components/ui/icons';
 import { statusColor } from '@/domain/status';
+import { t } from '@/i18n';
 import {
   formatResponseTime,
   formatUptime,
@@ -49,6 +50,11 @@ export function MonitorRow({
   return (
     <Pressable
       onPress={onPress}
+      // a11y: see MonitorCard — composite label, role=button.
+      accessibilityRole="button"
+      accessibilityLabel={[monitor.name, t(`status.${monitor.status}`)]
+        .filter(Boolean)
+        .join(', ')}
       style={({ pressed }) => [
         styles.row,
         {

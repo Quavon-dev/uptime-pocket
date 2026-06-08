@@ -234,6 +234,12 @@ export default function SettingsScreen() {
                   })
                 }
                 trackColor={{ false: surface.sunken, true: brand }}
+                // a11y: the visible text already explains what the
+                // switch does, but screen readers need an explicit
+                // label + role on the Switch itself.
+                accessibilityRole="switch"
+                accessibilityLabel={t('settings.quietHours.title')}
+                accessibilityState={{ checked: quietEnabled }}
               />
             </View>
 
@@ -301,6 +307,10 @@ export default function SettingsScreen() {
                 value={biometricLock}
                 onValueChange={setBiometricLock}
                 trackColor={{ false: surface.sunken, true: brand }}
+                // a11y: bind the switch to the visible label for screen readers.
+                accessibilityRole="switch"
+                accessibilityLabel={t('settings.biometric.title')}
+                accessibilityState={{ checked: biometricLock }}
               />
             </View>
           </Card>

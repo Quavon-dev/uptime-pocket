@@ -27,6 +27,12 @@ export function StatusPill({ status, size = 'md', showLabel = true }: StatusPill
 
   return (
     <View
+      // a11y: the pill is a passive display element. We expose the
+      // status as the label so the screen reader reads "Up" / "Down"
+      // / etc. The dot alone is decorative (it has no text).
+      accessible={!showLabel}
+      accessibilityLabel={!showLabel ? statusLabel(status) : undefined}
+      accessibilityRole="text"
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -38,6 +44,10 @@ export function StatusPill({ status, size = 'md', showLabel = true }: StatusPill
         gap: 6,
       }}>
       <View
+        // a11y: the dot is purely decorative; the text label carries
+        // the meaning. Hide it from the a11y tree.
+        importantForAccessibility="no"
+        accessibilityElementsHidden
         style={{
           width: dotSize,
           height: dotSize,
