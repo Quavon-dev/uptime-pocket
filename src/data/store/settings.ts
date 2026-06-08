@@ -51,7 +51,6 @@ interface SettingsState extends PersistedSettings {
   setQuietHours: (q: QuietHours) => void;
   setOnboarded: (v: boolean) => void;
   setLocale: (l: LocalePreference) => void;
-  setSentryEnabled: (v: boolean) => void;
   setPrivacyConsentDismissed: (v: boolean) => void;
 
   /** Hard reset back to defaults (and clear on disk). */
@@ -137,11 +136,6 @@ export const useSettings = create<SettingsState>((set, get) => ({
     void persist({ locale });
   },
 
-  setSentryEnabled: (sentryEnabled) => {
-    set({ sentryEnabled });
-    void persist({ sentryEnabled });
-  },
-
   setPrivacyConsentDismissed: (privacyConsentDismissed) => {
     set({ privacyConsentDismissed });
     void persist({ privacyConsentDismissed });
@@ -170,7 +164,6 @@ export function getCurrentSettings(): PersistedSettings {
     quietHoursEndMinute: s.quietHoursEndMinute,
     hasOnboarded: s.hasOnboarded,
     locale: s.locale,
-    sentryEnabled: s.sentryEnabled,
     privacyConsentDismissed: s.privacyConsentDismissed,
   };
 }

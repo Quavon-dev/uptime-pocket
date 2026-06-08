@@ -24,10 +24,6 @@ we don't sell anything.**
 - If you opt in to push notifications, a registration token is stored by
   Apple Push Notification service (APNs) or Firebase Cloud Messaging (FCM)
   on Apple's / Google's infrastructure. We do not see or store this token.
-- If you opt in to crash reports, error metadata is sent to our Sentry
-  instance (self-hosted or sentry.io, depending on the build you installed).
-  Crash reports are **off by default** and require an explicit toggle in
-  Settings.
 - We do not use third-party analytics, advertising SDKs, tracking pixels,
   or fingerprinting.
 - The App does not require an account with us. There is no "sign up" and no
@@ -85,17 +81,12 @@ token and pushes to you via APNs / FCM directly. If you use the **Relay**
 mode, the token is sent to the relay server URL you configured (hosted by
 you, on infrastructure you control) and the relay handles delivery.
 
-### 3.3 Crash reports (only if you explicitly opt in)
+### 3.3 (reserved)
 
-If you enable "Crash reports" in Settings, the App initializes Sentry and
-sends uncaught JavaScript errors and stack traces to our Sentry endpoint.
-
-- The default Sentry endpoint is configured at build time. Builds from our
-  CI use our self-hosted Sentry; community builds can override it.
-- Crash reports are scrubbed at the client (the App strips passwords, bearer
-  tokens, server URLs, and other obvious secrets before sending).
-- You can turn this off at any time in Settings. When you turn it off, no
-  further crash reports are sent.
+The App does not currently send any optional crash, analytics, telemetry,
+or error-reporting data. A future opt-in section may be added; if so, it
+will be documented here, in `app.json`, and surfaced as an in-app consent
+prompt.
 
 We do not collect any other telemetry, performance metrics, or usage data.
 
@@ -139,7 +130,8 @@ You can:
   credentials.
 - **Revoke push tokens:** toggle off notifications in Settings, or
   uninstall the App.
-- **Opt out of crash reports:** toggle off "Crash reports" in Settings.
+- **Opt out of future optional reporting:** as above; nothing to opt out of
+  today.
 
 If you contact us about data we may have received (for example, an email
 you sent us), we will delete that correspondence on request.
@@ -152,11 +144,6 @@ Because we do not run a backend, no App data is transferred internationally
 by us. Data you send to your Kuma instance, to APNs / FCM, or to a
 self-hosted relay is governed by the privacy policy of the operator of
 that destination.
-
-If you use a build of the App configured to send crash reports to
-sentry.io (the hosted service), those reports are stored in the region
-configured for the Sentry project. See [sentry.io's privacy
-policy](https://sentry.io/privacy/) for details.
 
 ---
 

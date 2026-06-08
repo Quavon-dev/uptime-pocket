@@ -4,7 +4,7 @@
  * Live data from the Kuma connection manager. Layout:
  * - Header: name, URL, status pill, type
  * - Quick stats: response time, last check
- * - Kuma-style 4-uptime-pill row: 7d / 24h / 30d / 1y (always shown,
+ * - Kuma-style 3-uptime-pill row: 24h / 30d / 1y (always shown,
  *   independent of the chart range selector)
  * - Kuma-style min/avg/max ping readout for the current chart range
  * - Action bar: re-check, pause/resume, open in Kuma
@@ -121,14 +121,17 @@ export default function MonitorDetailScreen() {
   >(null);
   const [chartLoading, setChartLoading] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
-  // All four Kuma-pushed uptime windows. Kuma 2.3+ sends 24, 168 (7d),
-  // 720 (30d), and "1y" — all real data, no fudging required.
+  // All three Kuma-pushed uptime windows. Kuma 2.3+ sends 24, 720 (30d),
+  // and "1y" — confirmed against server/model/monitor.js:1359-1367 in the
+  // Kuma 2.3.2 source. The 7d ratio is NOT pushed over the wire; Kuma
+  // exposes it only via the getMonitorChartData(monitorId, 168) request
+  // event. We don't display a 7d pill to keep parity with the Kuma web
+  // SPA's pill row, which only shows 24h / 30d / 1y.
   const [uptime, setUptime] = useState<{
     uptime24h: number | null;
-    uptime7d: number | null;
     uptime30d: number | null;
     uptime1y: number | null;
-  }>({ uptime24h: null, uptime7d: null, uptime30d: null, uptime1y: null });
+  }>({ uptime24h: null, uptime30d: null, uptime1y: null });
   const [loading, setLoading] = useState(false);
   const [actionPending, setActionPending] = useState<
     null | 'recheck' | 'pause' | 'resume'
@@ -341,8 +344,6 @@ export default function MonitorDetailScreen() {
     setUptime({
       uptime24h:
         cachedUptime['24'] != null ? cachedUptime['24'] * 100 : null,
-      uptime7d:
-        cachedUptime['168'] != null ? cachedUptime['168'] * 100 : null,
       uptime30d:
         cachedUptime['720'] != null ? cachedUptime['720'] * 100 : null,
       uptime1y:
@@ -521,12 +522,8 @@ export default function MonitorDetailScreen() {
             />
           </View>
 
-          {/* Kuma-style: 4 uptime pills (7d / 24h / 30d / 1y), always shown. */}
+          {/* Kuma-style: 3 uptime pills (24h / 30d / 1y), always shown. */}
           <View style={styles.uptimePillsRow}>
-            <UptimePill
-              label={t('monitors.detail.uptimeWindows.7d')}
-              value={uptime.uptime7d}
-            />
             <UptimePill
               label={t('monitors.detail.uptimeWindows.24h')}
               value={uptime.uptime24h}

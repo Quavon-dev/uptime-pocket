@@ -189,7 +189,6 @@
         "1w": "1w"
       },
       "uptimeWindows": {
-        "7d": "7d",
         "24h": "24h",
         "30d": "30d",
         "1y": "1y"
@@ -366,20 +365,10 @@
       "allDayHint": "Spans the entire day (start == end).",
       "invalidRangeHint": "End must differ from start."
     },
-    "crashReports": {
-      "sectionTitle": "Crash reports",
-      "title": "Send anonymous crash reports",
-      "description": "Help improve Uptime Pocket by sending anonymous crash and error reports. No server URLs, monitor names, or account info are sent — see the privacy notice for the full list.",
-      "privacyNoticeTitle": "What's sent",
-      "privacyNoticeBody": "When this is on, the app sends crash reports and error traces to our error-reporting service. We do not include server URLs, monitor names, authentication tokens, or any data that could identify your infrastructure. You can turn this off at any time.",
-      "requiresRebuildNotice": "Crash reports require a DSN to be configured at build time. If this toggle has no effect, the build you are running was not configured for crash reporting.",
-      "dsnNotConfiguredTitle": "Not configured",
-      "dsnNotConfiguredBody": "This build was not configured with a crash-reporting endpoint. The toggle is here so you can record your preference for the next time you install a configured build."
-    },
     "reset": {
       "sectionTitle": "Danger zone",
       "title": "Reset all settings",
-      "description": "Restores theme, accent, language, biometric lock, quiet hours, and crash-report preference to their defaults. Your servers, monitors, and stored credentials are not affected.",
+      "description": "Restores theme, accent, language, biometric lock, and quiet hours to their defaults. Your servers, monitors, and stored credentials are not affected.",
       "confirmTitle": "Reset all settings?",
       "confirmBody": "This restores all preferences to their defaults. Your servers, monitors, and stored credentials will not be deleted.",
       "confirmAction": "Reset",

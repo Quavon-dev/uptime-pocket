@@ -30,7 +30,6 @@
   },
   "dependencies": {
     "@expo/ui": "56.0.16",
-    "@sentry/react-native": "^8.13.0",
     "expo": "56.0.9",
     "expo-background-fetch": "~56.0.17",
     "expo-blur": "56.0.3",

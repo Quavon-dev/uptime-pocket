@@ -56,7 +56,8 @@ func New(cfg *config.Config, store *storage.Store, logger *slog.Logger) *Server 
 
 // SetHandler overrides the HTTP handler. If unset, Start uses
 // Router(). SetHandler is the right way to add outer middleware
-// (e.g. Sentry panic capture) without modifying the router config.
+// (e.g. an access-log or panic-recovery wrapper) without
+// modifying the router config.
 func (s *Server) SetHandler(h http.Handler) {
 	s.handler = h
 }

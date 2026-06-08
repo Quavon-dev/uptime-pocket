@@ -22,6 +22,7 @@ Items the agent **cannot** finish alone in a sandbox:
 | 20. App Store / Play Store metadata | Final store submissions must come from the user. |
 | 21. Real-device testing | Needs physical iPhone + Android in front of the user. |
 | 22. Release build artifacts | Needs EAS Build credentials + Apple signing cert + Google Play upload key. |
+| ~~15. Sentry / error reporting~~ | **Removed.** The App is now 100% local-only and ships no proprietary SDKs. If crash reporting is wanted later, use the device's native `LogBox` + a user-triggered "share logs" flow — no third party. |
 
 The agent's job: write production-quality code, tests, and docs for all 22 items, and tell the user exactly what to do for the parts only they can do.
 

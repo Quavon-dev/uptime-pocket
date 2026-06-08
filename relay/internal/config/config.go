@@ -39,15 +39,6 @@ type Config struct {
 
 	// Logging
 	LogLevel string // "debug" | "info" | "warn" | "error"
-
-	// Sentry (optional). If DSN is empty, Sentry is not initialized
-	// and CaptureException is a no-op. Sentry is opt-in for the
-	// relay too — we don't phone home unless the operator has set
-	// the DSN explicitly.
-	SentryDSN         string
-	SentryEnvironment string
-	SentryRelease     string
-	SentrySampleRate  float64 // 0..1; default 0.1
 }
 
 // APNsConfig is the iOS push transport configuration.
@@ -105,11 +96,6 @@ func Load() (*Config, error) {
 		CoalesceWindow: getDuration("RELAY_COALESCE_WINDOW", 30*time.Second),
 		MinCoalesceN:   getInt("RELAY_COALESCE_MIN", 3),
 		LogLevel:       getEnv("RELAY_LOG_LEVEL", "info"),
-
-		SentryDSN:         os.Getenv("SENTRY_DSN"),
-		SentryEnvironment: getEnv("SENTRY_ENVIRONMENT", "production"),
-		SentryRelease:     os.Getenv("SENTRY_RELEASE"),
-		SentrySampleRate:  getFloat("SENTRY_SAMPLE_RATE", 0.1),
 	}
 
 	// APNs is "enabled" only if all four required fields are set.
@@ -170,9 +156,6 @@ func (c *Config) validate() error {
 		// ok
 	default:
 		return fmt.Errorf("RELAY_LOG_LEVEL must be one of debug/info/warn/error, got %q", c.LogLevel)
-	}
-	if c.SentrySampleRate < 0 || c.SentrySampleRate > 1 {
-		return fmt.Errorf("SENTRY_SAMPLE_RATE must be between 0 and 1, got %v", c.SentrySampleRate)
 	}
 	return nil
 }

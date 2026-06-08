@@ -12,7 +12,6 @@
  *     those credentials to their Kuma instance over HTTPS).
  *   - The user enabling push notifications (we then register a push token
  *     with APNs / FCM).
- *   - The user enabling crash reports (we then init Sentry).
  *
  * We could have built this as a "By using this app you agree" footer on the
  * onboarding flow, but Apple / Google want it to be a real, dismissible

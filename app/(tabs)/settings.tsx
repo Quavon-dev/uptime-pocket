@@ -12,7 +12,7 @@
 
 import { View, Text, Pressable, Switch, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { Sparkles, ChevronRight, Bell, Moon, Globe, Bug, Shield, RotateCcw } from 'lucide-react-native';
+import { Sparkles, ChevronRight, Bell, Moon, Globe, Shield, RotateCcw } from 'lucide-react-native';
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import {
   SafeScrollView,
@@ -26,7 +26,6 @@ import { ACCENT_SWATCHES } from '@/theme/swatches';
 import { useSettings, type ThemeMode } from '@/data/store/settings';
 import { t } from '@/i18n';
 import { SUPPORTED_LOCALES, type LocalePreference, LOCALE_SYSTEM } from '@/i18n';
-import { isSentryConfigured } from '@/platform/sentry';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -47,11 +46,8 @@ export default function SettingsScreen() {
   const biometricLock = useSettings((s) => s.biometricLock);
   const setBiometricLock = useSettings((s) => s.setBiometricLock);
 
-  const sentryEnabled = useSettings((s) => s.sentryEnabled);
-  const setSentryEnabled = useSettings((s) => s.setSentryEnabled);
-
   // Destructive: resets ALL settings (theme, accent, language, biometric
-  // lock, quiet hours, sentry opt-in) to defaults. Servers, monitors,
+  // lock, quiet hours) to defaults. Servers, monitors,
   // and credentials in expo-secure-store are NOT touched. See
   // settings.reset.* in the i18n files.
   const resetAll = useSettings((s) => s.resetAll);
@@ -323,48 +319,6 @@ export default function SettingsScreen() {
                 accessibilityState={{ checked: biometricLock }}
               />
             </View>
-          </Card>
-        </Section>
-
-        {/* Crash reports (Sentry, opt-in) */}
-        <Section title={t('settings.crashReports.sectionTitle')}>
-          <Card>
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
-                <Bug size={18} color={brand} strokeWidth={1.75} />
-                <View style={{ flex: 1 }}>
-                  <Text style={typography.body}>{t('settings.crashReports.title')}</Text>
-                  <Text
-                    style={[
-                      typography.caption,
-                      { color: surface.textMuted, marginTop: 2 },
-                    ]}>
-                    {t('settings.crashReports.description')}
-                  </Text>
-                </View>
-              </View>
-              <Switch
-                value={sentryEnabled}
-                onValueChange={setSentryEnabled}
-                trackColor={{ false: surface.sunken, true: brand }}
-                accessibilityRole="switch"
-                accessibilityLabel={t('settings.crashReports.title')}
-                accessibilityState={{ checked: sentryEnabled }}
-              />
-            </View>
-            {!isSentryConfigured() && (
-              <Text
-                style={[
-                  typography.caption,
-                  {
-                    color: surface.textSubtle,
-                    paddingHorizontal: spacing[4],
-                    paddingBottom: spacing[3],
-                  },
-                ]}>
-                {t('settings.crashReports.dsnNotConfiguredBody')}
-              </Text>
-            )}
           </Card>
         </Section>
 

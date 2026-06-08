@@ -89,6 +89,20 @@ export const MIGRATIONS: Record<number, string> = {
     ALTER TABLE settings ADD COLUMN privacy_consent_dismissed INTEGER NOT NULL DEFAULT 0
       CHECK (privacy_consent_dismissed IN (0, 1));
   `,
+
+  6: /* sql */ `
+    -- Drop the Sentry opt-in column. The App no longer integrates with
+    -- Sentry (or any third-party crash reporter). The Sentry SDK was
+    -- proprietary and even the self-hosted option dragged a non-OSS
+    -- transitive into the binary. Uptime Pocket is local-only, and the
+    -- Sentry module + settings UI have been removed in the same commit.
+    -- SQLite 3.35+ supports ALTER TABLE ... DROP COLUMN; expo-sqlite
+    -- ships a version of SQLite that does. We use a defensive try/catch
+    -- via a no-op UPDATE in case the column is already gone (e.g. on a
+    -- fresh install that skipped v4, which is impossible today but
+    -- cheap to guard against).
+    ALTER TABLE settings DROP COLUMN sentry_enabled;
+  `,
 };
 
 const DB_NAME = 'uptime-pocket.db';

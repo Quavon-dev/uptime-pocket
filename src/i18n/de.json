@@ -189,7 +189,6 @@
         "1w": "1 W."
       },
       "uptimeWindows": {
-        "7d": "7 T.",
         "24h": "24 Std.",
         "30d": "30 T.",
         "1y": "1 J."
@@ -365,16 +364,6 @@
       "overnightHint": "Geht über Mitternacht (z. B. 22:00 bis 07:00).",
       "allDayHint": "Geht über den gesamten Tag (Start == Ende).",
       "invalidRangeHint": "Ende muss vom Start abweichen."
-    },
-    "crashReports": {
-      "sectionTitle": "Absturzberichte",
-      "title": "Anonyme Absturzberichte senden",
-      "description": "Hilf uns, Uptime Pocket zu verbessern, indem du anonyme Absturz- und Fehlerberichte sendest. Es werden keine Server-URLs, Monitor-Namen oder Kontoinformationen übermittelt — alle Details findest du im Datenschutzhinweis.",
-      "privacyNoticeTitle": "Was wird gesendet",
-      "privacyNoticeBody": "Wenn diese Option aktiviert ist, sendet die App Absturzberichte und Fehler-Traces an unseren Fehlerdienst. Wir übermitteln keine Server-URLs, Monitor-Namen, Authentifizierungs-Token oder andere Daten, die deine Infrastruktur identifizieren könnten. Du kannst dies jederzeit deaktivieren.",
-      "requiresRebuildNotice": "Absturzberichte erfordern eine zur Build-Zeit konfigurierte DSN. Wenn dieser Schalter keine Wirkung zeigt, wurde der Build nicht für Absturzberichte konfiguriert.",
-      "dsnNotConfiguredTitle": "Nicht konfiguriert",
-      "dsnNotConfiguredBody": "Dieser Build wurde nicht mit einem Endpunkt für Absturzberichte konfiguriert. Der Schalter speichert deine Präferenz für den nächsten installierten Build."
     },
     "reset": {
       "sectionTitle": "Gefahrenzone",

@@ -3,7 +3,6 @@ module github.com/quavon-dev/uptime-pocket-relay
 go 1.25.0
 
 require (
-	github.com/getsentry/sentry-go v0.34.0
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/go-chi/cors v1.2.1
 	github.com/golang-jwt/jwt/v5 v5.3.1

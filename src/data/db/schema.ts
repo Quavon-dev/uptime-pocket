@@ -42,11 +42,12 @@
  *   3 - settings.locale column (i18n)
  *   4 - settings.sentry_enabled column (opt-in crash reporting)
  *   5 - settings.privacy_consent_dismissed column (first-launch consent)
+ *   6 - drop settings.sentry_enabled column (Sentry removed)
  *
  * The actual SQL for each migration lives in `migrate.ts` (MIGRATIONS),
  * NOT here. This file just declares the version number.
  */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 /**
  * Column name → row field mapping helpers. Centralized so we don't have

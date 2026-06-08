@@ -28,7 +28,6 @@ import { useNotificationBridge } from '@/features/notifications';
 import { PrivacyConsentGate } from '@/features/legal';
 import { useKumaConnection } from '@/data/connection/manager';
 import { useWidgetSnapshot } from '@/platform/widget';
-import { initSentry, wrapWithSentry } from '@/platform/sentry';
 import { colors, useAppTheme } from '@/theme';
 import { setLocale as i18nSetLocale } from '@/i18n';
 
@@ -45,7 +44,6 @@ export default function RootLayout() {
   const hydratedSettings = useSettings((s) => s.hydrated);
   const hydrateSettings = useSettings((s) => s.hydrate);
   const locale = useSettings((s) => s.locale);
-  const sentryEnabled = useSettings((s) => s.sentryEnabled);
   // Bridge the live state to the Android home-screen widget.
   // No-op on iOS / web.
   useWidgetSnapshot();
@@ -74,15 +72,6 @@ export default function RootLayout() {
     }
   }, [hydratedSettings, locale]);
 
-  // Initialize (or skip) Sentry once we know the user's opt-in preference.
-  // This is a no-op until both EXPO_PUBLIC_SENTRY_DSN is set and the user
-  // has toggled the setting on.
-  useEffect(() => {
-    if (hydratedSettings) {
-      initSentry({ userOptIn: sentryEnabled });
-    }
-  }, [hydratedSettings, sentryEnabled]);
-
   useEffect(() => {
     if (error) throw error;
   }, [error]);
@@ -101,13 +90,7 @@ export default function RootLayout() {
     );
   }
 
-  // We wrap the app body with `wrapWithSentry` at render time (after
-  // settings have hydrated and initSentry has been called). If Sentry
-  // is not active, wrapWithSentry is identity and we get the original
-  // component back unchanged.
-  const AppBody = wrapWithSentry(RootAppBody);
-
-  return <AppBody />;
+  return <RootAppBody />;
 }
 
 /**
