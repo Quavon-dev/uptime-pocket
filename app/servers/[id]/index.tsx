@@ -28,7 +28,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
-import { ArrowLeft, Trash2, ExternalLink, AlertTriangle, CircleDot } from 'lucide-react-native';
+import { ArrowLeft, Trash2, ExternalLink, AlertTriangle, CircleDot, Pencil } from 'lucide-react-native';
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import { SafeScrollView } from '@/components/ui';
 import { useServers } from '@/data/store/servers';
@@ -114,13 +114,22 @@ export default function ServerDetailScreen() {
           </Pressable>
         }
         right={
-          <Pressable onPress={handleDelete} hitSlop={10} disabled={deleting}>
-            <Trash2
-              size={22}
-              color={deleting ? surface.textMuted : colors.status.down}
-              strokeWidth={1.5}
-            />
-          </Pressable>
+          <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+            <Pressable
+              onPress={() => router.push(`/servers/${server.id}/edit`)}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.edit')}>
+              <Pencil size={20} color={brand} strokeWidth={1.5} />
+            </Pressable>
+            <Pressable onPress={handleDelete} hitSlop={10} disabled={deleting}>
+              <Trash2
+                size={22}
+                color={deleting ? surface.textMuted : colors.status.down}
+                strokeWidth={1.5}
+              />
+            </Pressable>
+          </View>
         }
       />
 
