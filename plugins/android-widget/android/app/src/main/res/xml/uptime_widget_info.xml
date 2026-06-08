@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AppWidget metadata for the Uptime Pocket home-screen widget.
+
+  Sizes:
+    - 4x2 (default): the main "list of monitors" view
+    - 2x2: a compact view (we still render the list, just
+      with less vertical room)
+    - 4x4: a "tall" view that shows more monitors
+
+  targetCellWidth/Height are the recommended sizes; the
+  widget will scale to whatever the user picks via
+  SizeMode.Exact in UptimeWidget.kt.
+
+  The receiver class is the entry point the OS binds to.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:description="@string/widget_description"
+    android:previewImage="@drawable/widget_status_up"
+    android:updatePeriodMillis="1800000" />

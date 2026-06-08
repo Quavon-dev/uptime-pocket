@@ -26,6 +26,7 @@ import { useSettings } from '@/data/store/settings';
 import { useBiometricLock, LockScreen } from '@/features/security';
 import { useNotificationBridge } from '@/features/notifications';
 import { useKumaConnection } from '@/data/connection/manager';
+import { useWidgetSnapshot } from '@/platform/widget';
 import { colors, useAppTheme } from '@/theme';
 import { setLocale as i18nSetLocale } from '@/i18n';
 
@@ -42,6 +43,9 @@ export default function RootLayout() {
   const hydratedSettings = useSettings((s) => s.hydrated);
   const hydrateSettings = useSettings((s) => s.hydrate);
   const locale = useSettings((s) => s.locale);
+  // Bridge the live state to the Android home-screen widget.
+  // No-op on iOS / web.
+  useWidgetSnapshot();
   // Start the connection manager (no-op until activeServerId is set).
   useKumaConnection();
   // Bridge: when a monitor changes status, post a local notification.

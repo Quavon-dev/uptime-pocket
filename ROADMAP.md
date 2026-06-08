@@ -15,7 +15,7 @@ Items the agent **cannot** finish alone in a sandbox:
 | Item | Why it needs the user |
 |---|---|
 | 10. iOS WidgetKit | Needs paid Apple Developer account + signing + physical device to test widget extension. Code can be written; deployment can't. |
-| 11. Android widget | Needs signed release keystore + Play Internal track. Code can be written; verification can't. |
+| 11. Android widget | Jetpack Glance widget. **Code: complete.** Snapshot pipeline (TS → JSON file → Kotlin reader → Compose UI), 5 status drawables, widget metadata, Expo config plugin that wires Glance/Compose deps + manifest receiver + copies Kotlin sources. Deployment to Play Internal needs a release keystore. |
 | 12. Go push relay backend | Deploys to user's own infra (any Docker host). Image is auto-built and published to GitHub Container Registry on every `relay-v*` tag. **Code: complete. CI: complete. Deploy: `docker pull ghcr.io/quavon-dev/uptime-pocket:relay-latest` and `docker run` with env vars.** |
 | 15. Sentry / error reporting | Needs the user's Sentry DSN (or self-hosted instance URL). |
 | 19. Privacy policy | Must be the user's actual legal text (or a public-domain template they approve). |

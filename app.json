@@ -68,7 +68,8 @@
             "backgroundColor": "#064E3B"
           }
         }
-      ]
+      ],
+      "./plugins/android-widget/plugin.ts"
     ],
     "experiments": {
       "typedRoutes": true

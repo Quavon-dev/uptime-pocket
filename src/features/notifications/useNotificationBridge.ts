@@ -26,6 +26,7 @@ import { useServers, getActiveServer } from '@/data/store/servers';
 import { useMonitors, selectMonitorsForServer } from '@/data/store/monitors';
 import { useSettings } from '@/data/store/settings';
 import { notifyStatus } from './scheduler';
+import { forceWidgetRefresh } from '@/platform/widget';
 import type { MonitorStateSnapshot, ServerSnapshot } from './decide';
 import type { QuietWindow } from './quietHours';
 
@@ -94,6 +95,10 @@ export function useNotificationBridge(): void {
         now: new Date(),
         quietHours: window,
       });
+      // Push the new state to the home-screen widget right away
+      // (don't wait for the 2s debounce — a status flip is the
+      // exact moment the user is going to glance at the widget).
+      void forceWidgetRefresh();
     }
   }, [monitors, serverSnap, quietEnabled, quietStart, quietEnd]);
 }
