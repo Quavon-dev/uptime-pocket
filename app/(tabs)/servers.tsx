@@ -5,6 +5,8 @@
  * the connection state (live from useMonitors), a tap target to open
  * the server detail screen, and a swipe-less long-press → delete (we
  * use the detail screen's delete action instead for safety).
+ *
+ * Theme: page bg = surface.background; hint icon uses gray.500.
  */
 
 import { View, Text, Pressable, StyleSheet } from 'react-native';
@@ -17,12 +19,13 @@ import { SafeScrollView, EmptyState } from '@/components/ui';
 import { ServerCard } from '@/components/server';
 import { useServers, getActiveServer } from '@/data/store/servers';
 import { useMonitors } from '@/data/store/monitors';
-import { colors, spacing, typography } from '@/theme';
+import { spacing, typography, useAppTheme } from '@/theme';
 import { t } from '@/i18n';
 
 export default function ServersScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { surface, brand } = useAppTheme();
   const servers = useServers((s) => s.servers);
   const activeId = useServers((s) => s.activeServerId);
   const setActive = useServers((s) => s.setActive);
@@ -32,7 +35,7 @@ export default function ServersScreen() {
   const active = getActiveServer(servers, activeId);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: surface.background }]}>
       <GlassNavBar
         title={t('servers.list.title')}
         right={
@@ -40,7 +43,7 @@ export default function ServersScreen() {
             onPress={() => router.push('/servers/add')}
             hitSlop={10}
             style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}>
-            <Plus size={26} color={colors.brand[500]} strokeWidth={2} />
+            <Plus size={26} color={brand} strokeWidth={2} />
           </Pressable>
         }
       />
@@ -89,10 +92,10 @@ export default function ServersScreen() {
               <View style={styles.hint}>
                 <SymbolView
                   name={{ ios: 'hand.tap', android: 'touch_app', web: 'touch_app' }}
-                  tintColor={colors.gray[500]}
+                  tintColor={surface.textMuted}
                   size={14}
                 />
-                <Text style={[typography.caption, { color: colors.surface.light.textMuted, flex: 1 }]}>
+                <Text style={[typography.caption, { color: surface.textMuted, flex: 1 }]}>
                   {t('servers.list.longPressHint')}
                 </Text>
               </View>
@@ -105,7 +108,7 @@ export default function ServersScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface.light.background },
+  container: { flex: 1 },
   empty: { paddingTop: spacing[8] },
   hint: {
     flexDirection: 'row',

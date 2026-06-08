@@ -12,19 +12,18 @@
 import '../global.css'; // NativeWind v5 stylesheet
 import 'react-native-reanimated'; // must be first
 
-import { useEffect, useMemo } from 'react';
-import { useColorScheme, View, ActivityIndicator, StyleSheet } from 'react-native';
+import { useEffect } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Stack, SplashScreen, Redirect, usePathname } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts } from 'expo-font';
 
-import { useSettings } from '@/data/store/settings';
 import { useServers } from '@/data/store/servers';
 import { useServersHydrated } from '@/features/servers/useServersHydrated';
 import { useKumaConnection } from '@/data/connection/manager';
-import { colors } from '@/theme';
+import { colors, useAppTheme } from '@/theme';
 
 // Prevent splash from auto-hiding until we're ready
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -32,14 +31,13 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 });
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const theme = useSettings((s) => s.theme);
   const [loaded, error] = useFonts({
     // We don't load custom fonts in Phase 0; system fonts only.
   });
   const { hydrated: serversHydrated } = useServersHydrated();
   // Start the connection manager (no-op until activeServerId is set).
   useKumaConnection();
+  const { surface, isDark } = useAppTheme();
 
   useEffect(() => {
     if (error) throw error;
@@ -51,14 +49,9 @@ export default function RootLayout() {
     }
   }, [loaded, serversHydrated]);
 
-  const effectiveColorScheme = useMemo(() => {
-    if (theme === 'system') return colorScheme ?? 'light';
-    return theme;
-  }, [theme, colorScheme]);
-
   if (!loaded) {
     return (
-      <View style={styles.loading}>
+      <View style={[styles.loading, { backgroundColor: surface.background }]}>
         <ActivityIndicator size="large" color={colors.brand[500]} />
       </View>
     );
@@ -67,16 +60,13 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <StatusBar style={effectiveColorScheme === 'dark' ? 'light' : 'dark'} />
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <OnboardingGate>
           <Stack
             screenOptions={{
               headerShown: false,
               contentStyle: {
-                backgroundColor:
-                  effectiveColorScheme === 'dark'
-                    ? colors.surface.dark.background
-                    : colors.surface.light.background,
+                backgroundColor: surface.background,
               },
             }}>
             <Stack.Screen name="(tabs)" />
@@ -141,6 +131,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface.light.background,
+    // bg color is set inline via useAppTheme() so the loading splash
+    // matches the user's selected theme
   },
 });

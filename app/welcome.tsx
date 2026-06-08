@@ -11,6 +11,9 @@
  * This is intentionally *minimal* — no carousel, no 5-step wizard.
  * One screen, one action. The app's value shows up the moment they
  * connect a server.
+ *
+ * Theme: page bg = surface.background. Feature cards use the thin
+ * glass surface. CTA is brand-filled.
  */
 
 import { View, Text, StyleSheet, Pressable } from 'react-native';
@@ -18,13 +21,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
 import { Activity, ChevronRight, Shield, Zap, Smartphone } from 'lucide-react-native';
 import { GlassSurface } from '@/components/glass/GlassSurface';
-import { colors, spacing, typography, semanticRadius } from '@/theme';
+import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { t } from '@/i18n';
 import { useSettings } from '@/data/store/settings';
 
 export default function WelcomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { surface, brand, brandFill } = useAppTheme();
   const hasOnboarded = useSettings((s) => s.hasOnboarded);
   const setOnboarded = useSettings((s) => s.setOnboarded);
 
@@ -36,38 +40,42 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface.light.background }]}>
+    <View style={[styles.container, { backgroundColor: surface.background }]}>
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
 
       <View style={[styles.content, { paddingTop: insets.top + spacing[8], paddingBottom: insets.bottom + spacing[6] }]}>
         {/* Logo / brand mark */}
         <View style={styles.brand}>
-          <View style={styles.logoWrap}>
-            <Activity size={36} color={colors.brand[500]} strokeWidth={2.25} />
+          <View style={[styles.logoWrap, { backgroundColor: brandFill }]}>
+            <Activity size={36} color={brand} strokeWidth={2.25} />
           </View>
-          <Text style={[typography.title, styles.appName]}>{t('app.name')}</Text>
-          <Text style={[typography.callout, styles.tagline]}>{t('app.tagline')}</Text>
+          <Text style={[typography.title, styles.appName, { color: surface.text }]}>
+            {t('app.name')}
+          </Text>
+          <Text style={[typography.callout, styles.tagline, { color: surface.textMuted }]}>
+            {t('app.tagline')}
+          </Text>
         </View>
 
         {/* What you get */}
         <View style={styles.features}>
           <Feature
-            icon={<Activity size={18} color={colors.brand[500]} strokeWidth={1.75} />}
+            icon={<Activity size={18} color={brand} strokeWidth={1.75} />}
             title={t('onboarding.feature1.title')}
             body={t('onboarding.feature1.body')}
           />
           <Feature
-            icon={<Zap size={18} color={colors.brand[500]} strokeWidth={1.75} />}
+            icon={<Zap size={18} color={brand} strokeWidth={1.75} />}
             title={t('onboarding.feature2.title')}
             body={t('onboarding.feature2.body')}
           />
           <Feature
-            icon={<Shield size={18} color={colors.brand[500]} strokeWidth={1.75} />}
+            icon={<Shield size={18} color={brand} strokeWidth={1.75} />}
             title={t('onboarding.feature3.title')}
             body={t('onboarding.feature3.body')}
           />
           <Feature
-            icon={<Smartphone size={18} color={colors.brand[500]} strokeWidth={1.75} />}
+            icon={<Smartphone size={18} color={brand} strokeWidth={1.75} />}
             title={t('onboarding.feature4.title')}
             body={t('onboarding.feature4.body')}
           />
@@ -79,7 +87,7 @@ export default function WelcomeScreen() {
             onPress={handleAddServer}
             style={({ pressed }) => [
               styles.primaryBtn,
-              { opacity: pressed ? 0.85 : 1 },
+              { backgroundColor: brand, opacity: pressed ? 0.85 : 1 },
             ]}>
             <Text style={[typography.bodyEmphasized, { color: 'white' }]}>
               {t('onboarding.cta')}
@@ -87,7 +95,7 @@ export default function WelcomeScreen() {
             <ChevronRight size={18} color="white" strokeWidth={2} />
           </Pressable>
 
-          <Text style={[typography.micro, styles.hint]}>
+          <Text style={[typography.micro, styles.hint, { color: surface.textMuted }]}>
             {t('onboarding.hint')}
           </Text>
         </View>
@@ -105,14 +113,17 @@ function Feature({
   title: string;
   body: string;
 }) {
+  const { surface, brandFill } = useAppTheme();
   return (
     <GlassSurface variant="thin" radius={semanticRadius.card} style={styles.featureCard}>
-      <View style={styles.featureIcon}>{icon}</View>
+      <View style={[styles.featureIcon, { backgroundColor: brandFill }]}>
+        {icon}
+      </View>
       <View style={{ flex: 1, gap: 2 }}>
-        <Text style={[typography.bodyEmphasized, { color: colors.surface.light.text }]}>
+        <Text style={[typography.bodyEmphasized, { color: surface.text }]}>
           {title}
         </Text>
-        <Text style={[typography.caption, { color: colors.surface.light.textMuted }]}>
+        <Text style={[typography.caption, { color: surface.textMuted }]}>
           {body}
         </Text>
       </View>
@@ -135,16 +146,14 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 20,
-    backgroundColor: `${colors.brand[500]}1A`,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing[2],
   },
   appName: {
-    color: colors.surface.light.text,
+    // color set inline
   },
   tagline: {
-    color: colors.surface.light.textMuted,
     textAlign: 'center',
   },
   features: {
@@ -160,7 +169,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: `${colors.brand[500]}14`,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -172,12 +180,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing[2],
-    backgroundColor: colors.brand[500],
     paddingVertical: spacing[4],
     borderRadius: semanticRadius.button,
   },
   hint: {
-    color: colors.surface.light.textMuted,
     textAlign: 'center',
     paddingHorizontal: spacing[4],
   },

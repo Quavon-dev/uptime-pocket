@@ -1,25 +1,32 @@
 /**
  * Settings tab - app preferences.
  * Phase 0.2: shows app info, theme switcher, and link to design system.
+ *
+ * Theme: page bg = surface.background. The Theme picker is a
+ * SegmentedControl bound to the settings store. We read the current
+ * theme via useAppTheme() so the UI updates instantly when the user
+ * picks a new value.
  */
 
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Sparkles, ChevronRight } from 'lucide-react-native';
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
-import { SafeScrollView } from '@/components/ui/SafeScrollView';
-import { colors, spacing, typography, semanticRadius } from '@/theme';
+import { SafeScrollView, SegmentedControl } from '@/components/ui';
+import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { useSettings, type ThemeMode } from '@/data/store/settings';
+import { t } from '@/i18n';
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { surface, brand, brandFill } = useAppTheme();
   const theme = useSettings((s) => s.theme);
   const setTheme = useSettings((s) => s.setTheme);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: surface.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <GlassNavBar title="Settings" />
+      <GlassNavBar title={t('settings.title')} />
 
       <SafeScrollView
         contentContainerStyle={{
@@ -27,7 +34,7 @@ export default function SettingsScreen() {
           gap: spacing[5],
         }}>
         {/* App info */}
-        <Section title="About">
+        <Section title={t('settings.about')}>
           <Card>
             <Row label="Version" value="0.2.0" />
             <Row label="Kuma target" value="2.0+" />
@@ -36,43 +43,68 @@ export default function SettingsScreen() {
         </Section>
 
         {/* Theme */}
-        <Section title="Appearance">
+        <Section title={t('settings.appearance')}>
           <Card>
             <Text
               style={[
-                typography.body,
-                { paddingHorizontal: spacing[4], paddingTop: spacing[3] },
+                typography.callout,
+                {
+                  color: surface.textMuted,
+                  paddingHorizontal: spacing[4],
+                  paddingTop: spacing[3],
+                  paddingBottom: spacing[2],
+                },
               ]}>
-              Theme
+              {t('settings.theme.title')}
             </Text>
-            <View style={styles.themeRow}>
-              {(['system', 'light', 'dark'] as ThemeMode[]).map((m) => (
-                <Pressable
-                  key={m}
-                  onPress={() => setTheme(m)}
-                  style={({ pressed }) => [
-                    styles.themeChip,
-                    {
-                      backgroundColor:
-                        theme === m ? colors.brand[500] : colors.surface.light.sunken,
-                      opacity: pressed ? 0.85 : 1,
-                    },
-                  ]}>
-                  <Text
-                    style={[
-                      typography.captionEmphasized,
-                      { color: theme === m ? 'white' : colors.surface.light.text },
-                    ]}>
-                    {m.charAt(0).toUpperCase() + m.slice(1)}
-                  </Text>
-                </Pressable>
-              ))}
+            <View style={{ paddingHorizontal: spacing[4], paddingBottom: spacing[3] }}>
+              <SegmentedControl<ThemeMode>
+                options={[
+                  { value: 'system', label: t('settings.theme.system') },
+                  { value: 'light', label: t('settings.theme.light') },
+                  { value: 'dark', label: t('settings.theme.dark') },
+                ]}
+                value={theme}
+                onChange={setTheme}
+              />
+            </View>
+            <Text
+              style={[
+                typography.caption,
+                {
+                  color: surface.textSubtle,
+                  paddingHorizontal: spacing[4],
+                  paddingBottom: spacing[3],
+                },
+              ]}>
+              {theme === 'system'
+                ? t('settings.theme.descriptionSystem')
+                : theme === 'light'
+                ? t('settings.theme.descriptionLight')
+                : t('settings.theme.descriptionDark')}
+            </Text>
+          </Card>
+        </Section>
+
+        {/* Accent color preview (read-only, parked) */}
+        <Section title={t('settings.accent')}>
+          <Card>
+            <View style={styles.accentRow}>
+              <View style={[styles.accentSwatch, { backgroundColor: brandFill }]}>
+                <View style={[styles.accentDot, { backgroundColor: brand }]} />
+              </View>
+              <Text style={[typography.body, { flex: 1 }]}>
+                {t('settings.accent')}
+              </Text>
+              <Text style={[typography.callout, { color: surface.textMuted }]}>
+                emerald-500
+              </Text>
             </View>
           </Card>
         </Section>
 
         {/* Developer */}
-        <Section title="Developer">
+        <Section title={t('settings.developer')}>
           <Card>
             <Pressable
               onPress={() => router.push('/design-system')}
@@ -81,10 +113,10 @@ export default function SettingsScreen() {
                 { opacity: pressed ? 0.6 : 1 },
               ]}>
               <View style={styles.rowLeft}>
-                <Sparkles size={18} color={colors.brand[500]} strokeWidth={1.75} />
-                <Text style={typography.body}>Design system</Text>
+                <Sparkles size={18} color={brand} strokeWidth={1.75} />
+                <Text style={typography.body}>{t('settings.designSystem')}</Text>
               </View>
-              <ChevronRight size={18} color={colors.surface.light.textMuted} strokeWidth={1.5} />
+              <ChevronRight size={18} color={surface.textMuted} strokeWidth={1.5} />
             </Pressable>
           </Card>
         </Section>
@@ -94,12 +126,13 @@ export default function SettingsScreen() {
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const { surface } = useAppTheme();
   return (
     <View style={{ gap: spacing[2] }}>
       <Text
         style={[
           typography.micro,
-          { color: colors.gray[500], paddingHorizontal: spacing[2] },
+          { color: surface.textMuted, paddingHorizontal: spacing[2] },
         ]}>
         {title.toUpperCase()}
       </Text>
@@ -109,14 +142,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function Card({ children }: { children: React.ReactNode }) {
+  const { surface } = useAppTheme();
   return (
     <View
       style={{
-        backgroundColor: colors.surface.light.elevated,
+        backgroundColor: surface.elevated,
         borderRadius: semanticRadius.card,
         borderWidth: 0.5,
-        borderColor: colors.surface.light.border,
-        paddingBottom: spacing[3],
+        borderColor: surface.border,
+        paddingBottom: spacing[2],
       }}>
       {children}
     </View>
@@ -124,16 +158,17 @@ function Card({ children }: { children: React.ReactNode }) {
 }
 
 function Row({ label, value }: { label: string; value: string }) {
+  const { surface } = useAppTheme();
   return (
     <View style={styles.row}>
       <Text style={typography.body}>{label}</Text>
-      <Text style={[typography.callout, { color: colors.gray[500] }]}>{value}</Text>
+      <Text style={[typography.callout, { color: surface.textMuted }]}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface.light.background },
+  container: { flex: 1 },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -146,15 +181,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing[3],
   },
-  themeRow: {
+  accentRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
     paddingHorizontal: spacing[4],
-    paddingTop: spacing[3],
-    gap: spacing[2],
+    paddingVertical: spacing[3],
   },
-  themeChip: {
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[2],
-    borderRadius: semanticRadius.pill,
+  accentSwatch: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accentDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
   },
 });

@@ -7,6 +7,9 @@
  *
  * The list shows the active server's incidents, most-recent first.
  * Grouped by cause (down vs recovery) and tagged with the monitor name.
+ *
+ * Theme: page bg = surface.background; list uses surface.elevated
+ * with surface.border for hairlines between rows.
  */
 
 import { View, Text, Pressable, StyleSheet } from 'react-native';
@@ -19,13 +22,14 @@ import {
   useMonitors,
   selectIncidentsForServer,
 } from '@/data/store/monitors';
-import { colors, spacing, typography, semanticRadius } from '@/theme';
+import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { useMonitorsStoreForMonitorName } from '@/features/incidents/useIncidentMonitorName';
 import { formatRelativeTime } from '@/domain/format';
 import { AlertTriangle, Server } from 'lucide-react-native';
 
 export default function IncidentsScreen() {
   const router = useRouter();
+  const { surface } = useAppTheme();
   const servers = useServers((s) => s.servers);
   const activeId = useServers((s) => s.activeServerId);
   const active = getActiveServer(servers, activeId);
@@ -37,7 +41,7 @@ export default function IncidentsScreen() {
   // No servers at all → show the empty state with a CTA.
   if (servers.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: surface.background }]}>
         <GlassNavBar title="Incidents" />
         <EmptyState
           icon={Server}
@@ -53,7 +57,7 @@ export default function IncidentsScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: surface.background }]}>
       <GlassNavBar title="Incidents" />
 
       <SafeScrollView
@@ -70,14 +74,23 @@ export default function IncidentsScreen() {
             }
           />
         ) : (
-          <View style={styles.list}>
-            {incidents.map((inc) => (
+          <View
+            style={[
+              styles.list,
+              { backgroundColor: surface.elevated, borderColor: surface.border },
+            ]}>
+            {incidents.map((inc, idx) => (
               <Pressable
                 key={inc.id}
                 onPress={() => router.push(`/monitors/${inc.monitorId}`)}
                 style={({ pressed }) => [
                   styles.row,
-                  { opacity: pressed ? 0.7 : 1 },
+                  {
+                    // Last row: no bottom border. Otherwise hairline.
+                    borderBottomColor: surface.border,
+                    borderBottomWidth: idx === incidents.length - 1 ? 0 : 0.5,
+                    opacity: pressed ? 0.7 : 1,
+                  },
                 ]}>
                 <View
                   style={[
@@ -90,12 +103,18 @@ export default function IncidentsScreen() {
                 />
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text
-                    style={[typography.bodyEmphasized, { color: colors.surface.light.text }]}
+                    style={[
+                      typography.bodyEmphasized,
+                      { color: surface.text },
+                    ]}
                     numberOfLines={1}>
                     {monitorNameById(inc.monitorId)}
                   </Text>
                   <Text
-                    style={[typography.caption, { color: colors.surface.light.textMuted }]}>
+                    style={[
+                      typography.caption,
+                      { color: surface.textMuted },
+                    ]}>
                     {inc.cause === 'down' ? 'Went down' : 'Recovered'} · {formatRelativeTime(inc.startedAt)}
                   </Text>
                 </View>
@@ -109,12 +128,10 @@ export default function IncidentsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface.light.background },
+  container: { flex: 1 },
   list: {
-    backgroundColor: colors.surface.light.elevated,
     borderRadius: semanticRadius.card,
     borderWidth: 0.5,
-    borderColor: colors.surface.light.border,
     overflow: 'hidden',
   },
   row: {
@@ -123,8 +140,6 @@ const styles = StyleSheet.create({
     gap: spacing[3],
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
-    borderBottomWidth: 0.5,
-    borderBottomColor: colors.surface.light.border,
   },
   dot: {
     width: 10,

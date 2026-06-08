@@ -13,6 +13,9 @@
  * - Featured monitor card (the first one)
  * - List of monitor rows
  * - Empty state when there are no servers, no connection, or no monitors
+ *
+ * Theme: page bg = surface.background. Server chip + + button use
+ * brand tints. Banner uses status-tinted bg/border.
  */
 
 import { useState, useMemo } from 'react';
@@ -26,7 +29,7 @@ import { Chip, EmptyState, SafeScrollView } from '@/components/ui';
 import { MonitorRow, MonitorCard } from '@/components/monitor';
 import { useServers, getActiveServer } from '@/data/store/servers';
 import { useMonitors, selectMonitorsForServer } from '@/data/store/monitors';
-import { colors, spacing, typography, semanticRadius } from '@/theme';
+import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { t, tn } from '@/i18n';
 
 type FilterMode = 'all' | 'up' | 'down';
@@ -34,6 +37,7 @@ type FilterMode = 'all' | 'up' | 'down';
 export default function MonitorsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { surface, brand, brandFill, statusTints } = useAppTheme();
   const servers = useServers((s) => s.servers);
   const activeId = useServers((s) => s.activeServerId);
   const [filter, setFilter] = useState<FilterMode>('all');
@@ -57,7 +61,7 @@ export default function MonitorsScreen() {
   // No servers connected — show the onboarding empty state
   if (servers.length === 0) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.surface.light.background }]}>
+      <View style={[styles.container, { backgroundColor: surface.background }]}>
         <GlassNavBar title="Monitors" large subtitle={t('app.tagline')} />
 
         <View style={[styles.content, { paddingBottom: insets.bottom + 80 }]}>
@@ -76,7 +80,7 @@ export default function MonitorsScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface.light.background }]}>
+    <View style={[styles.container, { backgroundColor: surface.background }]}>
       <GlassNavBar
         title="Monitors"
         large
@@ -95,7 +99,7 @@ export default function MonitorsScreen() {
               onPress={() => router.push('/monitors/add')}
               style={({ pressed }) => [
                 styles.addBtn,
-                { opacity: pressed ? 0.7 : 1 },
+                { backgroundColor: brand, opacity: pressed ? 0.7 : 1 },
               ]}
               hitSlop={6}>
               <Plus size={18} color="white" strokeWidth={2.5} />
@@ -104,19 +108,19 @@ export default function MonitorsScreen() {
               onPress={() => router.push('/servers/switch')}
               style={({ pressed }) => [
                 styles.serverChip,
-                { opacity: pressed ? 0.7 : 1 },
+                { backgroundColor: brandFill, opacity: pressed ? 0.7 : 1 },
               ]}
               hitSlop={6}>
-              <Server size={14} color={colors.brand[500]} strokeWidth={2} />
+              <Server size={14} color={brand} strokeWidth={2} />
               <Text
                 numberOfLines={1}
                 style={[
                   typography.captionEmphasized,
-                  { color: colors.brand[500], maxWidth: 120 },
+                  { color: brand, maxWidth: 120 },
                 ]}>
                 {active?.name ?? 'Server'}
               </Text>
-              <ChevronDown size={14} color={colors.brand[500]} strokeWidth={2} />
+              <ChevronDown size={14} color={brand} strokeWidth={2} />
             </Pressable>
           </View>
         }
@@ -127,7 +131,7 @@ export default function MonitorsScreen() {
         showsVerticalScrollIndicator={false}>
         {/* Connection status banner */}
         {(status === 'connecting' || status === 'reconnecting' || status === 'error') && (
-          <View style={[styles.banner, bannerStyle(status)]}>
+          <View style={[styles.banner, bannerStyle(status, statusTints)]}>
             {status === 'error' ? (
               <WifiOff size={16} color={colors.status.down} strokeWidth={1.75} />
             ) : (
@@ -195,7 +199,7 @@ export default function MonitorsScreen() {
 
         {filteredMonitors.length === 0 && (
           <View style={styles.noResults}>
-            <Text style={[typography.body, { color: colors.surface.light.textMuted, textAlign: 'center' }]}>
+            <Text style={[typography.body, { color: surface.textMuted, textAlign: 'center' }]}>
               {status === 'connected'
                 ? t('monitors.empty.filtered')
                 : t('monitors.empty.connecting')}
@@ -207,12 +211,15 @@ export default function MonitorsScreen() {
   );
 }
 
-function bannerStyle(status: string) {
+function bannerStyle(
+  status: string,
+  tints: ReturnType<typeof useAppTheme>['statusTints']
+) {
   switch (status) {
     case 'error':
-      return { backgroundColor: `${colors.status.down}1A`, borderColor: `${colors.status.down}40` };
+      return { backgroundColor: tints.down.bg, borderColor: tints.down.border };
     default:
-      return { backgroundColor: `${colors.status.pending}1A`, borderColor: `${colors.status.pending}40` };
+      return { backgroundColor: tints.pending.bg, borderColor: tints.pending.border };
   }
 }
 
@@ -226,13 +233,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
     borderRadius: semanticRadius.pill,
-    backgroundColor: `${colors.brand[500]}14`,
   },
   addBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.brand[500],
     alignItems: 'center',
     justifyContent: 'center',
   },

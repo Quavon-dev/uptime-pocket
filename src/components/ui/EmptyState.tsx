@@ -6,11 +6,14 @@
  * - title: short headline
  * - body: explanation
  * - action: optional CTA button
+ *
+ * Theme: title in surface.text, body in surface.textMuted, icon
+ * tinted with brand and placed in a brand-tinted box.
  */
 
 import { View, Text, StyleSheet } from 'react-native';
 import { Button } from './Button';
-import { colors, spacing, typography } from '@/theme';
+import { spacing, typography, useAppTheme } from '@/theme';
 import type { LucideIcon } from 'lucide-react-native';
 
 interface EmptyStateProps {
@@ -24,14 +27,23 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ icon: Icon, title, body, action }: EmptyStateProps) {
+  const { surface, brand, brandFill } = useAppTheme();
+
   return (
     <View style={styles.container}>
-      <View style={styles.iconBox}>
-        <Icon size={32} color={colors.brand[500]} strokeWidth={1.5} />
+      <View style={[styles.iconBox, { backgroundColor: brandFill }]}>
+        <Icon size={32} color={brand} strokeWidth={1.5} />
       </View>
-      <Text style={[styles.title, typography.heading]}>{title}</Text>
+      <Text style={[styles.title, typography.heading, { color: surface.text }]}>
+        {title}
+      </Text>
       {body && (
-        <Text style={[styles.body, typography.body, { color: colors.surface.light.textMuted }]}>
+        <Text
+          style={[
+            styles.body,
+            typography.body,
+            { color: surface.textMuted },
+          ]}>
           {body}
         </Text>
       )}
@@ -56,13 +68,11 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 20,
-    backgroundColor: `${colors.brand[500]}14`,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing[2],
   },
   title: {
-    color: colors.surface.light.text,
     textAlign: 'center',
   },
   body: {

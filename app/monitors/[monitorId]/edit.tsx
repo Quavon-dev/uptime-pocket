@@ -11,6 +11,9 @@
  *      send the whole thing back
  *
  * Also handles delete via a confirmation dialog (deleteConfirm).
+ *
+ * Theme: page bg = surface.background. Inputs use surface.elevated +
+ * surface.border. Error box uses statusTints.down.
  */
 
 import { useEffect, useReducer, useState } from 'react';
@@ -28,7 +31,7 @@ import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Trash2 } from 'lucide-react-native';
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import { SafeScrollView } from '@/components/ui';
-import { colors, spacing, typography, semanticRadius } from '@/theme';
+import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { t, tn } from '@/i18n';
 import { useKumaActions } from '@/features/monitors/useKumaActions';
 import { useServers } from '@/data/store/servers';
@@ -108,6 +111,7 @@ export default function EditMonitorScreen() {
   const activeServer = useServers((s) =>
     s.servers.find((srv) => srv.id === s.activeServerId)
   );
+  const { surface, brand, statusTints } = useAppTheme();
 
   const { getMonitor, editMonitor, deleteMonitor, isEditing, isDeleting, isFetching, error, clearError } =
     useKumaActions();
@@ -186,7 +190,7 @@ export default function EditMonitorScreen() {
         server: activeServer?.name ?? '',
       }),
       [
-        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('monitorForm.actions.cancel'), style: 'cancel' },
         {
           text: t('monitorForm.actions.delete'),
           style: 'destructive',
@@ -205,39 +209,39 @@ export default function EditMonitorScreen() {
 
   if (isFetching && !bean) {
     return (
-      <View style={[styles.container, styles.center]}>
+      <View style={[styles.container, styles.center, { backgroundColor: surface.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <GlassNavBar
           title={t('monitorForm.editTitle')}
           left={
             <Pressable onPress={() => router.back()} hitSlop={10}>
-              <Text style={[typography.body, { color: colors.brand[500] }]}>
+              <Text style={[typography.body, { color: brand }]}>
                 {t('monitorForm.actions.cancel')}
               </Text>
             </Pressable>
           }
         />
-        <ActivityIndicator size="large" color={colors.brand[500]} />
+        <ActivityIndicator size="large" color={brand} />
       </View>
     );
   }
 
   if (loadError || !bean) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: surface.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <GlassNavBar
           title={t('monitorForm.editTitle')}
           left={
             <Pressable onPress={() => router.back()} hitSlop={10}>
-              <Text style={[typography.body, { color: colors.brand[500] }]}>
+              <Text style={[typography.body, { color: brand }]}>
                 {t('monitorForm.actions.cancel')}
               </Text>
             </Pressable>
           }
         />
         <SafeScrollView contentContainerStyle={{ padding: spacing[4] }}>
-          <View style={styles.errorBox}>
+          <View style={[styles.errorBox, { backgroundColor: statusTints.down.bg }]}>
             <Text style={[typography.callout, { color: colors.status.down }]}>
               {loadError ? tn('monitorForm.error.loadFailed', { msg: loadError }) : tn('monitorForm.error.loadFailed', { msg: 'unknown' })}
             </Text>
@@ -253,13 +257,13 @@ export default function EditMonitorScreen() {
   const isPing = bean.type === 'ping' || bean.type === 'dns';
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: surface.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
       <GlassNavBar
         title={t('monitorForm.editTitle')}
         left={
           <Pressable onPress={() => router.back()} hitSlop={10}>
-            <Text style={[typography.body, { color: colors.brand[500] }]}>
+            <Text style={[typography.body, { color: brand }]}>
               {t('monitorForm.actions.cancel')}
             </Text>
           </Pressable>
@@ -275,8 +279,8 @@ export default function EditMonitorScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: spacing[4], gap: spacing[4] }}
         keyboardShouldPersistTaps="handled">
-        <View style={styles.typeBadge}>
-          <Text style={[typography.captionEmphasized, { color: colors.brand[500] }]}>
+        <View style={[styles.typeBadge, { backgroundColor: surface.sunken }]}>
+          <Text style={[typography.captionEmphasized, { color: brand }]}>
             {String(bean.type).toUpperCase()}
           </Text>
           {isDeleting ? (
@@ -289,8 +293,8 @@ export default function EditMonitorScreen() {
             value={form.name}
             onChangeText={(v) => dispatch({ type: 'set', field: 'name', value: v })}
             placeholder={t('monitorForm.fields.namePlaceholder')}
-            placeholderTextColor={colors.gray[400]}
-            style={styles.input}
+            placeholderTextColor={surface.textSubtle}
+            style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
             autoCapitalize="none"
             autoCorrect={false}
           />
@@ -302,8 +306,8 @@ export default function EditMonitorScreen() {
               value={form.url}
               onChangeText={(v) => dispatch({ type: 'set', field: 'url', value: v })}
               placeholder={t('monitorForm.fields.urlPlaceholder')}
-              placeholderTextColor={colors.gray[400]}
-              style={styles.input}
+              placeholderTextColor={surface.textSubtle}
+              style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
@@ -317,8 +321,8 @@ export default function EditMonitorScreen() {
               value={form.keyword}
               onChangeText={(v) => dispatch({ type: 'set', field: 'keyword', value: v })}
               placeholder="200"
-              placeholderTextColor={colors.gray[400]}
-              style={styles.input}
+              placeholderTextColor={surface.textSubtle}
+              style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -331,8 +335,8 @@ export default function EditMonitorScreen() {
               value={form.hostname}
               onChangeText={(v) => dispatch({ type: 'set', field: 'hostname', value: v })}
               placeholder={t('monitorForm.fields.hostnamePlaceholder')}
-              placeholderTextColor={colors.gray[400]}
-              style={styles.input}
+              placeholderTextColor={surface.textSubtle}
+              style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -345,8 +349,8 @@ export default function EditMonitorScreen() {
               value={form.port}
               onChangeText={(v) => dispatch({ type: 'set', field: 'port', value: v.replace(/[^0-9]/g, '') })}
               placeholder="22"
-              placeholderTextColor={colors.gray[400]}
-              style={styles.input}
+              placeholderTextColor={surface.textSubtle}
+              style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
               keyboardType="number-pad"
             />
           </Field>
@@ -357,8 +361,8 @@ export default function EditMonitorScreen() {
             value={form.interval}
             onChangeText={(v) => dispatch({ type: 'set', field: 'interval', value: v.replace(/[^0-9]/g, '') })}
             placeholder="60"
-            placeholderTextColor={colors.gray[400]}
-            style={styles.input}
+            placeholderTextColor={surface.textSubtle}
+            style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
             keyboardType="number-pad"
           />
         </Field>
@@ -368,8 +372,8 @@ export default function EditMonitorScreen() {
             value={form.retryInterval}
             onChangeText={(v) => dispatch({ type: 'set', field: 'retryInterval', value: v.replace(/[^0-9]/g, '') })}
             placeholder="60"
-            placeholderTextColor={colors.gray[400]}
-            style={styles.input}
+            placeholderTextColor={surface.textSubtle}
+            style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
             keyboardType="number-pad"
           />
         </Field>
@@ -379,8 +383,8 @@ export default function EditMonitorScreen() {
             value={form.maxretries}
             onChangeText={(v) => dispatch({ type: 'set', field: 'maxretries', value: v.replace(/[^0-9]/g, '') })}
             placeholder="0"
-            placeholderTextColor={colors.gray[400]}
-            style={styles.input}
+            placeholderTextColor={surface.textSubtle}
+            style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
             keyboardType="number-pad"
           />
         </Field>
@@ -388,16 +392,16 @@ export default function EditMonitorScreen() {
         {isHttp && (
           <>
             <Field label={t('monitorForm.fields.method')}>
-              <View style={styles.segmented}>
+              <View style={[styles.segmented, { backgroundColor: surface.sunken }]}>
                 {(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'] as const).map((m) => (
                   <Pressable
                     key={m}
                     onPress={() => dispatch({ type: 'set', field: 'method', value: m })}
-                    style={[styles.segment, form.method === m && styles.segmentActive]}>
+                    style={[styles.segment, form.method === m && { backgroundColor: brand }]}>
                     <Text
                       style={[
                         typography.captionEmphasized,
-                        { color: form.method === m ? 'white' : colors.surface.light.text },
+                        { color: form.method === m ? 'white' : surface.text },
                       ]}>
                       {m}
                     </Text>
@@ -411,8 +415,8 @@ export default function EditMonitorScreen() {
                 value={form.maxredirects}
                 onChangeText={(v) => dispatch({ type: 'set', field: 'maxredirects', value: v.replace(/[^0-9]/g, '') })}
                 placeholder="10"
-                placeholderTextColor={colors.gray[400]}
-                style={styles.input}
+                placeholderTextColor={surface.textSubtle}
+                style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
                 keyboardType="number-pad"
               />
             </Field>
@@ -424,8 +428,8 @@ export default function EditMonitorScreen() {
             value={form.description}
             onChangeText={(v) => dispatch({ type: 'set', field: 'description', value: v })}
             placeholder=""
-            placeholderTextColor={colors.gray[400]}
-            style={[styles.input, { minHeight: 60 }]}
+            placeholderTextColor={surface.textSubtle}
+            style={[styles.input, { minHeight: 60, backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
             multiline
           />
         </Field>
@@ -451,7 +455,7 @@ export default function EditMonitorScreen() {
         </Field>
 
         {(validationError || error) && (
-          <View style={styles.errorBox}>
+          <View style={[styles.errorBox, { backgroundColor: statusTints.down.bg }]}>
             <Text style={[typography.callout, { color: colors.status.down }]}>
               {validationError || error}
             </Text>
@@ -464,9 +468,9 @@ export default function EditMonitorScreen() {
             disabled={isEditing || isDeleting}
             style={({ pressed }) => [
               styles.secondaryBtn,
-              { opacity: pressed || isEditing || isDeleting ? 0.85 : 1 },
+              { backgroundColor: surface.elevated, borderColor: brand, opacity: pressed || isEditing || isDeleting ? 0.85 : 1 },
             ]}>
-            <Text style={[typography.bodyEmphasized, { color: colors.brand[500] }]}>
+            <Text style={[typography.bodyEmphasized, { color: brand }]}>
               {t('monitorForm.actions.cancel')}
             </Text>
           </Pressable>
@@ -476,7 +480,7 @@ export default function EditMonitorScreen() {
             disabled={isEditing || isDeleting}
             style={({ pressed }) => [
               styles.primaryBtn,
-              { opacity: pressed || isEditing || isDeleting ? 0.85 : 1 },
+              { backgroundColor: brand, opacity: pressed || isEditing || isDeleting ? 0.85 : 1 },
             ]}>
             {isEditing ? (
               <ActivityIndicator size="small" color="white" />
@@ -493,10 +497,11 @@ export default function EditMonitorScreen() {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  const { surface } = useAppTheme();
   return (
     <View style={{ gap: spacing[2] }}>
       {label ? (
-        <Text style={[typography.captionEmphasized, { color: colors.gray[700] }]}>
+        <Text style={[typography.captionEmphasized, { color: surface.textMuted }]}>
           {label}
         </Text>
       ) : null}
@@ -514,36 +519,37 @@ function ToggleRow({
   value: boolean;
   onChange: (v: boolean) => void;
 }) {
+  const { surface, brand, isDark } = useAppTheme();
   return (
-    <View style={styles.toggleRow}>
-      <Text style={[typography.body, { color: colors.surface.light.text, flex: 1 }]}>
+    <View
+      style={[
+        styles.toggleRow,
+        { backgroundColor: surface.elevated, borderColor: surface.border },
+      ]}>
+      <Text style={[typography.body, { color: surface.text, flex: 1 }]}>
         {label}
       </Text>
       <Switch
         value={value}
         onValueChange={onChange}
-        trackColor={{ false: colors.gray[300], true: colors.brand[500] }}
+        trackColor={{ false: isDark ? colors.gray[700] : colors.gray[300], true: brand }}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface.light.background },
+  container: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center', flex: 1 },
   input: {
     ...typography.body,
-    backgroundColor: colors.surface.light.elevated,
     borderWidth: 0.5,
-    borderColor: colors.surface.light.border,
     borderRadius: semanticRadius.button,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
-    color: colors.surface.light.text,
   },
   segmented: {
     flexDirection: 'row',
-    backgroundColor: colors.surface.light.sunken,
     borderRadius: semanticRadius.button,
     padding: 3,
     gap: 3,
@@ -554,15 +560,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: semanticRadius.button - 3,
   },
-  segmentActive: {
-    backgroundColor: colors.brand[500],
-  },
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface.light.elevated,
     borderWidth: 0.5,
-    borderColor: colors.surface.light.border,
     borderRadius: semanticRadius.button,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
@@ -572,19 +573,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.surface.light.sunken,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
     borderRadius: 8,
   },
   errorBox: {
     padding: spacing[3],
-    backgroundColor: `${colors.status.down}1A`,
     borderRadius: 12,
   },
   primaryBtn: {
     flex: 1,
-    backgroundColor: colors.brand[500],
     paddingVertical: spacing[3],
     borderRadius: semanticRadius.button,
     alignItems: 'center',
@@ -592,12 +590,10 @@ const styles = StyleSheet.create({
   },
   secondaryBtn: {
     flex: 1,
-    backgroundColor: colors.surface.light.elevated,
     paddingVertical: spacing[3],
     borderRadius: semanticRadius.button,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 0.5,
-    borderColor: colors.brand[500],
   },
 });

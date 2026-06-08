@@ -6,6 +6,9 @@
  *
  * Inputs: array of (timestamp, value) points.
  * Optional: y-axis max (auto if not provided), color, height.
+ *
+ * Theme: average-line color uses surface.border; chart label uses
+ * surface.sunken bg + surface.text color so it reads on both themes.
  */
 
 import { useEffect, useMemo } from 'react';
@@ -17,7 +20,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { colors, spacing, typography } from '@/theme';
+import { spacing, typography, useAppTheme } from '@/theme';
 import type { TimePoint } from '@/domain/models';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
@@ -39,11 +42,15 @@ export function ResponseTimeChart({
   data,
   width = 320,
   height = 120,
-  color = colors.brand[500],
+  color: colorProp,
   showAverage = true,
   showLatestLabel = true,
   emptyMessage = 'No data',
 }: ResponseTimeChartProps) {
+  const { surface, brand } = useAppTheme();
+  // Default to the theme-aware brand color (brand-400 in dark mode for
+  // better contrast on near-black surfaces; brand-500 in light mode).
+  const color = colorProp ?? brand;
   const progress = useSharedValue(0);
 
   useEffect(() => {
@@ -78,8 +85,6 @@ export function ResponseTimeChart({
     });
 
     // Build smooth path using a simple line (M, L, L, L...)
-    // We could use cubic bezier for smoother curves, but for monitoring data
-    // a straight line is more honest.
     let d = `M ${pts[0].x} ${pts[0].y}`;
     for (let i = 1; i < pts.length; i++) {
       d += ` L ${pts[i].x} ${pts[i].y}`;
@@ -104,7 +109,7 @@ export function ResponseTimeChart({
   if (data.length === 0) {
     return (
       <View style={[styles.empty, { width, height }]}>
-        <Text style={[typography.caption, { color: colors.surface.light.textMuted }]}>
+        <Text style={[typography.caption, { color: surface.textMuted }]}>
           {emptyMessage}
         </Text>
       </View>
@@ -133,7 +138,7 @@ export function ResponseTimeChart({
             y1={avgY}
             x2={width - padX}
             y2={avgY}
-            stroke={colors.surface.light.border}
+            stroke={surface.border}
             strokeWidth={0.5}
             strokeDasharray="3,3"
           />
@@ -160,8 +165,8 @@ export function ResponseTimeChart({
       </Svg>
 
       {showLatestLabel && (
-        <View style={styles.label}>
-          <Text style={[typography.caption, styles.labelText]}>
+        <View style={[styles.label, { backgroundColor: surface.sunken }]}>
+          <Text style={[typography.caption, styles.labelText, { color: surface.text }]}>
             {latest < 1000 ? `${Math.round(latest)}ms` : `${(latest / 1000).toFixed(2)}s`}
           </Text>
         </View>
@@ -181,11 +186,9 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: spacing[2],
     paddingVertical: 2,
-    backgroundColor: colors.surface.light.sunken,
     borderRadius: 4,
   },
   labelText: {
-    color: colors.surface.light.text,
     fontWeight: '600',
     fontSize: 10,
   },

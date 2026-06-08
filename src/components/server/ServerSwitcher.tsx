@@ -8,12 +8,15 @@
  * - See each server's status
  * - Mark one as active
  * - Navigate to a server's detail/settings
+ *
+ * Theme: page background is surface.background. The "add" CTA uses
+ * brand as text and border.
  */
 
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Check, Plus, X } from 'lucide-react-native';
-import { colors, spacing, typography, semanticRadius } from '@/theme';
+import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import { SafeScrollView } from '@/components/ui';
 import { ServerCard } from './ServerCard';
@@ -28,6 +31,7 @@ export function ServerSwitcher({ onClose }: ServerSwitcherProps) {
   const servers = useServers((s) => s.servers);
   const activeId = useServers((s) => s.activeServerId);
   const setActive = useServers((s) => s.setActive);
+  const { surface, brand } = useAppTheme();
 
   const handleSelect = (id: string) => {
     setActive(id);
@@ -35,13 +39,13 @@ export function ServerSwitcher({ onClose }: ServerSwitcherProps) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: surface.background }]}>
       <GlassNavBar
         title="Switch server"
         right={
           onClose ? (
             <Pressable onPress={onClose} hitSlop={10}>
-              <X size={24} color={colors.surface.light.text} strokeWidth={1.5} />
+              <X size={24} color={surface.text} strokeWidth={1.5} />
             </Pressable>
           ) : undefined
         }
@@ -54,7 +58,11 @@ export function ServerSwitcher({ onClose }: ServerSwitcherProps) {
         }}>
         {servers.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={[typography.body, { color: colors.surface.light.textMuted, textAlign: 'center' }]}>
+            <Text
+              style={[
+                typography.body,
+                { color: surface.textMuted, textAlign: 'center' },
+              ]}>
               No servers configured. Add one to get started.
             </Text>
           </View>
@@ -71,7 +79,7 @@ export function ServerSwitcher({ onClose }: ServerSwitcherProps) {
                   monitorCount={0}
                 />
                 {server.id === activeId && (
-                  <View style={styles.checkBadge}>
+                  <View style={[styles.checkBadge, { backgroundColor: brand }]}>
                     <Check size={14} color="white" strokeWidth={3} />
                   </View>
                 )}
@@ -87,10 +95,13 @@ export function ServerSwitcher({ onClose }: ServerSwitcherProps) {
           }}
           style={({ pressed }) => [
             styles.addCard,
-            { opacity: pressed ? 0.85 : 1 },
+            {
+              borderColor: brand,
+              opacity: pressed ? 0.85 : 1,
+            },
           ]}>
-          <Plus size={20} color={colors.brand[500]} strokeWidth={2} />
-          <Text style={[typography.bodyEmphasized, { color: colors.brand[500] }]}>
+          <Plus size={20} color={brand} strokeWidth={2} />
+          <Text style={[typography.bodyEmphasized, { color: brand }]}>
             Add new server
           </Text>
         </Pressable>
@@ -102,7 +113,6 @@ export function ServerSwitcher({ onClose }: ServerSwitcherProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.surface.light.background,
   },
   empty: {
     paddingVertical: spacing[10],
@@ -117,7 +127,6 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: colors.brand[500],
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -129,7 +138,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[4],
     borderRadius: semanticRadius.card,
     borderWidth: 1,
-    borderColor: colors.brand[500],
     borderStyle: 'dashed',
     marginTop: spacing[2],
   },

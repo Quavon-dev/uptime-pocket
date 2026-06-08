@@ -4,6 +4,10 @@
  *
  * Form state is grouped in a useReducer to avoid 9 separate re-renders
  * (see react-doctor's `prefer-useReducer` rule).
+ *
+ * Theme: page bg = surface.background. Inputs use surface.elevated +
+ * surface.border. The segmented auth method uses surface.sunken
+ * track + brand active. The error box uses statusTints.down.
  */
 
 import { useReducer, useState } from 'react';
@@ -18,7 +22,7 @@ import {
 import { useRouter , Stack } from 'expo-router';
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import { SafeScrollView } from '@/components/ui';
-import { colors, spacing, typography, semanticRadius } from '@/theme';
+import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { t, tn } from '@/i18n';
 import { useServers } from '@/data/store/servers';
 import { useSettings } from '@/data/store/settings';
@@ -98,6 +102,7 @@ const FormSchema = z
 
 export default function AddServerScreen() {
   const router = useRouter();
+  const { surface, brand, statusTints } = useAppTheme();
   const addServer = useServers((s) => s.addServer);
   const setOnboarded = useSettings((s) => s.setOnboarded);
 
@@ -227,13 +232,13 @@ export default function AddServerScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: surface.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
       <GlassNavBar
         title={t('servers.add.title')}
         left={
           <Pressable onPress={() => router.back()} hitSlop={10}>
-            <Text style={[typography.body, { color: colors.brand[500] }]}>
+            <Text style={[typography.body, { color: brand }]}>
               {t('common.cancel')}
             </Text>
           </Pressable>
@@ -253,8 +258,8 @@ export default function AddServerScreen() {
             value={name}
             onChangeText={(v) => dispatch({ type: 'setName', value: v })}
             placeholder={t('servers.add.namePlaceholder')}
-            placeholderTextColor={colors.gray[400]}
-            style={styles.input}
+            placeholderTextColor={surface.textSubtle}
+            style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
             autoCapitalize="none"
             autoCorrect={false}
           />
@@ -266,8 +271,8 @@ export default function AddServerScreen() {
             value={url}
             onChangeText={(v) => dispatch({ type: 'setUrl', value: v })}
             placeholder={t('servers.add.urlPlaceholder')}
-            placeholderTextColor={colors.gray[400]}
-            style={styles.input}
+            placeholderTextColor={surface.textSubtle}
+            style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="url"
@@ -276,20 +281,20 @@ export default function AddServerScreen() {
 
         {/* Auth method */}
         <Field label={t('servers.add.authMethod')}>
-          <View style={styles.segmented}>
+          <View style={[styles.segmented, { backgroundColor: surface.sunken }]}>
             {(['bearer', 'password'] as AuthMethod[]).map((m) => (
               <Pressable
                 key={m}
                 onPress={() => dispatch({ type: 'setAuthMethod', value: m })}
                 style={[
                   styles.segment,
-                  authMethod === m && styles.segmentActive,
+                  authMethod === m && { backgroundColor: brand },
                 ]}>
                 <Text
                   style={[
                     typography.captionEmphasized,
                     {
-                      color: authMethod === m ? 'white' : colors.surface.light.text,
+                      color: authMethod === m ? 'white' : surface.text,
                     },
                   ]}>
                   {m === 'bearer' ? t('servers.add.bearer') : t('servers.add.password')}
@@ -306,8 +311,8 @@ export default function AddServerScreen() {
                 value={token}
                 onChangeText={(v) => dispatch({ type: 'setToken', value: v })}
                 placeholder="••••••••"
-                placeholderTextColor={colors.gray[400]}
-                style={styles.input}
+                placeholderTextColor={surface.textSubtle}
+                style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
                 autoCapitalize="none"
                 autoCorrect={false}
                 secureTextEntry
@@ -321,8 +326,8 @@ export default function AddServerScreen() {
                 value={username}
                 onChangeText={(v) => dispatch({ type: 'setUsername', value: v })}
                 placeholder="admin"
-                placeholderTextColor={colors.gray[400]}
-                style={styles.input}
+                placeholderTextColor={surface.textSubtle}
+                style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
@@ -332,8 +337,8 @@ export default function AddServerScreen() {
                 value={password}
                 onChangeText={(v) => dispatch({ type: 'setPassword', value: v })}
                 placeholder="••••••••"
-                placeholderTextColor={colors.gray[400]}
-                style={styles.input}
+                placeholderTextColor={surface.textSubtle}
+                style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
                 secureTextEntry
               />
             </Field>
@@ -341,7 +346,7 @@ export default function AddServerScreen() {
         )}
 
         {error && (
-          <View style={styles.errorBox}>
+          <View style={[styles.errorBox, { backgroundColor: statusTints.down.bg }]}>
             <Text style={[typography.callout, { color: colors.status.down }]}>
               {error}
             </Text>
@@ -354,12 +359,12 @@ export default function AddServerScreen() {
             disabled={testing || saving}
             style={({ pressed }) => [
               styles.secondaryBtn,
-              { opacity: pressed || testing ? 0.85 : 1 },
+              { backgroundColor: surface.elevated, borderColor: brand, opacity: pressed || testing ? 0.85 : 1 },
             ]}>
             {testing ? (
-              <ActivityIndicator size="small" color={colors.brand[500]} />
+              <ActivityIndicator size="small" color={brand} />
             ) : (
-              <Text style={[typography.bodyEmphasized, { color: colors.brand[500] }]}>
+              <Text style={[typography.bodyEmphasized, { color: brand }]}>
                 {t('servers.add.test')}
               </Text>
             )}
@@ -370,7 +375,7 @@ export default function AddServerScreen() {
             disabled={saving || testing}
             style={({ pressed }) => [
               styles.primaryBtn,
-              { opacity: pressed || saving ? 0.85 : 1 },
+              { backgroundColor: brand, opacity: pressed || saving ? 0.85 : 1 },
             ]}>
             {saving ? (
               <ActivityIndicator size="small" color="white" />
@@ -395,14 +400,15 @@ function Field({
   hint?: string;
   children: React.ReactNode;
 }) {
+  const { surface } = useAppTheme();
   return (
     <View style={{ gap: spacing[2] }}>
-      <Text style={[typography.captionEmphasized, { color: colors.gray[700] }]}>
+      <Text style={[typography.captionEmphasized, { color: surface.textMuted }]}>
         {label}
       </Text>
       {children}
       {hint && (
-        <Text style={[typography.caption, { color: colors.gray[500] }]}>
+        <Text style={[typography.caption, { color: surface.textSubtle }]}>
           {hint}
         </Text>
       )}
@@ -423,20 +429,16 @@ function thisIsOlder(version: string, minVersion: string): boolean {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface.light.background },
+  container: { flex: 1 },
   input: {
     ...typography.body,
-    backgroundColor: colors.surface.light.elevated,
     borderWidth: 0.5,
-    borderColor: colors.surface.light.border,
     borderRadius: semanticRadius.button,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
-    color: colors.surface.light.text,
   },
   segmented: {
     flexDirection: 'row',
-    backgroundColor: colors.surface.light.sunken,
     borderRadius: semanticRadius.button,
     padding: 3,
     gap: 3,
@@ -447,17 +449,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: semanticRadius.button - 3,
   },
-  segmentActive: {
-    backgroundColor: colors.brand[500],
-  },
   errorBox: {
     padding: spacing[3],
-    backgroundColor: `${colors.status.down}1A`,
     borderRadius: 12,
   },
   primaryBtn: {
     flex: 1,
-    backgroundColor: colors.brand[500],
     paddingVertical: spacing[3],
     borderRadius: semanticRadius.button,
     alignItems: 'center',
@@ -465,12 +462,10 @@ const styles = StyleSheet.create({
   },
   secondaryBtn: {
     flex: 1,
-    backgroundColor: colors.surface.light.elevated,
     paddingVertical: spacing[3],
     borderRadius: semanticRadius.button,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 0.5,
-    borderColor: colors.brand[500],
   },
 });

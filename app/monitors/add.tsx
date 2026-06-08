@@ -13,6 +13,9 @@
  *
  * The next `monitorList` event from the socket will include the new
  * monitor — no need to manually refresh.
+ *
+ * Theme: page bg = surface.background. Inputs use surface.elevated +
+ * surface.border. The segmented controls use surface.sunken tracks.
  */
 
 import { useReducer, useState } from 'react';
@@ -29,7 +32,7 @@ import {
 import { useRouter, Stack } from 'expo-router';
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import { SafeScrollView } from '@/components/ui';
-import { colors, spacing, typography, semanticRadius } from '@/theme';
+import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { t } from '@/i18n';
 import { useKumaActions } from '@/features/monitors/useKumaActions';
 import { useServers } from '@/data/store/servers';
@@ -138,6 +141,7 @@ export default function AddMonitorScreen() {
   const router = useRouter();
   const { addMonitor, isAdding, error, clearError } = useKumaActions();
   const activeServerId = useServers((s) => s.activeServerId);
+  const { surface, brand, statusTints } = useAppTheme();
 
   const [form, dispatch] = useReducer(formReducer, initialForm);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -172,13 +176,13 @@ export default function AddMonitorScreen() {
   const showDnsOptions = form.type === 'dns';
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: surface.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
       <GlassNavBar
         title={t('monitorForm.addTitle')}
         left={
           <Pressable onPress={() => router.back()} hitSlop={10}>
-            <Text style={[typography.body, { color: colors.brand[500] }]}>
+            <Text style={[typography.body, { color: brand }]}>
               {t('monitorForm.actions.cancel')}
             </Text>
           </Pressable>
@@ -191,7 +195,7 @@ export default function AddMonitorScreen() {
         keyboardShouldPersistTaps="handled">
         {/* Type selector */}
         <Field label={t('monitorForm.fields.type')}>
-          <View style={styles.segmented}>
+          <View style={[styles.segmented, { backgroundColor: surface.sunken }]}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {(['http', 'ping', 'port', 'dns', 'keyword', 'tcp'] as MonitorType[]).map((ty) => (
                 <Pressable
@@ -199,13 +203,13 @@ export default function AddMonitorScreen() {
                   onPress={() => dispatch({ type: 'setMonitorType', value: ty as MonitorType })}
                   style={[
                     styles.segment,
-                    form.type === ty && styles.segmentActive,
+                    form.type === ty && { backgroundColor: brand },
                   ]}>
                   <Text
                     style={[
                       typography.captionEmphasized,
                       {
-                        color: form.type === ty ? 'white' : colors.surface.light.text,
+                        color: form.type === ty ? 'white' : surface.text,
                       },
                     ]}>
                     {t(`monitorForm.types.${ty}` as any)}
@@ -222,8 +226,8 @@ export default function AddMonitorScreen() {
             value={form.name}
             onChangeText={(v) => dispatch({ type: 'setName', value: v })}
             placeholder={t('monitorForm.fields.namePlaceholder')}
-            placeholderTextColor={colors.gray[400]}
-            style={styles.input}
+            placeholderTextColor={surface.textSubtle}
+            style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
             autoCapitalize="none"
             autoCorrect={false}
           />
@@ -236,8 +240,8 @@ export default function AddMonitorScreen() {
               value={form.url}
               onChangeText={(v) => dispatch({ type: 'setUrl', value: v })}
               placeholder={t('monitorForm.fields.urlPlaceholder')}
-              placeholderTextColor={colors.gray[400]}
-              style={styles.input}
+              placeholderTextColor={surface.textSubtle}
+              style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
@@ -248,20 +252,20 @@ export default function AddMonitorScreen() {
         {/* Method (for HTTP) */}
         {form.type === 'http' && (
           <Field label={t('monitorForm.fields.method')}>
-            <View style={styles.segmented}>
+            <View style={[styles.segmented, { backgroundColor: surface.sunken }]}>
               {(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'] as const).map((m) => (
                 <Pressable
                   key={m}
                   onPress={() => dispatch({ type: 'setMethod', value: m })}
                   style={[
                     styles.segment,
-                    form.method === m && styles.segmentActive,
+                    form.method === m && { backgroundColor: brand },
                   ]}>
                   <Text
                     style={[
                       typography.captionEmphasized,
                       {
-                        color: form.method === m ? 'white' : colors.surface.light.text,
+                        color: form.method === m ? 'white' : surface.text,
                       },
                     ]}>
                     {m}
@@ -280,8 +284,8 @@ export default function AddMonitorScreen() {
                 value={form.hostname}
                 onChangeText={(v) => dispatch({ type: 'setHostname', value: v })}
                 placeholder={t('monitorForm.fields.hostnamePlaceholder')}
-                placeholderTextColor={colors.gray[400]}
-                style={styles.input}
+                placeholderTextColor={surface.textSubtle}
+                style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
@@ -292,8 +296,8 @@ export default function AddMonitorScreen() {
                   value={form.port}
                   onChangeText={(v) => dispatch({ type: 'setPort', value: v.replace(/[^0-9]/g, '') })}
                   placeholder="22"
-                  placeholderTextColor={colors.gray[400]}
-                  style={styles.input}
+                  placeholderTextColor={surface.textSubtle}
+                  style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
                   keyboardType="number-pad"
                 />
               </Field>
@@ -308,8 +312,8 @@ export default function AddMonitorScreen() {
               value={form.keywordValue}
               onChangeText={(v) => dispatch({ type: 'setKeywordValue', value: v })}
               placeholder="200"
-              placeholderTextColor={colors.gray[400]}
-              style={styles.input}
+              placeholderTextColor={surface.textSubtle}
+              style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -320,20 +324,20 @@ export default function AddMonitorScreen() {
         {showDnsOptions && (
           <>
             <Field label="Record type">
-              <View style={styles.segmented}>
+              <View style={[styles.segmented, { backgroundColor: surface.sunken }]}>
                 {(['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV'] as const).map((rt) => (
                   <Pressable
                     key={rt}
                     onPress={() => dispatch({ type: 'setDnsRecordType', value: rt })}
                     style={[
                       styles.segment,
-                      form.dnsRecordType === rt && styles.segmentActive,
+                      form.dnsRecordType === rt && { backgroundColor: brand },
                     ]}>
                     <Text
                       style={[
                         typography.captionEmphasized,
                         {
-                          color: form.dnsRecordType === rt ? 'white' : colors.surface.light.text,
+                          color: form.dnsRecordType === rt ? 'white' : surface.text,
                         },
                       ]}>
                       {rt}
@@ -347,8 +351,8 @@ export default function AddMonitorScreen() {
                 value={form.dnsResolverServer}
                 onChangeText={(v) => dispatch({ type: 'setDnsResolverServer', value: v })}
                 placeholder="1.1.1.1"
-                placeholderTextColor={colors.gray[400]}
-                style={styles.input}
+                placeholderTextColor={surface.textSubtle}
+                style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
@@ -362,8 +366,8 @@ export default function AddMonitorScreen() {
             value={form.interval}
             onChangeText={(v) => dispatch({ type: 'setInterval', value: v.replace(/[^0-9]/g, '') })}
             placeholder="60"
-            placeholderTextColor={colors.gray[400]}
-            style={styles.input}
+            placeholderTextColor={surface.textSubtle}
+            style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
             keyboardType="number-pad"
           />
         </Field>
@@ -374,8 +378,8 @@ export default function AddMonitorScreen() {
             value={form.retryInterval}
             onChangeText={(v) => dispatch({ type: 'setRetryInterval', value: v.replace(/[^0-9]/g, '') })}
             placeholder="60"
-            placeholderTextColor={colors.gray[400]}
-            style={styles.input}
+            placeholderTextColor={surface.textSubtle}
+            style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
             keyboardType="number-pad"
           />
         </Field>
@@ -386,8 +390,8 @@ export default function AddMonitorScreen() {
             value={form.maxretries}
             onChangeText={(v) => dispatch({ type: 'setMaxretries', value: v.replace(/[^0-9]/g, '') })}
             placeholder="0"
-            placeholderTextColor={colors.gray[400]}
-            style={styles.input}
+            placeholderTextColor={surface.textSubtle}
+            style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
             keyboardType="number-pad"
           />
         </Field>
@@ -399,8 +403,8 @@ export default function AddMonitorScreen() {
               value={form.maxredirects}
               onChangeText={(v) => dispatch({ type: 'setMaxredirects', value: v.replace(/[^0-9]/g, '') })}
               placeholder="10"
-              placeholderTextColor={colors.gray[400]}
-              style={styles.input}
+              placeholderTextColor={surface.textSubtle}
+              style={[styles.input, { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
               keyboardType="number-pad"
             />
           </Field>
@@ -412,8 +416,8 @@ export default function AddMonitorScreen() {
             value={form.description}
             onChangeText={(v) => dispatch({ type: 'setDescription', value: v })}
             placeholder=""
-            placeholderTextColor={colors.gray[400]}
-            style={[styles.input, { minHeight: 60 }]}
+            placeholderTextColor={surface.textSubtle}
+            style={[styles.input, { minHeight: 60, backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text }]}
             multiline
           />
         </Field>
@@ -440,7 +444,7 @@ export default function AddMonitorScreen() {
         </Field>
 
         {(validationError || error) && (
-          <View style={styles.errorBox}>
+          <View style={[styles.errorBox, { backgroundColor: statusTints.down.bg }]}>
             <Text style={[typography.callout, { color: colors.status.down }]}>
               {validationError || error}
             </Text>
@@ -453,9 +457,9 @@ export default function AddMonitorScreen() {
             disabled={isAdding}
             style={({ pressed }) => [
               styles.secondaryBtn,
-              { opacity: pressed || isAdding ? 0.85 : 1 },
+              { backgroundColor: surface.elevated, borderColor: brand, opacity: pressed || isAdding ? 0.85 : 1 },
             ]}>
-            <Text style={[typography.bodyEmphasized, { color: colors.brand[500] }]}>
+            <Text style={[typography.bodyEmphasized, { color: brand }]}>
               {t('monitorForm.actions.cancel')}
             </Text>
           </Pressable>
@@ -465,7 +469,7 @@ export default function AddMonitorScreen() {
             disabled={isAdding}
             style={({ pressed }) => [
               styles.primaryBtn,
-              { opacity: pressed || isAdding ? 0.85 : 1 },
+              { backgroundColor: brand, opacity: pressed || isAdding ? 0.85 : 1 },
             ]}>
             {isAdding ? (
               <ActivityIndicator size="small" color="white" />
@@ -484,10 +488,11 @@ export default function AddMonitorScreen() {
 // ---- Sub-components ----------------------------------------------------
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  const { surface } = useAppTheme();
   return (
     <View style={{ gap: spacing[2] }}>
       {label ? (
-        <Text style={[typography.captionEmphasized, { color: colors.gray[700] }]}>
+        <Text style={[typography.captionEmphasized, { color: surface.textMuted }]}>
           {label}
         </Text>
       ) : null}
@@ -505,15 +510,20 @@ function ToggleRow({
   value: boolean;
   onChange: (v: boolean) => void;
 }) {
+  const { surface, brand, isDark } = useAppTheme();
   return (
-    <View style={styles.toggleRow}>
-      <Text style={[typography.body, { color: colors.surface.light.text, flex: 1 }]}>
+    <View
+      style={[
+        styles.toggleRow,
+        { backgroundColor: surface.elevated, borderColor: surface.border },
+      ]}>
+      <Text style={[typography.body, { color: surface.text, flex: 1 }]}>
         {label}
       </Text>
       <Switch
         value={value}
         onValueChange={onChange}
-        trackColor={{ false: colors.gray[300], true: colors.brand[500] }}
+        trackColor={{ false: isDark ? colors.gray[700] : colors.gray[300], true: brand }}
       />
     </View>
   );
@@ -650,20 +660,16 @@ function validateDraft(form: FormState): string | null {
 // ---- Styles ------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface.light.background },
+  container: { flex: 1 },
   input: {
     ...typography.body,
-    backgroundColor: colors.surface.light.elevated,
     borderWidth: 0.5,
-    borderColor: colors.surface.light.border,
     borderRadius: semanticRadius.button,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
-    color: colors.surface.light.text,
   },
   segmented: {
     flexDirection: 'row',
-    backgroundColor: colors.surface.light.sunken,
     borderRadius: semanticRadius.button,
     padding: 3,
     gap: 3,
@@ -674,15 +680,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: semanticRadius.button - 3,
   },
-  segmentActive: {
-    backgroundColor: colors.brand[500],
-  },
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface.light.elevated,
     borderWidth: 0.5,
-    borderColor: colors.surface.light.border,
     borderRadius: semanticRadius.button,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
@@ -690,12 +691,10 @@ const styles = StyleSheet.create({
   },
   errorBox: {
     padding: spacing[3],
-    backgroundColor: `${colors.status.down}1A`,
     borderRadius: 12,
   },
   primaryBtn: {
     flex: 1,
-    backgroundColor: colors.brand[500],
     paddingVertical: spacing[3],
     borderRadius: semanticRadius.button,
     alignItems: 'center',
@@ -703,12 +702,10 @@ const styles = StyleSheet.create({
   },
   secondaryBtn: {
     flex: 1,
-    backgroundColor: colors.surface.light.elevated,
     paddingVertical: spacing[3],
     borderRadius: semanticRadius.button,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 0.5,
-    borderColor: colors.brand[500],
   },
 });

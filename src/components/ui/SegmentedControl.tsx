@@ -7,6 +7,9 @@
  * - Theme (System / Light / Dark)
  *
  * The indicator slides between options with a spring animation.
+ *
+ * Theme: track uses surface.sunken, indicator uses surface.elevated,
+ * text uses surface.text (active) or surface.textMuted (inactive).
  */
 
 import { useState, useEffect } from 'react';
@@ -16,7 +19,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-import { colors, spacing, typography, semanticRadius } from '@/theme';
+import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import * as Haptics from 'expo-haptics';
 
 export interface SegmentOption<T extends string> {
@@ -38,6 +41,7 @@ export function SegmentedControl<T extends string>({
   onChange,
   size = 'md',
 }: SegmentedControlProps<T>) {
+  const { surface, isDark } = useAppTheme();
   const [width, setWidth] = useState(0);
   const segmentWidth = width / options.length;
   const activeIndex = options.findIndex((o) => o.value === value);
@@ -74,6 +78,7 @@ export function SegmentedControl<T extends string>({
         {
           padding: size === 'sm' ? 2 : 3,
           borderRadius: size === 'sm' ? semanticRadius.md : semanticRadius.button,
+          backgroundColor: surface.sunken,
         },
       ]}>
       {width > 0 && (
@@ -84,6 +89,13 @@ export function SegmentedControl<T extends string>({
               width: segmentWidth - (size === 'sm' ? 4 : 6),
               height: size === 'sm' ? 28 : 32,
               borderRadius: size === 'sm' ? semanticRadius.md - 2 : semanticRadius.button - 3,
+              backgroundColor: surface.elevated,
+              // Subtle shadow in light mode (gives the indicator depth
+              // over the sunken track); more pronounced in dark mode
+              // so the indicator reads against the near-black track.
+              boxShadow: isDark
+                ? '0 1px 3px rgba(0,0,0,0.6)'
+                : '0 1px 2px rgba(0,0,0,0.1)',
             },
             indicatorStyle,
           ]}
@@ -104,7 +116,7 @@ export function SegmentedControl<T extends string>({
                 styles.label,
                 size === 'sm' && { fontSize: 12 },
                 {
-                  color: isActive ? colors.surface.light.text : colors.surface.light.textMuted,
+                  color: isActive ? surface.text : surface.textMuted,
                   fontWeight: isActive ? '600' : '500',
                 },
               ]}
@@ -121,15 +133,12 @@ export function SegmentedControl<T extends string>({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: colors.surface.light.sunken,
     position: 'relative',
   },
   indicator: {
     position: 'absolute',
     top: 3,
     left: 3,
-    backgroundColor: colors.surface.light.elevated,
-    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
   },
   segment: {
     flex: 1,

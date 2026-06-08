@@ -15,6 +15,10 @@
  * - `manager.fetchHeartbeats()` for chart history
  * - `manager.fetchUptime()` for 24h/7d/30d ratios
  * - `manager.recheckMonitor()` / `pauseMonitor()` / `resumeMonitor()` for actions
+ *
+ * Theme: page bg = surface.background. Header card uses
+ * surface.elevated/border. Stat tiles use surface.sunken. Incident
+ * list uses surface.elevated.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -41,7 +45,7 @@ import { Button, SegmentedControl, SafeScrollView } from '@/components/ui';
 import { StatusPill } from '@/components/status';
 import { ResponseTimeChart, UptimeBar } from '@/components/chart';
 import { monitorTypeIcon } from '@/components/ui/icons';
-import { colors, spacing, typography, semanticRadius } from '@/theme';
+import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { t, tn } from '@/i18n';
 import { useServers } from '@/data/store/servers';
 import {
@@ -67,6 +71,7 @@ export default function MonitorDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ monitorId: string }>();
   const monitorId = Number(params.monitorId);
+  const { surface, brand, statusTints } = useAppTheme();
 
   // Find the live monitor across all servers the app knows about.
   const found = useMonitors((s) =>
@@ -198,22 +203,22 @@ export default function MonitorDetailScreen() {
   const upPctForRange = uptime[`uptime${rangeKey(range)}`] ?? null;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: surface.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
       <GlassNavBar
         title={monitor.name}
         left={
           <Pressable onPress={() => router.back()} hitSlop={10}>
-            <ArrowLeft size={24} color={colors.surface.light.text} strokeWidth={1.5} />
+            <ArrowLeft size={24} color={surface.text} strokeWidth={1.5} />
           </Pressable>
         }
         right={
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[3] }}>
             <Pressable onPress={handleEdit} hitSlop={10}>
-              <Pencil size={22} color={colors.surface.light.text} strokeWidth={1.5} />
+              <Pencil size={22} color={surface.text} strokeWidth={1.5} />
             </Pressable>
             <Pressable onPress={handleOpenInKuma} hitSlop={10}>
-              <ExternalLink size={22} color={colors.surface.light.text} strokeWidth={1.5} />
+              <ExternalLink size={22} color={surface.text} strokeWidth={1.5} />
             </Pressable>
           </View>
         }
@@ -223,16 +228,20 @@ export default function MonitorDetailScreen() {
         contentContainerStyle={{ paddingHorizontal: spacing[4] }}
         showsVerticalScrollIndicator={false}>
         {/* Header card */}
-        <View style={styles.headerCard}>
+        <View
+          style={[
+            styles.headerCard,
+            { backgroundColor: surface.elevated, borderColor: surface.border },
+          ]}>
           <View style={styles.headerRow}>
-            {renderTypeIcon(monitor.type)}
+            {renderTypeIcon(monitor.type, brand)}
             <View style={{ flex: 1, gap: spacing[1] }}>
-              <Text style={[typography.heading, { color: colors.surface.light.text }]}>
+              <Text style={[typography.heading, { color: surface.text }]}>
                 {monitor.name}
               </Text>
               {monitor.url ? (
                 <Text
-                  style={[typography.caption, { color: colors.surface.light.textMuted }]}
+                  style={[typography.caption, { color: surface.textMuted }]}
                   numberOfLines={1}>
                   {monitor.url}
                 </Text>
@@ -292,11 +301,11 @@ export default function MonitorDetailScreen() {
             disabled={actionPending !== null}
             icon={
               actionPending === 'pause' || actionPending === 'resume' ? (
-                <ActivityIndicator size="small" color={colors.brand[500]} />
+                <ActivityIndicator size="small" color={brand} />
               ) : monitor.status === 'paused' ? (
-                <Play size={16} color={colors.brand[500]} strokeWidth={1.75} />
+                <Play size={16} color={brand} strokeWidth={1.75} />
               ) : (
-                <Pause size={16} color={colors.brand[500]} strokeWidth={1.75} />
+                <Pause size={16} color={brand} strokeWidth={1.75} />
               )
             }
             fullWidth
@@ -304,7 +313,11 @@ export default function MonitorDetailScreen() {
         </View>
 
         {actionError && (
-          <View style={styles.errorBox}>
+          <View
+            style={[
+              styles.errorBox,
+              { backgroundColor: statusTints.down.bg },
+            ]}>
             <Text style={[typography.callout, { color: colors.status.down }]}>
               {actionError}
             </Text>
@@ -329,8 +342,8 @@ export default function MonitorDetailScreen() {
         <View style={styles.section}>
           <SectionLabel>{t('monitors.detail.responseTime')}</SectionLabel>
           {loading && heartbeats.length === 0 ? (
-            <View style={styles.chartPlaceholder}>
-              <ActivityIndicator size="small" color={colors.brand[500]} />
+            <View style={[styles.chartPlaceholder, { backgroundColor: surface.sunken }]}>
+              <ActivityIndicator size="small" color={brand} />
             </View>
           ) : (
             <>
@@ -344,7 +357,7 @@ export default function MonitorDetailScreen() {
                   style={[
                     typography.micro,
                     {
-                      color: colors.surface.light.textMuted,
+                      color: surface.textMuted,
                       paddingHorizontal: spacing[2],
                       paddingTop: spacing[1],
                     },
@@ -365,8 +378,8 @@ export default function MonitorDetailScreen() {
         <View style={styles.section}>
           <SectionLabel>{t('monitors.detail.uptime')}</SectionLabel>
           {loading && heartbeats.length === 0 ? (
-            <View style={styles.chartPlaceholder}>
-              <ActivityIndicator size="small" color={colors.brand[500]} />
+            <View style={[styles.chartPlaceholder, { backgroundColor: surface.sunken }]}>
+              <ActivityIndicator size="small" color={brand} />
             </View>
           ) : (
             <UptimeBar data={uptimeSeries} />
@@ -380,14 +393,26 @@ export default function MonitorDetailScreen() {
             <Text
               style={[
                 typography.body,
-                { color: colors.surface.light.textMuted, textAlign: 'center', paddingVertical: spacing[3] },
+                { color: surface.textMuted, textAlign: 'center', paddingVertical: spacing[3] },
               ]}>
               No incidents in this session.
             </Text>
           ) : (
-            <View style={styles.incidentList}>
-              {incidents.slice(0, 10).map((inc) => (
-                <View key={inc.id} style={styles.incidentRow}>
+            <View
+              style={[
+                styles.incidentList,
+                { backgroundColor: surface.elevated, borderColor: surface.border },
+              ]}>
+              {incidents.slice(0, 10).map((inc, idx) => (
+                <View
+                  key={inc.id}
+                  style={[
+                    styles.incidentRow,
+                    {
+                      borderBottomColor: surface.border,
+                      borderBottomWidth: idx === Math.min(incidents.length, 10) - 1 ? 0 : 0.5,
+                    },
+                  ]}>
                   <View
                     style={[
                       styles.incidentDot,
@@ -398,13 +423,13 @@ export default function MonitorDetailScreen() {
                     ]}
                   />
                   <Text
-                    style={[typography.callout, { color: colors.surface.light.text, flex: 1 }]}>
+                    style={[typography.callout, { color: surface.text, flex: 1 }]}>
                     {inc.cause === 'down' ? 'Down' : 'Recovered'}
                   </Text>
                   <Text
                     style={[
                       typography.caption,
-                      { color: colors.surface.light.textMuted },
+                      { color: surface.textMuted },
                     ]}>
                     {formatRelativeTime(inc.startedAt)}
                   </Text>
@@ -421,20 +446,21 @@ export default function MonitorDetailScreen() {
 // ---- Small sub-components ----------------------------------------------
 
 function NotFoundView({ router }: { router: ReturnType<typeof useRouter> }) {
+  const { surface } = useAppTheme();
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: surface.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
       <GlassNavBar
         title={t('monitors.detail.notFound.title')}
         left={
           <Pressable onPress={() => router.back()} hitSlop={10}>
-            <ArrowLeft size={24} color={colors.surface.light.text} strokeWidth={1.5} />
+            <ArrowLeft size={24} color={surface.text} strokeWidth={1.5} />
           </Pressable>
         }
       />
       <SafeScrollView contentContainerStyle={{ padding: spacing[4] }}>
         <View style={styles.notFoundBody}>
-          <Text style={[typography.body, { color: colors.surface.light.textMuted }]}>
+          <Text style={[typography.body, { color: surface.textMuted }]}>
             {t('monitors.detail.notFound.body')}
           </Text>
         </View>
@@ -444,12 +470,13 @@ function NotFoundView({ router }: { router: ReturnType<typeof useRouter> }) {
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
+  const { surface } = useAppTheme();
   return (
-    <View style={styles.stat}>
-      <Text style={[typography.micro, { color: colors.surface.light.textMuted }]}>
+    <View style={[styles.stat, { backgroundColor: surface.sunken }]}>
+      <Text style={[typography.micro, { color: surface.textMuted }]}>
         {label.toUpperCase()}
       </Text>
-      <Text style={[typography.title, { color: colors.surface.light.text }]}>
+      <Text style={[typography.title, { color: surface.text }]}>
         {value}
       </Text>
     </View>
@@ -457,20 +484,21 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
+  const { surface } = useAppTheme();
   return (
     <Text
       style={[
         typography.micro,
-        { color: colors.surface.light.textMuted, paddingHorizontal: spacing[2] },
+        { color: surface.textMuted, paddingHorizontal: spacing[2] },
       ]}>
       {String(children).toUpperCase()}
     </Text>
   );
 }
 
-function renderTypeIcon(type: string) {
+function renderTypeIcon(type: string, brand: string) {
   const Icon = monitorTypeIcon(type as MonitorType);
-  return <Icon size={20} color={colors.brand[500]} strokeWidth={1.75} />;
+  return <Icon size={20} color={brand} strokeWidth={1.75} />;
 }
 
 function rangeKey(range: Range): '24h' | '7d' | '30d' {
@@ -480,12 +508,10 @@ function rangeKey(range: Range): '24h' | '7d' | '30d' {
 // ---- Styles ------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface.light.background },
+  container: { flex: 1 },
   headerCard: {
-    backgroundColor: colors.surface.light.elevated,
     borderRadius: semanticRadius.card,
     borderWidth: 0.5,
-    borderColor: colors.surface.light.border,
     padding: spacing[4],
     gap: spacing[4],
     marginTop: spacing[3],
@@ -501,7 +527,6 @@ const styles = StyleSheet.create({
   },
   stat: {
     flex: 1,
-    backgroundColor: colors.surface.light.sunken,
     borderRadius: 12,
     padding: spacing[3],
     gap: spacing[1],
@@ -513,7 +538,6 @@ const styles = StyleSheet.create({
   errorBox: {
     marginTop: spacing[2],
     padding: spacing[3],
-    backgroundColor: `${colors.status.down}1A`,
     borderRadius: 12,
   },
   section: {
@@ -524,14 +548,11 @@ const styles = StyleSheet.create({
     height: 120,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface.light.sunken,
     borderRadius: 12,
   },
   incidentList: {
-    backgroundColor: colors.surface.light.elevated,
     borderRadius: semanticRadius.card,
     borderWidth: 0.5,
-    borderColor: colors.surface.light.border,
     overflow: 'hidden',
   },
   incidentRow: {
@@ -540,8 +561,6 @@ const styles = StyleSheet.create({
     gap: spacing[3],
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
-    borderBottomWidth: 0.5,
-    borderBottomColor: colors.surface.light.border,
   },
   incidentDot: {
     width: 8,

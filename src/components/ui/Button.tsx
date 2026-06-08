@@ -15,6 +15,10 @@
  * - All: light haptic on press
  *
  * Loading state: shows ActivityIndicator and disables press.
+ *
+ * Theme handling: brand color and elevated surface come from
+ * `useAppTheme()` so secondary buttons read correctly in dark mode
+ * (elevated surface is dark, brand text is light, contrast AA).
  */
 
 import { Pressable, Text, ActivityIndicator, StyleSheet, View, Platform } from 'react-native';
@@ -25,7 +29,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
-import { colors, spacing, typography, semanticRadius } from '@/theme';
+import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -58,6 +62,7 @@ export function Button({
   haptic = true,
 }: ButtonProps) {
   const scale = useSharedValue(1);
+  const { surface, brand } = useAppTheme();
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -82,8 +87,37 @@ export function Button({
     onPress?.();
   };
 
+  // Variant tokens. We compute them per-render so dark mode swaps
+  // surfaces (secondary uses surface.elevated as bg) and brand color
+  // (ghost/secondary use brand as text).
+  const variantTokens = {
+    primary: {
+      bg: brand,
+      text: 'white',
+      border: 'transparent',
+      borderWidth: 0,
+    },
+    secondary: {
+      bg: surface.elevated,
+      text: brand,
+      border: brand,
+      borderWidth: 0.5,
+    },
+    ghost: {
+      bg: 'transparent',
+      text: brand,
+      border: 'transparent',
+      borderWidth: 0,
+    },
+    destructive: {
+      bg: colors.status.down,
+      text: 'white',
+      border: 'transparent',
+      borderWidth: 0,
+    },
+  }[variant];
+
   const sizeStyles = SIZE_STYLES[size];
-  const variantStyles = VARIANT_STYLES[variant];
 
   return (
     <AnimatedPressable
@@ -95,16 +129,16 @@ export function Button({
         styles.base,
         sizeStyles.container,
         {
-          backgroundColor: variantStyles.bg,
-          borderColor: variantStyles.border,
-          borderWidth: variantStyles.borderWidth,
+          backgroundColor: variantTokens.bg,
+          borderColor: variantTokens.border,
+          borderWidth: variantTokens.borderWidth,
           opacity: disabled ? 0.5 : 1,
         },
         fullWidth && { alignSelf: 'stretch' },
         animatedStyle,
       ]}>
       {loading ? (
-        <ActivityIndicator size="small" color={variantStyles.text} />
+        <ActivityIndicator size="small" color={variantTokens.text} />
       ) : (
         <View style={[styles.content, sizeStyles.content]}>
           {icon && iconPosition === 'left' && (
@@ -114,7 +148,7 @@ export function Button({
             style={[
               styles.label,
               sizeStyles.text,
-              { color: variantStyles.text },
+              { color: variantTokens.text },
             ]}
             numberOfLines={1}>
             {label}
@@ -163,31 +197,4 @@ const SIZE_STYLES = {
     text: { fontSize: 17 },
     iconGap: { marginRight: 0 },
   }),
-};
-
-const VARIANT_STYLES = {
-  primary: {
-    bg: colors.brand[500],
-    text: 'white',
-    border: 'transparent',
-    borderWidth: 0,
-  },
-  secondary: {
-    bg: colors.surface.light.elevated,
-    text: colors.brand[500],
-    border: colors.brand[500],
-    borderWidth: 0.5,
-  },
-  ghost: {
-    bg: 'transparent',
-    text: colors.brand[500],
-    border: 'transparent',
-    borderWidth: 0,
-  },
-  destructive: {
-    bg: colors.status.down,
-    text: 'white',
-    border: 'transparent',
-    borderWidth: 0,
-  },
 };

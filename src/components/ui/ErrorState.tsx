@@ -6,11 +6,13 @@
  * - title: short headline
  * - body: explanation
  * - onRetry: optional callback to retry
+ *
+ * Theme: icon in status.down, tinted box uses statusTints.down.bg.
  */
 
 import { View, Text, StyleSheet } from 'react-native';
 import { Button } from './Button';
-import { colors, spacing, typography } from '@/theme';
+import { colors, spacing, typography, useAppTheme } from '@/theme';
 import { AlertCircle, type LucideIcon } from 'lucide-react-native';
 
 interface ErrorStateProps {
@@ -28,14 +30,23 @@ export function ErrorState({
   onRetry,
   retryLabel = 'Retry',
 }: ErrorStateProps) {
+  const { surface, statusTints } = useAppTheme();
+
   return (
     <View style={styles.container}>
-      <View style={styles.iconBox}>
+      <View style={[styles.iconBox, { backgroundColor: statusTints.down.bg }]}>
         <Icon size={32} color={colors.status.down} strokeWidth={1.5} />
       </View>
-      <Text style={[styles.title, typography.heading]}>{title}</Text>
+      <Text style={[styles.title, typography.heading, { color: surface.text }]}>
+        {title}
+      </Text>
       {body && (
-        <Text style={[styles.body, typography.body, { color: colors.surface.light.textMuted }]}>
+        <Text
+          style={[
+            styles.body,
+            typography.body,
+            { color: surface.textMuted },
+          ]}>
           {body}
         </Text>
       )}
@@ -60,13 +71,11 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 20,
-    backgroundColor: `${colors.status.down}14`,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing[2],
   },
   title: {
-    color: colors.surface.light.text,
     textAlign: 'center',
   },
   body: {

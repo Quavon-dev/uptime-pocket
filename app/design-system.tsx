@@ -10,11 +10,17 @@
  * The fixtures here are tiny inline examples used to demonstrate
  * the components in context. Real app data flows from the Kuma
  * connection manager.
+ *
+ * Theme: This screen is the ONE place that ignores the user's
+ * theme preference and shows both light + dark variants side by
+ * side. The variant toggle overrides `useAppTheme()` for the
+ * showcase only. In real screens the hook drives the palette.
  */
 
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
+import { Server, ServerOff } from 'lucide-react-native';
 
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import { GlassSurface } from '@/components/glass/GlassSurface';
@@ -26,8 +32,6 @@ import {
   Tag,
   EmptyState,
   ErrorState,
-  Server,
-  ServerOff,
   SafeScrollView,
 } from '@/components/ui';
 import { MonitorCard, MonitorRow } from '@/components/monitor';
@@ -133,7 +137,11 @@ export default function DesignSystemScreen() {
   const [variant, setVariant] = useState<ThemeVariant>('light');
   const isDark = variant === 'dark';
 
+  // The design system intentionally overrides the user's preference to
+  // show both variants. In real screens, useAppTheme() drives the palette.
   const themeColors = isDark ? colors.surface.dark : colors.surface.light;
+  const brand = isDark ? colors.brand[400] : colors.brand[500];
+  const brandFill = isDark ? `${colors.brand[400]}1A` : `${colors.brand[500]}1A`;
   const chartData = generateResponseTimeData(40);
   const uptimeData = generateUptimeData(100);
 
@@ -142,15 +150,15 @@ export default function DesignSystemScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <GlassNavBar
         title="Design System"
-        subtitle="v0.2.0"
+        subtitle="v0.3.0"
         right={
           <Pressable
             onPress={() => setVariant(isDark ? 'light' : 'dark')}
             style={({ pressed }) => [
               styles.variantChip,
-              { backgroundColor: isDark ? `${colors.brand[400]}1A` : `${colors.brand[500]}14`, opacity: pressed ? 0.7 : 1 },
+              { backgroundColor: brandFill, opacity: pressed ? 0.7 : 1 },
             ]}>
-            <Text style={[typography.captionEmphasized, { color: isDark ? colors.brand[400] : colors.brand[500] }]}>
+            <Text style={[typography.captionEmphasized, { color: brand }]}>
               {isDark ? 'Dark' : 'Light'}
             </Text>
           </Pressable>
@@ -330,13 +338,13 @@ export default function DesignSystemScreen() {
           <Text style={[typography.caption, { color: themeColors.textMuted, marginBottom: spacing[2] }]}>
             Brand (parked — emerald) + semantic status colors
           </Text>
-          <ColorRow label="brand.500" color={colors.brand[500]} hex="#10B981" />
-          <ColorRow label="brand.600" color={colors.brand[600]} hex="#059669" />
-          <ColorRow label="status.up" color={colors.status.up} hex="#10B981" />
-          <ColorRow label="status.down" color={colors.status.down} hex="#EF4444" />
-          <ColorRow label="status.pending" color={colors.status.pending} hex="#F59E0B" />
-          <ColorRow label="status.maintenance" color={colors.status.maintenance} hex="#3B82F6" />
-          <ColorRow label="status.paused" color={colors.status.paused} hex="#6B7280" />
+          <ColorRow label="brand.500" color={colors.brand[500]} hex="#10B981" themeColors={themeColors} />
+          <ColorRow label="brand.600" color={colors.brand[600]} hex="#059669" themeColors={themeColors} />
+          <ColorRow label="status.up" color={colors.status.up} hex="#10B981" themeColors={themeColors} />
+          <ColorRow label="status.down" color={colors.status.down} hex="#EF4444" themeColors={themeColors} />
+          <ColorRow label="status.pending" color={colors.status.pending} hex="#F59E0B" themeColors={themeColors} />
+          <ColorRow label="status.maintenance" color={colors.status.maintenance} hex="#3B82F6" themeColors={themeColors} />
+          <ColorRow label="status.paused" color={colors.status.paused} hex="#6B7280" themeColors={themeColors} />
         </Section>
       </SafeScrollView>
     </View>
@@ -362,7 +370,7 @@ function Section({
   );
 }
 
-function ColorRow({ label, color, hex }: { label: string; color: string; hex: string }) {
+function ColorRow({ label, color, hex, themeColors }: { label: string; color: string; hex: string; themeColors: typeof colors.surface.light | typeof colors.surface.dark }) {
   return (
     <View
       style={{
@@ -378,14 +386,14 @@ function ColorRow({ label, color, hex }: { label: string; color: string; hex: st
           borderRadius: 8,
           backgroundColor: color,
           borderWidth: 0.5,
-          borderColor: 'rgba(0,0,0,0.05)',
+          borderColor: themeColors.border,
         }}
       />
       <View style={{ flex: 1 }}>
-        <Text style={[typography.captionEmphasized, { color: colors.surface.light.text }]}>
+        <Text style={[typography.captionEmphasized, { color: themeColors.text }]}>
           {label}
         </Text>
-        <Text style={[typography.mono, { color: colors.gray[500], fontSize: 11 }]}>{hex}</Text>
+        <Text style={[typography.mono, { color: themeColors.textMuted, fontSize: 11 }]}>{hex}</Text>
       </View>
     </View>
   );
@@ -408,6 +416,8 @@ function SegmentedControlExample({
     <SegmentedControl options={options as any} value={value} onChange={setValue as any} size={size} />
   );
 }
+
+// ---- End of file ----
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

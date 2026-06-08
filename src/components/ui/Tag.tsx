@@ -4,10 +4,13 @@
  * Used to show monitor tags from Kuma (or local user tags).
  * Renders with a tinted background and a small leading dot
  * if a color is provided.
+ *
+ * Theme: sunken background, text in surface.text. The colored dot
+ * uses the tag's own color (semantic) and is unaffected by theme.
  */
 
 import { View, Text, StyleSheet } from 'react-native';
-import { spacing, typography, semanticRadius, colors } from '@/theme';
+import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import type { Tag as TagType } from '@/domain/models';
 
 interface TagProps {
@@ -18,6 +21,7 @@ interface TagProps {
 }
 
 export function Tag({ tag, size = 'sm', showDot = true }: TagProps) {
+  const { surface } = useAppTheme();
   const color = tag.color || '#6B7280';
   const fontSize = size === 'sm' ? 11 : 12;
   const padH = size === 'sm' ? spacing[2] : spacing[3];
@@ -31,6 +35,7 @@ export function Tag({ tag, size = 'sm', showDot = true }: TagProps) {
         {
           paddingHorizontal: padH,
           paddingVertical: padV,
+          backgroundColor: surface.sunken,
         },
       ]}>
       {showDot && (
@@ -44,7 +49,7 @@ export function Tag({ tag, size = 'sm', showDot = true }: TagProps) {
       <Text
         style={[
           styles.label,
-          { fontSize, color: colors.surface.light.text },
+          { fontSize, color: surface.text },
         ]}
         numberOfLines={1}>
         {tag.name}
@@ -58,7 +63,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: semanticRadius.pill,
-    backgroundColor: colors.surface.light.sunken,
     alignSelf: 'flex-start',
     gap: 5,
   },

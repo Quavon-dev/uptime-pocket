@@ -11,20 +11,23 @@
  * - Incidents: history
  * - Servers: server management
  * - Settings: app preferences
+ *
+ * Theme: tab bar uses surface.elevated as bg and surface.border for
+ * the top hairline. Active tint is the brand; inactive is gray.500
+ * in light mode and gray.400 in dark mode (slightly lighter so the
+ * unselected state still reads against a dark bar).
  */
 
 import { Tabs } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useColorScheme } from 'react-native';
-import { colors } from '@/theme';
+import { colors, useAppTheme } from '@/theme';
 import { t } from '@/i18n';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { surface, isDark } = useAppTheme();
 
   const activeTint = isDark ? colors.brand[400] : colors.brand[600];
-  const inactiveTint = isDark ? colors.gray[500] : colors.gray[400];
+  const inactiveTint = isDark ? colors.gray[400] : colors.gray[500];
 
   return (
     <Tabs
@@ -33,8 +36,8 @@ export default function TabLayout() {
         tabBarInactiveTintColor: inactiveTint,
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: isDark ? colors.surface.dark.elevated : colors.surface.light.elevated,
-          borderTopColor: isDark ? colors.surface.dark.border : colors.surface.light.border,
+          backgroundColor: surface.elevated,
+          borderTopColor: surface.border,
         },
       }}>
       <Tabs.Screen

@@ -204,7 +204,10 @@
       "title": "Theme",
       "system": "System",
       "light": "Light",
-      "dark": "Dark"
+      "dark": "Dark",
+      "descriptionSystem": "Follows your iOS or Android system setting.",
+      "descriptionLight": "Always uses the light palette.",
+      "descriptionDark": "Always uses the dark palette."
     },
     "accent": "Accent color",
     "biometric": {

@@ -9,10 +9,13 @@
  *   │       type • url                                 │
  *   │                              99.9%    124ms      │
  *   └──────────────────────────────────────────────────┘
+ *
+ * Theme: row uses surface.elevated/border; text in surface.text
+ * and surface.textMuted; icon box uses status-tinted bg.
  */
 
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { colors, spacing, typography, semanticRadius } from '@/theme';
+import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { HeartbeatPulse } from '@/components/status';
 import { monitorTypeIcon } from '@/components/ui/icons';
 import { statusColor } from '@/domain/status';
@@ -20,7 +23,7 @@ import {
   formatResponseTime,
   formatUptime,
 } from '@/domain/format';
-import type { Monitor } from '@/domain/models';
+import type { Monitor, MonitorStatus } from '@/domain/models';
 
 interface MonitorRowProps {
   monitor: Monitor;
@@ -37,36 +40,42 @@ export function MonitorRow({
   showUrl = true,
   showStats = true,
 }: MonitorRowProps) {
+  const { surface, statusTints } = useAppTheme();
   const TypeIcon = monitorTypeIcon(monitor.type);
-  const color = statusColor(monitor.status);
+  const s = statusColor(monitor.status);
   const isActive = monitor.status !== 'paused';
+  const iconBg = tintForStatus(monitor.status, statusTints);
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.row,
-        { opacity: pressed ? 0.85 : 1 },
+        {
+          backgroundColor: surface.elevated,
+          borderColor: surface.border,
+          opacity: pressed ? 0.85 : 1,
+        },
       ]}>
       {/* Left: status dot / icon */}
       <View style={styles.left}>
         <View
           style={[
             styles.iconBox,
-            { backgroundColor: `${color}14` },
+            { backgroundColor: iconBg },
           ]}>
-          <TypeIcon size={16} color={color} strokeWidth={1.75} />
+          <TypeIcon size={16} color={s} strokeWidth={1.75} />
         </View>
-        <HeartbeatPulse color={color} size={6} active={isActive} />
+        <HeartbeatPulse color={s} size={6} active={isActive} />
       </View>
 
       {/* Middle: name + url */}
       <View style={styles.middle}>
-        <Text style={styles.name} numberOfLines={1}>
+        <Text style={[styles.name, { color: surface.text }]} numberOfLines={1}>
           {monitor.name}
         </Text>
         {showUrl && (monitor.url || monitor.hostname) && (
-          <Text style={styles.subtitle} numberOfLines={1}>
+          <Text style={[styles.subtitle, { color: surface.textMuted }]} numberOfLines={1}>
             {monitor.url || monitor.hostname}
           </Text>
         )}
@@ -75,10 +84,10 @@ export function MonitorRow({
       {/* Right: stats */}
       {showStats && (
         <View style={styles.right}>
-          <Text style={[styles.stat, { color }]}>
+          <Text style={[styles.stat, { color: s }]}>
             {formatUptime(monitor.uptime24h)}
           </Text>
-          <Text style={styles.statSecondary}>
+          <Text style={[styles.statSecondary, { color: surface.textMuted }]}>
             {formatResponseTime(monitor.responseTime)}
           </Text>
         </View>
@@ -87,16 +96,27 @@ export function MonitorRow({
   );
 }
 
+function tintForStatus(
+  status: MonitorStatus,
+  tints: ReturnType<typeof useAppTheme>['statusTints']
+): string {
+  switch (status) {
+    case 'up': return tints.up.bg;
+    case 'down': return tints.down.bg;
+    case 'pending': return tints.pending.bg;
+    case 'maintenance': return tints.maintenance.bg;
+    case 'paused': return tints.paused.bg;
+  }
+}
+
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
-    backgroundColor: colors.surface.light.elevated,
     borderRadius: semanticRadius.card,
     borderWidth: 0.5,
-    borderColor: colors.surface.light.border,
     gap: spacing[3],
   },
   left: {
@@ -117,12 +137,10 @@ const styles = StyleSheet.create({
   },
   name: {
     ...typography.bodyEmphasized,
-    color: colors.surface.light.text,
     fontSize: 14,
   },
   subtitle: {
     ...typography.caption,
-    color: colors.surface.light.textMuted,
     fontSize: 11,
   },
   right: {
@@ -135,7 +153,6 @@ const styles = StyleSheet.create({
   },
   statSecondary: {
     ...typography.caption,
-    color: colors.surface.light.textMuted,
     fontSize: 11,
   },
 });

@@ -12,12 +12,19 @@
  *   - 'none'   — no glass effect (just a tinted view)
  *
  * We map our 'thin' / 'thick' / 'extraThick' to BlurView intensities.
+ *
+ * Theme handling
+ * --------------
+ * The iOS glass effects (Liquid Glass + BlurView with
+ * `systemUltraThinMaterial` tint) auto-adapt to light/dark by
+ * themselves. The Android fallback uses `useAppTheme()` to pick the
+ * right elevated surface and border colors.
  */
 
 import { Platform, StyleSheet, View, type ViewProps } from 'react-native';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { BlurView } from 'expo-blur';
-import { colors } from '@/theme';
+import { colors, useAppTheme } from '@/theme';
 
 export type GlassVariant = 'thin' | 'regular' | 'thick' | 'extraThick' | 'clear';
 export type GlassTint = 'default' | 'brand' | 'none';
@@ -42,9 +49,11 @@ export function GlassSurface({
   children,
   ...rest
 }: GlassSurfaceProps) {
+  const { surface, isDark, brand } = useAppTheme();
+
   const tintColor =
     tint === 'brand'
-      ? colors.brand[500]
+      ? brand
       : tint === 'none'
       ? 'transparent'
       : undefined;
@@ -73,6 +82,7 @@ export function GlassSurface({
       variant === 'thick' ? 80 :
       variant === 'extraThick' ? 100 :
       50;
+    // systemUltraThinMaterial auto-adapts to light/dark on iOS.
     return (
       <View style={[style, { borderRadius: radius, overflow: 'hidden' }]} {...rest}>
         <BlurView
@@ -93,16 +103,26 @@ export function GlassSurface({
     );
   }
 
-  // Android - subtle elevated surface (Material 3 expressive)
+  // Android - subtle elevated surface (Material 3 expressive), themed.
   return (
     <View
       style={[
         style,
         {
           borderRadius: radius,
-          backgroundColor: tint === 'brand' ? `${colors.brand[500]}1A` : colors.surface.light.elevated,
+          backgroundColor:
+            tint === 'brand' ? `${colors.brand[500]}1A` : surface.elevated,
           borderWidth: 0.5,
-          borderColor: colors.surface.light.border,
+          borderColor: surface.border,
+          // Subtle inner highlight at the top in dark mode so the
+          // surface reads as a separate plane from the page.
+          ...(isDark && {
+            shadowColor: '#000',
+            shadowOpacity: 0.4,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 4,
+          }),
         },
       ]}
       {...rest}>

@@ -7,11 +7,13 @@
  * Inputs: array of (timestamp, up: boolean) points.
  * The bar is divided into N segments (default 50) and each segment's
  * color is the dominant status in that window.
+ *
+ * Theme: empty-segments use surface.sunken; labels use surface.textMuted.
  */
 
 import { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, spacing, typography } from '@/theme';
+import { colors, spacing, typography, useAppTheme } from '@/theme';
 import type { UptimePoint } from '@/domain/models';
 import { statusColor } from '@/domain/status';
 
@@ -30,6 +32,8 @@ export function UptimeBar({
   height = 32,
   showLabel = true,
 }: UptimeBarProps) {
+  const { surface } = useAppTheme();
+
   const { bars, upPct } = useMemo(() => {
     if (data.length === 0) {
       return { bars: [] as { id: string; color: string; up: boolean }[], upPct: 0 };
@@ -45,7 +49,7 @@ export function UptimeBar({
       const slice = data.slice(start, end);
 
       if (slice.length === 0) {
-        bars.push({ id: `seg-${i}`, color: colors.surface.light.sunken, up: true });
+        bars.push({ id: `seg-${i}`, color: surface.sunken, up: true });
         continue;
       }
 
@@ -74,11 +78,11 @@ export function UptimeBar({
       : 0;
 
     return { bars, upPct };
-  }, [data, segments]);
+  }, [data, segments, surface.sunken]);
 
   return (
     <View style={styles.container}>
-      <View style={[styles.bar, { height }]}>
+      <View style={[styles.bar, { height, backgroundColor: surface.sunken }]}>
         {bars.map((b) => (
           <View
             key={b.id}
@@ -91,7 +95,7 @@ export function UptimeBar({
       </View>
       {showLabel && (
         <View style={styles.labelRow}>
-          <Text style={[typography.caption, { color: colors.surface.light.textMuted, fontSize: 11 }]}>
+          <Text style={[typography.caption, { color: surface.textMuted, fontSize: 11 }]}>
             Uptime
           </Text>
           <Text
@@ -115,7 +119,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 4,
     overflow: 'hidden',
-    backgroundColor: colors.surface.light.sunken,
     gap: 1,
   },
   segment: {

@@ -7,10 +7,13 @@
  * - Quick toggles
  *
  * States: unselected, selected, disabled
+ *
+ * Theme: unselected uses surface.elevated + border; selected uses
+ * the selected color (default = brand) as both bg and border.
  */
 
 import { Pressable, Text, StyleSheet } from 'react-native';
-import { colors, spacing, typography, semanticRadius } from '@/theme';
+import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import * as Haptics from 'expo-haptics';
 
 interface ChipProps {
@@ -29,7 +32,8 @@ export function Chip({
   disabled = false,
   selectedColor,
 }: ChipProps) {
-  const accent = selectedColor ?? colors.brand[500];
+  const { surface, brand } = useAppTheme();
+  const accent = selectedColor ?? brand;
 
   const handlePress = () => {
     Haptics.selectionAsync().catch(() => {});
@@ -43,15 +47,15 @@ export function Chip({
       style={({ pressed }) => [
         styles.base,
         {
-          backgroundColor: selected ? accent : colors.surface.light.elevated,
-          borderColor: selected ? accent : colors.surface.light.border,
+          backgroundColor: selected ? accent : surface.elevated,
+          borderColor: selected ? accent : surface.border,
           opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
         },
       ]}>
       <Text
         style={[
           styles.label,
-          { color: selected ? 'white' : colors.surface.light.text },
+          { color: selected ? 'white' : surface.text },
         ]}>
         {label}
       </Text>

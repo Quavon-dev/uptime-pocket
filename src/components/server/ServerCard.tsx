@@ -12,11 +12,14 @@
  * - Servers tab list
  * - Server switcher
  * - Active server header
+ *
+ * Theme: card uses surface.elevated/border. Active variant uses
+ * brand for border. Meta pills use surface.sunken.
  */
 
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Server, ServerOff, ChevronRight, Bell, BellOff } from 'lucide-react-native';
-import { colors, spacing, typography, semanticRadius } from '@/theme';
+import { Server, ServerOff, ChevronRight, Bell, BellRing, BellOff } from 'lucide-react-native';
+import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { HeartbeatPulse } from '@/components/status';
 import type { Server as ServerType } from '@/domain/models';
 import type { ConnectionStatus } from '@/data/store/monitors';
@@ -44,6 +47,8 @@ export function ServerCard({
   monitorCount = 0,
   connectionStatus,
 }: ServerCardProps) {
+  const { surface, brand, statusTints } = useAppTheme();
+
   // Map the live status to "is up". A server in `connecting` or
   // `reconnecting` is "in progress" — we still show a status icon
   // (pending color) so the user knows the app is trying.
@@ -51,66 +56,77 @@ export function ServerCard({
   const isPending =
     connectionStatus === 'connecting' || connectionStatus === 'reconnecting';
   const StatusIcon = isConnected || isPending ? Server : ServerOff;
-  const color = isConnected
+  const statusColor = isConnected
     ? colors.status.up
     : isPending
     ? colors.status.pending
     : colors.status.down;
+  const statusBg = isConnected
+    ? statusTints.up.bg
+    : isPending
+    ? statusTints.pending.bg
+    : statusTints.down.bg;
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        isActive && styles.cardActive,
-        { opacity: pressed ? 0.85 : 1 },
+        {
+          backgroundColor: surface.elevated,
+          borderColor: isActive ? brand : surface.border,
+          borderWidth: isActive ? 1.5 : 0.5,
+          opacity: pressed ? 0.85 : 1,
+        },
       ]}>
       <View style={styles.left}>
-        <View style={[styles.iconBox, { backgroundColor: `${color}14` }]}>
-          <StatusIcon size={18} color={color} strokeWidth={1.75} />
+        <View style={[styles.iconBox, { backgroundColor: statusBg }]}>
+          <StatusIcon size={18} color={statusColor} strokeWidth={1.75} />
         </View>
         {(isConnected || isPending) && (
           <View style={styles.pulseContainer}>
-            <HeartbeatPulse color={color} size={6} active={isConnected} />
+            <HeartbeatPulse color={statusColor} size={6} active={isConnected} />
           </View>
         )}
       </View>
 
       <View style={styles.middle}>
         <View style={styles.titleRow}>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text style={[styles.name, { color: surface.text }]} numberOfLines={1}>
             {server.name}
           </Text>
           {isActive && (
-            <View style={styles.activeBadge}>
+            <View style={[styles.activeBadge, { backgroundColor: brand }]}>
               <Text style={styles.activeBadgeText}>Active</Text>
             </View>
           )}
         </View>
-        <Text style={styles.url} numberOfLines={1}>
+        <Text style={[styles.url, { color: surface.textMuted }]} numberOfLines={1}>
           {server.url}
         </Text>
         {showDetails && (
           <View style={styles.meta}>
             {server.kumaVersion && (
-              <View style={styles.metaItem}>
-                <Text style={styles.metaText}>v{server.kumaVersion}</Text>
+              <View style={[styles.metaItem, { backgroundColor: surface.sunken }]}>
+                <Text style={[styles.metaText, { color: surface.textMuted }]}>
+                  v{server.kumaVersion}
+                </Text>
               </View>
             )}
-            <View style={styles.metaItem}>
-              <Text style={styles.metaText}>
+            <View style={[styles.metaItem, { backgroundColor: surface.sunken }]}>
+              <Text style={[styles.metaText, { color: surface.textMuted }]}>
                 {monitorCount} {monitorCount === 1 ? 'monitor' : 'monitors'}
               </Text>
             </View>
-            <View style={styles.metaItem}>
+            <View style={[styles.metaItem, { backgroundColor: surface.sunken }]}>
               {server.notificationMode === 'relay' ? (
-                <Bell size={10} color={colors.surface.light.textMuted} strokeWidth={2} />
+                <BellRing size={10} color={surface.textMuted} strokeWidth={2} />
               ) : server.notificationMode === 'direct' ? (
-                <Bell size={10} color={colors.surface.light.textMuted} strokeWidth={2} />
+                <Bell size={10} color={surface.textMuted} strokeWidth={2} />
               ) : (
-                <BellOff size={10} color={colors.surface.light.textMuted} strokeWidth={2} />
+                <BellOff size={10} color={surface.textMuted} strokeWidth={2} />
               )}
-              <Text style={styles.metaText}>
+              <Text style={[styles.metaText, { color: surface.textMuted }]}>
                 {server.notificationMode === 'relay'
                   ? 'Push'
                   : server.notificationMode === 'direct'
@@ -123,7 +139,7 @@ export function ServerCard({
       </View>
 
       {showChevron && (
-        <ChevronRight size={20} color={colors.surface.light.textMuted} strokeWidth={1.5} />
+        <ChevronRight size={20} color={surface.textMuted} strokeWidth={1.5} />
       )}
     </Pressable>
   );
@@ -134,15 +150,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing[4],
-    backgroundColor: colors.surface.light.elevated,
     borderRadius: semanticRadius.card,
-    borderWidth: 0.5,
-    borderColor: colors.surface.light.border,
     gap: spacing[3],
-  },
-  cardActive: {
-    borderColor: colors.brand[500],
-    borderWidth: 1.5,
   },
   left: {
     alignItems: 'center',
@@ -172,13 +181,11 @@ const styles = StyleSheet.create({
   },
   name: {
     ...typography.bodyEmphasized,
-    color: colors.surface.light.text,
     fontSize: 15,
     flexShrink: 1,
   },
   url: {
     ...typography.caption,
-    color: colors.surface.light.textMuted,
     fontSize: 12,
   },
   meta: {
@@ -193,17 +200,14 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: spacing[2],
     paddingVertical: 3,
-    backgroundColor: colors.surface.light.sunken,
     borderRadius: semanticRadius.sm,
   },
   metaText: {
     ...typography.micro,
-    color: colors.surface.light.textMuted,
   },
   activeBadge: {
     paddingHorizontal: spacing[2],
     paddingVertical: 2,
-    backgroundColor: colors.brand[500],
     borderRadius: semanticRadius.sm,
   },
   activeBadgeText: {

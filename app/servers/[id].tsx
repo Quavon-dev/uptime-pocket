@@ -12,6 +12,10 @@
  * Actions:
  * - Edit → re-uses the add form in "edit" mode (future)
  * - Delete → confirm dialog → removes metadata + credentials
+ *
+ * Theme: page bg = surface.background. Status banner uses
+ * statusTints.{up,pending,down}. Section cards use surface.elevated
+ * with surface.border.
  */
 
 import { useState } from 'react';
@@ -29,18 +33,21 @@ import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import { SafeScrollView } from '@/components/ui';
 import { useServers } from '@/data/store/servers';
 import { useMonitors } from '@/data/store/monitors';
-import { colors, spacing, typography, semanticRadius } from '@/theme';
+import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { t, tn } from '@/i18n';
 
 const MIN_KUMA_VERSION = '2.0.0';
 
+type Status = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error';
+
 export default function ServerDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { surface, brand, statusTints } = useAppTheme();
 
   const server = useServers((s) => s.servers.find((srv) => srv.id === id));
   const removeServer = useServers((s) => s.removeServer);
-  const status = useMonitors((s) => (id ? s.statusByServer[id] : 'idle') ?? 'idle');
+  const status: Status = useMonitors((s) => (id ? s.statusByServer[id] : 'idle') ?? 'idle') as Status;
   const error = useMonitors((s) => (id ? s.errorByServer[id] : null) ?? null);
   const monitorList = useMonitors((s) => (id ? s.monitorsByServer[id] : undefined));
   const monitorCount = monitorList?.length ?? 0;
@@ -51,18 +58,18 @@ export default function ServerDetailScreen() {
 
   if (!server) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: surface.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <GlassNavBar
           title={t('servers.detail.notFound.title')}
           left={
             <Pressable onPress={() => router.back()} hitSlop={10}>
-              <ArrowLeft size={24} color={colors.surface.light.text} strokeWidth={1.5} />
+              <ArrowLeft size={24} color={surface.text} strokeWidth={1.5} />
             </Pressable>
           }
         />
         <SafeScrollView contentContainerStyle={{ padding: spacing[4] }}>
-          <Text style={[typography.body, { color: colors.surface.light.textMuted }]}>
+          <Text style={[typography.body, { color: surface.textMuted }]}>
             {t('servers.detail.notFound.body')}
           </Text>
         </SafeScrollView>
@@ -97,20 +104,20 @@ export default function ServerDetailScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: surface.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
       <GlassNavBar
         title={server.name}
         left={
           <Pressable onPress={() => router.back()} hitSlop={10}>
-            <ArrowLeft size={24} color={colors.surface.light.text} strokeWidth={1.5} />
+            <ArrowLeft size={24} color={surface.text} strokeWidth={1.5} />
           </Pressable>
         }
         right={
           <Pressable onPress={handleDelete} hitSlop={10} disabled={deleting}>
             <Trash2
               size={22}
-              color={deleting ? colors.surface.light.textMuted : colors.status.down}
+              color={deleting ? surface.textMuted : colors.status.down}
               strokeWidth={1.5}
             />
           </Pressable>
@@ -123,7 +130,7 @@ export default function ServerDetailScreen() {
           gap: spacing[4],
         }}>
         {/* Status banner */}
-        <View style={[styles.banner, bannerStyle(status)]}>
+        <View style={[styles.banner, bannerStyle(status, statusTints)]}>
           <CircleDot
             size={14}
             color={statusColor(status)}
@@ -131,7 +138,7 @@ export default function ServerDetailScreen() {
             strokeWidth={0}
           />
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={[typography.bodyEmphasized, { color: colors.surface.light.text }]}>
+            <Text style={[typography.bodyEmphasized, { color: surface.text }]}>
               {t(`servers.detail.status.${status}`)}
             </Text>
             {error && status === 'error' && (
@@ -144,13 +151,20 @@ export default function ServerDetailScreen() {
 
         {/* Outdated Kuma warning */}
         {isOutdated && (
-          <View style={styles.warningBox}>
+          <View
+            style={[
+              styles.warningBox,
+              {
+                backgroundColor: statusTints.pending.bg,
+                borderColor: statusTints.pending.border,
+              },
+            ]}>
             <AlertTriangle size={18} color={colors.status.pending} strokeWidth={1.75} />
             <View style={{ flex: 1, gap: 2 }}>
-              <Text style={[typography.bodyEmphasized, { color: colors.surface.light.text }]}>
+              <Text style={[typography.bodyEmphasized, { color: surface.text }]}>
                 {t('servers.detail.outdated.title')}
               </Text>
-              <Text style={[typography.caption, { color: colors.surface.light.textMuted }]}>
+              <Text style={[typography.caption, { color: surface.textMuted }]}>
                 {tn('servers.detail.outdated.body', {
                   version: server.kumaVersion ?? '',
                   min: MIN_KUMA_VERSION,
@@ -217,9 +231,12 @@ export default function ServerDetailScreen() {
           onPress={() => {
             void Linking.openURL(server.url);
           }}
-          style={({ pressed }) => [styles.openBtn, { opacity: pressed ? 0.85 : 1 }]}>
-          <ExternalLink size={18} color={colors.brand[500]} strokeWidth={1.75} />
-          <Text style={[typography.bodyEmphasized, { color: colors.brand[500] }]}>
+          style={({ pressed }) => [
+            styles.openBtn,
+            { borderColor: brand, opacity: pressed ? 0.85 : 1 },
+          ]}>
+          <ExternalLink size={18} color={brand} strokeWidth={1.75} />
+          <Text style={[typography.bodyEmphasized, { color: brand }]}>
             {t('servers.detail.openInKuma')}
           </Text>
         </Pressable>
@@ -229,21 +246,22 @@ export default function ServerDetailScreen() {
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const { surface } = useAppTheme();
   return (
     <View style={{ gap: spacing[2] }}>
       <Text
         style={[
           typography.micro,
-          { color: colors.surface.light.textMuted, paddingHorizontal: spacing[2] },
+          { color: surface.textMuted, paddingHorizontal: spacing[2] },
         ]}>
         {title.toUpperCase()}
       </Text>
       <View
         style={{
-          backgroundColor: colors.surface.light.elevated,
+          backgroundColor: surface.elevated,
           borderRadius: semanticRadius.card,
           borderWidth: 0.5,
-          borderColor: colors.surface.light.border,
+          borderColor: surface.border,
           overflow: 'hidden',
         }}>
         {children}
@@ -253,6 +271,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function Row({ label, value }: { label: string; value: string }) {
+  const { surface } = useAppTheme();
   return (
     <View
       style={{
@@ -262,13 +281,13 @@ function Row({ label, value }: { label: string; value: string }) {
         paddingHorizontal: spacing[4],
         paddingVertical: spacing[3],
         borderBottomWidth: 0.5,
-        borderBottomColor: colors.surface.light.border,
+        borderBottomColor: surface.border,
       }}>
-      <Text style={[typography.body, { color: colors.surface.light.textMuted }]}>
+      <Text style={[typography.body, { color: surface.textMuted }]}>
         {label}
       </Text>
       <Text
-        style={[typography.callout, { color: colors.surface.light.text, maxWidth: '60%' }]}
+        style={[typography.callout, { color: surface.text, maxWidth: '60%' }]}
         numberOfLines={2}>
         {value}
       </Text>
@@ -276,21 +295,24 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-function bannerStyle(status: string) {
+function bannerStyle(
+  status: Status,
+  tints: ReturnType<typeof useAppTheme>['statusTints']
+) {
   switch (status) {
     case 'connected':
-      return { borderColor: `${colors.status.up}40`, backgroundColor: `${colors.status.up}14` };
+      return { borderColor: tints.up.border, backgroundColor: tints.up.bg };
     case 'reconnecting':
     case 'connecting':
-      return { borderColor: `${colors.status.pending}40`, backgroundColor: `${colors.status.pending}14` };
+      return { borderColor: tints.pending.border, backgroundColor: tints.pending.bg };
     case 'error':
-      return { borderColor: `${colors.status.down}40`, backgroundColor: `${colors.status.down}14` };
+      return { borderColor: tints.down.border, backgroundColor: tints.down.bg };
     default:
-      return { borderColor: colors.surface.light.border, backgroundColor: colors.surface.light.elevated };
+      return { borderColor: tints.paused.border, backgroundColor: 'transparent' };
   }
 }
 
-function statusColor(status: string): string {
+function statusColor(status: Status): string {
   switch (status) {
     case 'connected':
       return colors.status.up;
@@ -317,7 +339,7 @@ function isOlderVersion(version: string, min: string): boolean {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface.light.background },
+  container: { flex: 1 },
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -332,9 +354,7 @@ const styles = StyleSheet.create({
     gap: spacing[3],
     padding: spacing[3],
     borderRadius: semanticRadius.card,
-    backgroundColor: `${colors.status.pending}1A`,
     borderWidth: 1,
-    borderColor: `${colors.status.pending}40`,
   },
   openBtn: {
     flexDirection: 'row',
@@ -344,6 +364,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[3],
     borderRadius: semanticRadius.button,
     borderWidth: 1,
-    borderColor: colors.brand[500],
   },
 });

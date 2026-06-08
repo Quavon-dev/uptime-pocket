@@ -18,10 +18,14 @@
  *   │                                       │
  *   │  Last check 2m ago                    │
  *   └──────────────────────────────────────┘
+ *
+ * Theme: card uses surface.elevated/border. Stat tiles use
+ * surface.sunken. Stat values use surface.text (or status color for
+ * the uptime one).
  */
 
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { colors, spacing, typography, semanticRadius } from '@/theme';
+import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { StatusPill, HeartbeatPulse } from '@/components/status';
 import { monitorTypeIcon } from '@/components/ui/icons';
 import { statusColor } from '@/domain/status';
@@ -30,7 +34,7 @@ import {
   formatUptime,
   formatRelativeTime,
 } from '@/domain/format';
-import type { Monitor } from '@/domain/models';
+import type { Monitor, MonitorStatus } from '@/domain/models';
 
 interface MonitorCardProps {
   monitor: Monitor;
@@ -50,10 +54,13 @@ export function MonitorCard({
   showLastCheck = true,
   compact = false,
 }: MonitorCardProps) {
+  const { surface, statusTints } = useAppTheme();
   const TypeIcon = monitorTypeIcon(monitor.type);
   const pad = compact ? spacing[3] : spacing[4];
   const statSize = compact ? 14 : 16;
   const statLabelSize = compact ? 10 : 11;
+  const s = statusColor(monitor.status);
+  const iconBg = tintForStatus(monitor.status, statusTints);
 
   return (
     <Pressable
@@ -62,6 +69,8 @@ export function MonitorCard({
         styles.card,
         {
           padding: pad,
+          backgroundColor: surface.elevated,
+          borderColor: surface.border,
           opacity: pressed ? 0.85 : 1,
         },
       ]}>
@@ -72,23 +81,23 @@ export function MonitorCard({
             style={[
               styles.iconBox,
               {
-                backgroundColor: `${statusColor(monitor.status)}14`,
+                backgroundColor: iconBg,
                 width: compact ? 32 : 36,
                 height: compact ? 32 : 36,
               },
             ]}>
             <TypeIcon
               size={compact ? 16 : 18}
-              color={statusColor(monitor.status)}
+              color={s}
               strokeWidth={1.75}
             />
           </View>
           <View style={styles.titleCol}>
-            <Text style={[styles.name, compact && { fontSize: 14 }]} numberOfLines={1}>
+            <Text style={[styles.name, compact && { fontSize: 14 }, { color: surface.text }]} numberOfLines={1}>
               {monitor.name}
             </Text>
             {showUrl && (monitor.url || monitor.hostname) && (
-              <Text style={[styles.subtitle, compact && { fontSize: 11 }]} numberOfLines={1}>
+              <Text style={[styles.subtitle, compact && { fontSize: 11 }, { color: surface.textMuted }]} numberOfLines={1}>
                 {monitor.url || monitor.hostname}
               </Text>
             )}
@@ -102,23 +111,29 @@ export function MonitorCard({
         <Stat
           label="Uptime"
           value={formatUptime(monitor.uptime24h)}
-          color={statusColor(monitor.status)}
+          color={s}
           valueSize={statSize}
           labelSize={statLabelSize}
+          labelColor={surface.textMuted}
+          tileBg={surface.sunken}
         />
         <Stat
           label="Response"
           value={formatResponseTime(monitor.responseTime)}
-          color={colors.surface.light.text}
+          color={surface.text}
           valueSize={statSize}
           labelSize={statLabelSize}
+          labelColor={surface.textMuted}
+          tileBg={surface.sunken}
         />
         <Stat
           label="Type"
           value={monitor.type}
-          color={colors.surface.light.textMuted}
+          color={surface.textMuted}
           valueSize={statSize}
           labelSize={statLabelSize}
+          labelColor={surface.textMuted}
+          tileBg={surface.sunken}
         />
       </View>
 
@@ -126,11 +141,11 @@ export function MonitorCard({
       {showLastCheck && (
         <View style={styles.footer}>
           <HeartbeatPulse
-            color={statusColor(monitor.status)}
+            color={s}
             size={compact ? 6 : 8}
             active={monitor.status !== 'paused'}
           />
-          <Text style={[styles.lastCheck, compact && { fontSize: 11 }]}>
+          <Text style={[styles.lastCheck, compact && { fontSize: 11 }, { color: surface.textMuted }]}>
             {formatRelativeTime(monitor.lastCheckAt)}
           </Text>
         </View>
@@ -145,19 +160,23 @@ function Stat({
   color,
   valueSize,
   labelSize,
+  labelColor,
+  tileBg,
 }: {
   label: string;
   value: string;
   color: string;
   valueSize: number;
   labelSize: number;
+  labelColor: string;
+  tileBg: string;
 }) {
   return (
-    <View style={styles.stat}>
+    <View style={[styles.stat, { backgroundColor: tileBg }]}>
       <Text
         style={[
           typography.caption,
-          { color: colors.surface.light.textMuted, fontSize: labelSize, textTransform: 'uppercase', letterSpacing: 0.4 },
+          { color: labelColor, fontSize: labelSize, textTransform: 'uppercase', letterSpacing: 0.4 },
         ]}>
         {label}
       </Text>
@@ -173,14 +192,23 @@ function Stat({
   );
 }
 
-// Local import to avoid a circular dep with status.ts
+function tintForStatus(
+  status: MonitorStatus,
+  tints: ReturnType<typeof useAppTheme>['statusTints']
+): string {
+  switch (status) {
+    case 'up': return tints.up.bg;
+    case 'down': return tints.down.bg;
+    case 'pending': return tints.pending.bg;
+    case 'maintenance': return tints.maintenance.bg;
+    case 'paused': return tints.paused.bg;
+  }
+}
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface.light.elevated,
     borderRadius: semanticRadius.card,
     borderWidth: 0.5,
-    borderColor: colors.surface.light.border,
   },
   header: {
     flexDirection: 'row',
@@ -205,12 +233,10 @@ const styles = StyleSheet.create({
   },
   name: {
     ...typography.bodyEmphasized,
-    color: colors.surface.light.text,
     fontSize: 15,
   },
   subtitle: {
     ...typography.caption,
-    color: colors.surface.light.textMuted,
     fontSize: 12,
   },
   stats: {
@@ -219,7 +245,6 @@ const styles = StyleSheet.create({
   },
   stat: {
     flex: 1,
-    backgroundColor: colors.surface.light.sunken,
     padding: spacing[3],
     borderRadius: semanticRadius.md,
   },
@@ -231,7 +256,6 @@ const styles = StyleSheet.create({
   },
   lastCheck: {
     ...typography.caption,
-    color: colors.surface.light.textMuted,
     fontSize: 12,
   },
 });

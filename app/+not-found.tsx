@@ -1,27 +1,28 @@
 /**
  * 404 / not-found screen.
+ *
+ * Theme: page bg = surface.background; the 404 hero is surface.text.
  */
 
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { colors, spacing, typography } from '@/theme';
+import { spacing, typography, useAppTheme } from '@/theme';
 
 export default function NotFoundScreen() {
   const router = useRouter();
+  const { surface, brand } = useAppTheme();
 
   return (
-    <View style={styles.container}>
-      <Text style={[typography.display, { color: colors.surface.light.text }]}>
-        404
-      </Text>
-      <Text style={[typography.body, { color: colors.gray[500], textAlign: 'center' }]}>
+    <View style={[styles.container, { backgroundColor: surface.background }]}>
+      <Text style={[typography.display, { color: surface.text }]}>404</Text>
+      <Text style={[typography.body, { color: surface.textMuted, textAlign: 'center' }]}>
         This screen doesn&apos;t exist.
       </Text>
       <Pressable
         onPress={() => router.replace('/')}
         style={({ pressed }) => [
           styles.btn,
-          { backgroundColor: colors.brand[500], opacity: pressed ? 0.85 : 1 },
+          { backgroundColor: brand, opacity: pressed ? 0.85 : 1 },
         ]}>
         <Text style={[typography.bodyEmphasized, { color: 'white' }]}>
           Go home
@@ -36,7 +37,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface.light.background,
     padding: spacing[4],
     gap: spacing[3],
   },
