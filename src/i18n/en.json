@@ -229,6 +229,15 @@
       "invalidRangeHint": "End must differ from start."
     }
   },
+  "lock": {
+    "title": "Uptime Pocket is locked",
+    "body": "Unlock to view your monitors and notifications.",
+    "bodyWithBiometry": "Authenticate with {biometry} to view your monitors and notifications.",
+    "unlock": "Unlock",
+    "unavailableTitle": "Biometric lock is on, but unavailable",
+    "unavailableBody": "This device has no biometric or device-credential set up. Open Settings to disable the lock.",
+    "openSettings": "Open settings"
+  },
   "designSystem": {
     "title": "Design System",
     "subtitle": "v0.2.0"

@@ -23,6 +23,7 @@ import { useFonts } from 'expo-font';
 import { useServers } from '@/data/store/servers';
 import { useServersHydrated } from '@/features/servers/useServersHydrated';
 import { useSettings } from '@/data/store/settings';
+import { useBiometricLock, LockScreen } from '@/features/security';
 import { useKumaConnection } from '@/data/connection/manager';
 import { colors, useAppTheme } from '@/theme';
 
@@ -41,6 +42,7 @@ export default function RootLayout() {
   // Start the connection manager (no-op until activeServerId is set).
   useKumaConnection();
   const { surface, isDark } = useAppTheme();
+  const { status: lockStatus, unlock: unlockLock, biometryName } = useBiometricLock();
 
   // Fire-and-forget settings hydrate on first render. The store's
   // `hydrated` flag starts false and flips true once the read resolves
@@ -92,6 +94,12 @@ export default function RootLayout() {
             />
           </Stack>
         </OnboardingGate>
+        <LockScreen
+          status={lockStatus}
+          biometryName={biometryName}
+          onUnlock={unlockLock}
+          onCancel={unlockLock}
+        />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
