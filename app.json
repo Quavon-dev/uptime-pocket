@@ -69,7 +69,8 @@
           }
         }
       ],
-      "./plugins/android-widget/plugin.ts"
+      "./plugins/android-widget/plugin.ts",
+      "./plugins/ios-widget/plugin.ts"
     ],
     "experiments": {
       "typedRoutes": true
