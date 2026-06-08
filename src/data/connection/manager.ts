@@ -28,7 +28,7 @@
  * the `useServers` store as well so the UI can show a "connected" badge.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { KumaSocket, type KumaEvent, buildSocketLogin } from '@/data/socket/client';
 import { KumaClient, createClient } from '@/data/api/client';
@@ -192,6 +192,23 @@ export class KumaConnectionManager {
       useMonitors.getState().setStatus(id, 'idle');
       void useServers.getState().setConnected(id, false);
     }
+  }
+
+  /**
+   * Drop and re-open the current connection. Used by background
+   * fetch and by the foreground "Reconnect" affordance. Returns
+   * the new server id, or null if there's no active connection
+   * to revalidate.
+   */
+  async revalidateActiveServer(): Promise<string | null> {
+    if (this.destroyed) return null;
+    const activeId = useServers.getState().activeServerId;
+    if (!activeId) return null;
+    this.disconnectAll();
+    await this.connect(activeId).catch(() => {
+      // The store has already been set to 'error'.
+    });
+    return activeId;
   }
 
   /** Permanently destroy the manager. No further connect() calls allowed. */
@@ -418,12 +435,9 @@ export class KumaConnectionManager {
  */
 export function useKumaConnection() {
   const activeId = useServers((s) => s.activeServerId);
-  const managerRef = useRef<KumaConnectionManager | null>(null);
-
-  if (managerRef.current === null) {
-    managerRef.current = new KumaConnectionManager();
-  }
-  const manager = managerRef.current;
+  // Reuse the module-level singleton so background tasks and the
+  // React tree share the same connection.
+  const manager = getConnectionManager();
 
   useEffect(() => {
     if (!activeId) {
@@ -445,4 +459,22 @@ export function useKumaConnection() {
   }, [manager]);
 
   return manager;
+}
+
+/**
+ * Module-level singleton of the connection manager.
+ *
+ * The `useKumaConnection` hook returns a manager that's tied to
+ * React's lifecycle. For non-React callers (background tasks,
+ * notification schedulers, etc.) we expose a singleton created on
+ * first read. The hook and the singleton share the same underlying
+ * connection, so calling `revalidate()` on either side reconnects
+ * the same socket.
+ */
+let _singleton: KumaConnectionManager | null = null;
+export function getConnectionManager(): KumaConnectionManager {
+  if (_singleton === null) {
+    _singleton = new KumaConnectionManager();
+  }
+  return _singleton;
 }
