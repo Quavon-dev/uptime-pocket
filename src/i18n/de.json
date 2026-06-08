@@ -182,9 +182,22 @@
         "openInKuma": "In Kuma öffnen"
       },
       "ranges": {
+        "recent": "Aktuell",
+        "3h": "3 Std.",
+        "6h": "6 Std.",
         "24h": "24 Std.",
+        "1w": "1 W."
+      },
+      "uptimeWindows": {
         "7d": "7 T.",
-        "30d": "30 T."
+        "24h": "24 Std.",
+        "30d": "30 T.",
+        "1y": "1 J."
+      },
+      "responseTimeStats": {
+        "min": "Min",
+        "avg": "Mittel",
+        "max": "Max"
       },
       "chartRange": "{count} Heartbeats · ältester aus {span}"
     }

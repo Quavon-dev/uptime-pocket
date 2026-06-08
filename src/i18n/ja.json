@@ -182,9 +182,22 @@
         "openInKuma": "Kuma で開く"
       },
       "ranges": {
+        "recent": "最新",
+        "3h": "3 時間",
+        "6h": "6 時間",
         "24h": "24 時間",
+        "1w": "1 週間"
+      },
+      "uptimeWindows": {
         "7d": "7 日",
-        "30d": "30 日"
+        "24h": "24 時間",
+        "30d": "30 日",
+        "1y": "1 年"
+      },
+      "responseTimeStats": {
+        "min": "最小",
+        "avg": "平均",
+        "max": "最大"
       },
       "chartRange": "{count} 件のハートビート · 最古は {span}"
     }

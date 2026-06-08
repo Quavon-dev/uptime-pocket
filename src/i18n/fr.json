@@ -182,9 +182,22 @@
         "openInKuma": "Ouvrir dans Kuma"
       },
       "ranges": {
+        "recent": "Récent",
+        "3h": "3 h",
+        "6h": "6 h",
         "24h": "24 h",
+        "1w": "1 sem."
+      },
+      "uptimeWindows": {
         "7d": "7 j",
-        "30d": "30 j"
+        "24h": "24 h",
+        "30d": "30 j",
+        "1y": "1 a"
+      },
+      "responseTimeStats": {
+        "min": "Min",
+        "avg": "Moy",
+        "max": "Max"
       },
       "chartRange": "{count} battements · le plus ancien sur {span}"
     }

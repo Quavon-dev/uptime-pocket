@@ -3,25 +3,31 @@
  *
  * Live data from the Kuma connection manager. Layout:
  * - Header: name, URL, status pill, type
- * - Quick stats: response time, uptime 24h/7d/30d, last check
+ * - Quick stats: response time, last check
+ * - Kuma-style 4-uptime-pill row: 7d / 24h / 30d / 1y (always shown,
+ *   independent of the chart range selector)
+ * - Kuma-style min/avg/max ping readout for the current chart range
  * - Action bar: re-check, pause/resume, open in Kuma
- * - Time range selector (24h / 7d / 30d)
- * - Response time chart (line)
+ * - Time range selector (Recent / 3h / 6h / 24h / 1w) — controls
+ *   the chart only, not the uptime pills
+ * - Response time chart (Kuma-style: min/avg/max lines + status bar
+ *   overlay)
  * - Uptime bar (segmented)
  * - Recent incidents (live from useMonitors)
  *
  * All data flows from:
- * - `useMonitors` store for status + heartbeat events
- * - `manager.fetchHeartbeats()` for chart history
- * - `manager.fetchUptime()` for 24h/7d/30d ratios
- * - `manager.recheckMonitor()` / `pauseMonitor()` / `resumeMonitor()` for actions
+ * - `useMonitors` store for status + heartbeat events + uptime ratios
+ *   (Kuma 2.3+ pushes the 4 uptime windows + 100-row heartbeatList
+ *   on connect; the manager caches them)
+ * - `manager.recheckMonitor()` / `pauseMonitor()` / `resumeMonitor()`
+ *   for actions
  *
  * Theme: page bg = surface.background. Header card uses
  * surface.elevated/border. Stat tiles use surface.sunken. Incident
  * list uses surface.elevated.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -43,7 +49,13 @@ import {
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import { Button, SegmentedControl, SafeScrollView } from '@/components/ui';
 import { StatusPill } from '@/components/status';
-import { ResponseTimeChart, UptimeBar } from '@/components/chart';
+import {
+  ResponseTimeChart,
+  UptimeBar,
+  kumaPingColors,
+  type Series,
+  type StatusPoint,
+} from '@/components/chart';
 import { monitorTypeIcon } from '@/components/ui/icons';
 import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { t, tn } from '@/i18n';
@@ -56,7 +68,6 @@ import {
   selectUptimeRatios,
 } from '@/data/store/monitors';
 import { useKumaConnection } from '@/data/connection/manager';
-import { statusColor } from '@/domain/status';
 import {
   formatResponseTime,
   formatUptime,
@@ -65,7 +76,17 @@ import {
 import type { TimePoint, UptimePoint, Incident, MonitorType } from '@/domain/models';
 import type { NormalizedHeartbeatRow } from '@/data/socket/normalize';
 
-type Range = '24h' | '7d' | '30d';
+type Range = 'recent' | '3h' | '6h' | '24h' | '1w';
+
+// Map range → hours used to slice the cached heartbeat history.
+// `recent` is "show all 100 heartbeats from the burst" (no time slice).
+const RANGE_HOURS: Record<Range, number | 'recent'> = {
+  recent: 'recent',
+  '3h': 3,
+  '6h': 6,
+  '24h': 24,
+  '1w': 24 * 7,
+};
 
 export default function MonitorDetailScreen() {
   const router = useRouter();
@@ -88,13 +109,16 @@ export default function MonitorDetailScreen() {
       : ([] as Incident[])
   );
 
-  const [range, setRange] = useState<Range>('24h');
+  const [range, setRange] = useState<Range>('recent');
   const [heartbeats, setHeartbeats] = useState<NormalizedHeartbeatRow[]>([]);
+  // All four Kuma-pushed uptime windows. Kuma 2.3+ sends 24, 168 (7d),
+  // 720 (30d), and "1y" — all real data, no fudging required.
   const [uptime, setUptime] = useState<{
     uptime24h: number | null;
     uptime7d: number | null;
     uptime30d: number | null;
-  }>({ uptime24h: null, uptime7d: null, uptime30d: null });
+    uptime1y: number | null;
+  }>({ uptime24h: null, uptime7d: null, uptime30d: null, uptime1y: null });
   const [loading, setLoading] = useState(false);
   const [actionPending, setActionPending] = useState<
     null | 'recheck' | 'pause' | 'resume'
@@ -114,6 +138,119 @@ export default function MonitorDetailScreen() {
   // Manager is used by the action handlers (recheck / pause / resume).
   const manager = useKumaConnection();
 
+  // --- Data shaping ------------------------------------------------------
+  //
+  // All hooks below must run unconditionally (no early return before
+  // them). They depend only on the cached heartbeat rows + the range
+  // selector; they do not need `found` or `server` to be resolved.
+  // The early-return render guards (NotFoundView) come after.
+  //
+  // Translate the normalized heartbeats into chart-friendly shapes.
+  // Slice by the selected range: 'recent' = all 100 heartbeats from
+  // the burst (no time filter), anything else = the last N hours.
+  const rangeHours = RANGE_HOURS[range];
+  const slicedHeartbeats = useMemo(() => {
+    if (rangeHours === 'recent') return heartbeats;
+    if (heartbeats.length === 0) return heartbeats;
+    const cutoff = Date.now() - rangeHours * 60 * 60 * 1000;
+    return heartbeats.filter((h) => h.timestamp >= cutoff);
+  }, [heartbeats, rangeHours]);
+
+  const responseSeries: TimePoint[] = useMemo(
+    () =>
+      slicedHeartbeats.map((h) => ({
+        timestamp: new Date(h.timestamp),
+        value: h.responseTime,
+      })),
+    [slicedHeartbeats]
+  );
+  const uptimeSeries: UptimePoint[] = useMemo(
+    () =>
+      slicedHeartbeats.map((h) => ({
+        timestamp: new Date(h.timestamp),
+        up: h.status === 'up' || h.status === 'maintenance',
+      })),
+    [slicedHeartbeats]
+  );
+
+  // For Kuma's "min/avg/max" lines we aggregate the (already sliced)
+  // response time points into fixed-width buckets, then take the
+  // min/avg/max of each bucket. This is the same approach the Kuma
+  // web dashboard uses internally for windows > 6h.
+  const aggregatedSeries: Series[] = useMemo(() => {
+    if (responseSeries.length === 0) return [];
+    const palette = kumaPingColors(brand);
+    // Bucket size: 1 point for "recent", ~12 buckets for the long
+    // windows, scale linearly in between.
+    const targetBuckets =
+      rangeHours === 'recent'
+        ? Math.min(responseSeries.length, 100)
+        : rangeHours <= 3
+          ? Math.max(1, Math.floor(responseSeries.length / 4))
+          : rangeHours <= 6
+            ? Math.max(1, Math.floor(responseSeries.length / 6))
+            : Math.max(1, Math.floor(responseSeries.length / 12));
+    const bucketSize = Math.max(1, Math.ceil(responseSeries.length / targetBuckets));
+    const minPts: TimePoint[] = [];
+    const avgPts: TimePoint[] = [];
+    const maxPts: TimePoint[] = [];
+    for (let i = 0; i < responseSeries.length; i += bucketSize) {
+      const slice = responseSeries.slice(i, i + bucketSize);
+      if (slice.length === 0) continue;
+      const values = slice.map((p) => p.value).filter((v) => v > 0);
+      if (values.length === 0) continue;
+      const ts = slice[Math.floor(slice.length / 2)].timestamp;
+      minPts.push({ timestamp: ts, value: Math.min(...values) });
+      maxPts.push({ timestamp: ts, value: Math.max(...values) });
+      avgPts.push({
+        timestamp: ts,
+        value: values.reduce((a, b) => a + b, 0) / values.length,
+      });
+    }
+    return [
+      { kind: 'min', data: minPts, color: palette.min, label: t('monitors.detail.responseTimeStats.min') },
+      { kind: 'avg', data: avgPts, color: palette.avg, label: t('monitors.detail.responseTimeStats.avg') },
+      { kind: 'max', data: maxPts, color: palette.max, label: t('monitors.detail.responseTimeStats.max') },
+    ];
+    // We intentionally depend only on the values that matter; `brand`
+    // and the i18n labels are stable across re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [responseSeries, rangeHours]);
+
+  // Status overlay (Kuma-style) — one segment per visible heartbeat.
+  const statusOverlay: StatusPoint[] | undefined = useMemo(() => {
+    if (slicedHeartbeats.length === 0) return undefined;
+    return slicedHeartbeats.map((h, i) => ({
+      x: slicedHeartbeats.length === 1 ? 0 : i / (slicedHeartbeats.length - 1),
+      color:
+        h.status === 'down'
+          ? colors.status.down
+          : h.status === 'maintenance'
+            ? colors.status.maintenance
+            : h.status === 'pending'
+              ? colors.status.pending
+              : colors.status.up,
+    }));
+  }, [slicedHeartbeats]);
+
+  // Header min/avg/max readout (Kuma-style: "Min 42 · Avg 87 · Max 312 ms").
+  const headerPingStats = useMemo(() => {
+    if (responseSeries.length === 0) return null;
+    const values = responseSeries.map((p) => p.value).filter((v) => v > 0);
+    if (values.length === 0) return null;
+    return {
+      min: Math.min(...values),
+      avg: values.reduce((a, b) => a + b, 0) / values.length,
+      max: Math.max(...values),
+    };
+  }, [responseSeries]);
+
+  // --- Effects + action handlers -----------------------------------------
+  //
+  // These run unconditionally, even when `found` is null (the callbacks
+  // early-return inside). Hooks before the render guards are required
+  // by the rules of hooks.
+
   // Sync the store data into local component state so consumers
   // (chart + uptime pill) see stable references. The chart and pill
   // recompute when the range changes.
@@ -122,16 +259,15 @@ export default function MonitorDetailScreen() {
     setUptime({
       uptime24h:
         cachedUptime['24'] != null ? cachedUptime['24'] * 100 : null,
-      // Kuma 2.3+ does not push a 7d ratio. We fall back to 30d so
-      // the chart still has SOMETHING to show.
-      uptime7d: cachedUptime['720'] != null ? cachedUptime['720'] * 100 : null,
+      uptime7d:
+        cachedUptime['168'] != null ? cachedUptime['168'] * 100 : null,
       uptime30d:
         cachedUptime['720'] != null ? cachedUptime['720'] * 100 : null,
+      uptime1y:
+        cachedUptime['1y'] != null ? cachedUptime['1y'] * 100 : null,
     });
     setLoading(false);
   }, [cachedHeartbeats, cachedUptime]);
-
-  // --- Actions ------------------------------------------------------------
 
   const handleRecheck = useCallback(() => {
     if (!found) return;
@@ -191,17 +327,6 @@ export default function MonitorDetailScreen() {
   }
   const { monitor } = found;
 
-  // Translate the normalized heartbeats into chart-friendly shapes.
-  const responseSeries: TimePoint[] = heartbeats.map((h) => ({
-    timestamp: new Date(h.timestamp),
-    value: h.responseTime,
-  }));
-  const uptimeSeries: UptimePoint[] = heartbeats.map((h) => ({
-    timestamp: new Date(h.timestamp),
-    up: h.status === 'up' || h.status === 'maintenance',
-  }));
-  const upPctForRange = uptime[`uptime${rangeKey(range)}`] ?? null;
-
   return (
     <View style={[styles.container, { backgroundColor: surface.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -260,10 +385,6 @@ export default function MonitorDetailScreen() {
               }
             />
             <Stat
-              label={t('monitors.detail.uptime')}
-              value={upPctForRange != null ? formatUptime(upPctForRange) : '—'}
-            />
-            <Stat
               label="Last check"
               value={
                 monitor.lastCheckAt
@@ -272,6 +393,47 @@ export default function MonitorDetailScreen() {
               }
             />
           </View>
+
+          {/* Kuma-style: 4 uptime pills (7d / 24h / 30d / 1y), always shown. */}
+          <View style={styles.uptimePillsRow}>
+            <UptimePill
+              label={t('monitors.detail.uptimeWindows.7d')}
+              value={uptime.uptime7d}
+            />
+            <UptimePill
+              label={t('monitors.detail.uptimeWindows.24h')}
+              value={uptime.uptime24h}
+            />
+            <UptimePill
+              label={t('monitors.detail.uptimeWindows.30d')}
+              value={uptime.uptime30d}
+            />
+            <UptimePill
+              label={t('monitors.detail.uptimeWindows.1y')}
+              value={uptime.uptime1y}
+            />
+          </View>
+
+          {/* Min · Avg · Max readout for the currently selected range. */}
+          {headerPingStats && (
+            <View style={styles.pingStatsRow}>
+              <PingStat
+                label={t('monitors.detail.responseTimeStats.min')}
+                value={formatResponseTime(headerPingStats.min)}
+                color={kumaPingColors(brand).min}
+              />
+              <PingStat
+                label={t('monitors.detail.responseTimeStats.avg')}
+                value={formatResponseTime(headerPingStats.avg)}
+                color={kumaPingColors(brand).avg}
+              />
+              <PingStat
+                label={t('monitors.detail.responseTimeStats.max')}
+                value={formatResponseTime(headerPingStats.max)}
+                color={kumaPingColors(brand).max}
+              />
+            </View>
+          )}
         </View>
 
         {/* Action bar */}
@@ -324,13 +486,15 @@ export default function MonitorDetailScreen() {
           </View>
         )}
 
-        {/* Time range */}
+        {/* Time range — controls the chart only (not the uptime pills). */}
         <View style={{ paddingTop: spacing[4] }}>
           <SegmentedControl
             options={[
+              { value: 'recent', label: t('monitors.detail.ranges.recent') },
+              { value: '3h', label: t('monitors.detail.ranges.3h') },
+              { value: '6h', label: t('monitors.detail.ranges.6h') },
               { value: '24h', label: t('monitors.detail.ranges.24h') },
-              { value: '7d', label: t('monitors.detail.ranges.7d') },
-              { value: '30d', label: t('monitors.detail.ranges.30d') },
+              { value: '1w', label: t('monitors.detail.ranges.1w') },
             ]}
             value={range}
             onChange={(v) => setRange(v as Range)}
@@ -338,21 +502,22 @@ export default function MonitorDetailScreen() {
           />
         </View>
 
-        {/* Response time chart */}
+        {/* Response time chart — Kuma-style with min/avg/max lines + status bar. */}
         <View style={styles.section}>
           <SectionLabel>{t('monitors.detail.responseTime')}</SectionLabel>
-          {loading && heartbeats.length === 0 ? (
+          {loading && slicedHeartbeats.length === 0 ? (
             <View style={[styles.chartPlaceholder, { backgroundColor: surface.sunken }]}>
               <ActivityIndicator size="small" color={brand} />
             </View>
           ) : (
             <>
               <ResponseTimeChart
-                data={responseSeries}
-                color={statusColor(monitor.status)}
+                series={aggregatedSeries}
+                statusOverlay={statusOverlay}
+                height={140}
                 emptyMessage="No heartbeats in this range"
               />
-              {responseSeries.length > 0 && (
+              {slicedHeartbeats.length > 0 && (
                 <Text
                   style={[
                     typography.micro,
@@ -363,12 +528,43 @@ export default function MonitorDetailScreen() {
                     },
                   ]}>
                   {tn('monitors.detail.chartRange', {
-                    count: responseSeries.length,
+                    count: slicedHeartbeats.length,
                     span: formatRelativeTime(
-                      new Date(responseSeries[0].timestamp)
+                      new Date(slicedHeartbeats[0].timestamp)
                     ),
                   })}
                 </Text>
+              )}
+              {/* Mini legend for the three lines + status colors. */}
+              {aggregatedSeries.length > 1 && (
+                <View style={styles.chartLegend}>
+                  {aggregatedSeries.map((s) => (
+                    <View key={s.kind} style={styles.legendItem}>
+                      <View
+                        style={[
+                          styles.legendSwatch,
+                          { backgroundColor: s.color },
+                        ]}
+                      />
+                      <Text
+                        style={[typography.micro, { color: surface.textMuted }]}>
+                        {s.label}
+                      </Text>
+                    </View>
+                  ))}
+                  <View style={styles.legendItem}>
+                    <View
+                      style={[
+                        styles.legendSwatch,
+                        { backgroundColor: colors.status.down, opacity: 0.55 },
+                      ]}
+                    />
+                    <Text
+                      style={[typography.micro, { color: surface.textMuted }]}>
+                      status
+                    </Text>
+                  </View>
+                </View>
               )}
             </>
           )}
@@ -501,8 +697,59 @@ function renderTypeIcon(type: string, brand: string) {
   return <Icon size={20} color={brand} strokeWidth={1.75} />;
 }
 
-function rangeKey(range: Range): '24h' | '7d' | '30d' {
-  return range;
+/**
+ * Kuma-style uptime pill: small box with a label and a percentage.
+ * `value` is 0-100; null = no data yet.
+ */
+function UptimePill({ label, value }: { label: string; value: number | null }) {
+  const { surface } = useAppTheme();
+  const color =
+    value == null
+      ? surface.textMuted
+      : value >= 99
+        ? colors.status.up
+        : value >= 95
+          ? colors.status.pending
+          : colors.status.down;
+  return (
+    <View style={[styles.uptimePill, { backgroundColor: surface.sunken }]}>
+      <Text style={[typography.micro, { color: surface.textMuted }]}>
+        {label}
+      </Text>
+      <Text style={[typography.callout, { color }]}>
+        {value != null ? formatUptime(value) : '—'}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * Kuma-style min/avg/max stat: small box with a label, a colored
+ * value, and a colored dot to associate it with the chart line.
+ */
+function PingStat({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color: string;
+}) {
+  const { surface } = useAppTheme();
+  return (
+    <View style={[styles.pingStat, { backgroundColor: surface.sunken }]}>
+      <View style={styles.pingStatHeader}>
+        <View style={[styles.legendSwatch, { backgroundColor: color }]} />
+        <Text style={[typography.micro, { color: surface.textMuted }]}>
+          {label}
+        </Text>
+      </View>
+      <Text style={[typography.callout, { color: surface.text }]}>
+        {value}
+      </Text>
+    </View>
+  );
 }
 
 // ---- Styles ------------------------------------------------------------
@@ -530,6 +777,49 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: spacing[3],
     gap: spacing[1],
+  },
+  uptimePillsRow: {
+    flexDirection: 'row',
+    gap: spacing[2],
+  },
+  uptimePill: {
+    flex: 1,
+    borderRadius: 12,
+    padding: spacing[2],
+    alignItems: 'center',
+    gap: 2,
+  },
+  pingStatsRow: {
+    flexDirection: 'row',
+    gap: spacing[2],
+  },
+  pingStat: {
+    flex: 1,
+    borderRadius: 12,
+    padding: spacing[2],
+    gap: 2,
+  },
+  pingStatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+  },
+  chartLegend: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[3],
+    paddingHorizontal: spacing[2],
+    paddingTop: spacing[1],
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+  },
+  legendSwatch: {
+    width: 10,
+    height: 3,
+    borderRadius: 1.5,
   },
   actionBar: {
     flexDirection: 'row',

@@ -182,9 +182,22 @@
         "openInKuma": "Abrir en Kuma"
       },
       "ranges": {
+        "recent": "Reciente",
+        "3h": "3 h",
+        "6h": "6 h",
         "24h": "24 h",
+        "1w": "1 sem."
+      },
+      "uptimeWindows": {
         "7d": "7 d",
-        "30d": "30 d"
+        "24h": "24 h",
+        "30d": "30 d",
+        "1y": "1 a"
+      },
+      "responseTimeStats": {
+        "min": "Mín",
+        "avg": "Med",
+        "max": "Máx"
       },
       "chartRange": "{count} latidos · el más antiguo de {span}"
     }

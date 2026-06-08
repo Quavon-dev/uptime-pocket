@@ -182,9 +182,22 @@
         "openInKuma": "Open in Kuma"
       },
       "ranges": {
+        "recent": "Recent",
+        "3h": "3h",
+        "6h": "6h",
         "24h": "24h",
+        "1w": "1w"
+      },
+      "uptimeWindows": {
         "7d": "7d",
-        "30d": "30d"
+        "24h": "24h",
+        "30d": "30d",
+        "1y": "1y"
+      },
+      "responseTimeStats": {
+        "min": "Min",
+        "avg": "Avg",
+        "max": "Max"
       },
       "chartRange": "{count} heartbeats · oldest from {span}"
     }
