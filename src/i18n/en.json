@@ -242,6 +242,23 @@
     "unavailableBody": "This device has no biometric or device-credential set up. Open Settings to disable the lock.",
     "openSettings": "Open settings"
   },
+  "notifications": {
+    "permission": {
+      "title": "Stay in the loop",
+      "body": "Uptime Pocket can ping you the moment a monitor goes down or recovers. You'll get a system notification — no servers, no signup.",
+      "allow": "Allow notifications",
+      "skip": "Not now",
+      "laterHint": "You can change this anytime in Settings."
+    },
+    "copy": {
+      "downTitle": "{monitor} is down",
+      "downBody": "{monitor} on {server} is not responding.",
+      "recoveredTitle": "{monitor} is back up",
+      "recoveredBody": "{monitor} on {server} is responding again.",
+      "criticalTitle": "{count} monitors down",
+      "criticalBody": "Multiple monitors are down at once — check your infrastructure."
+    }
+  },
   "designSystem": {
     "title": "Design System",
     "subtitle": "v0.2.0"

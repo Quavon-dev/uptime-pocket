@@ -24,6 +24,7 @@ import { useServers } from '@/data/store/servers';
 import { useServersHydrated } from '@/features/servers/useServersHydrated';
 import { useSettings } from '@/data/store/settings';
 import { useBiometricLock, LockScreen } from '@/features/security';
+import { useNotificationBridge } from '@/features/notifications';
 import { useKumaConnection } from '@/data/connection/manager';
 import { colors, useAppTheme } from '@/theme';
 
@@ -41,6 +42,8 @@ export default function RootLayout() {
   const hydrateSettings = useSettings((s) => s.hydrate);
   // Start the connection manager (no-op until activeServerId is set).
   useKumaConnection();
+  // Bridge: when a monitor changes status, post a local notification.
+  useNotificationBridge();
   const { surface, isDark } = useAppTheme();
   const { status: lockStatus, unlock: unlockLock, biometryName } = useBiometricLock();
 

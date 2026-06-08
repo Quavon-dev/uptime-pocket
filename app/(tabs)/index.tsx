@@ -27,6 +27,10 @@ import { ChevronDown, Server, WifiOff, Loader, Plus } from 'lucide-react-native'
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import { Chip, EmptyState, SafeScrollView } from '@/components/ui';
 import { MonitorRow, MonitorCard } from '@/components/monitor';
+import {
+  OptInCard,
+  useNotificationOptIn,
+} from '@/features/notifications';
 import { useServers, getActiveServer } from '@/data/store/servers';
 import { useMonitors, selectMonitorsForServer } from '@/data/store/monitors';
 import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/theme';
@@ -41,6 +45,7 @@ export default function MonitorsScreen() {
   const servers = useServers((s) => s.servers);
   const activeId = useServers((s) => s.activeServerId);
   const [filter, setFilter] = useState<FilterMode>('all');
+  const { status: notifyStatus, setStatus: setNotifyStatus } = useNotificationOptIn();
 
   // Live data from the active server.
   const active = getActiveServer(servers, activeId);
@@ -149,6 +154,14 @@ export default function MonitorsScreen() {
                 ? tn('monitors.errorBanner', { error })
                 : t('monitors.connectingBanner')}
             </Text>
+          </View>
+        )}
+
+        {/* Notification opt-in: shown the first time we have a real
+            server connected. After Allow/Skip it's gone forever. */}
+        {active && (
+          <View style={{ marginTop: spacing[2] }}>
+            <OptInCard status={notifyStatus} onChange={setNotifyStatus} />
           </View>
         )}
 
