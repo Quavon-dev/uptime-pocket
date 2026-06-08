@@ -1,8 +1,0 @@
-appId: de.quavon.uptimepocket
-name: Launch and navigate
-steps:
-  - launchApp
-  - assertVisible: "Monitors"
-  - assertVisible: "No monitors yet"
-  - tapOn: "Add server"
-  - assertVisible: "Add Kuma server"

@@ -1,0 +1,21 @@
+appId: de.quavon.uptimepocket
+name: Design system gallery
+description: |
+  Opens the design system gallery from Settings > Developer.
+  Asserts the title and a few key primitive components are
+  visible. Useful for catching accidental regressions in the
+  primitive set after a refactor.
+---
+- launchApp:
+    clearState: true
+- tapOn: "Settings"
+- scrollUntilVisible:
+    element: "Design system"
+    direction: DOWN
+    timeout: 5000
+- tapOn: "Design system"
+- assertVisible: "Design System"
+- assertVisible: "v0.2.0"
+# Go back to Settings
+- back
+- assertVisible: "Settings"

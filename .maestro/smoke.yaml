@@ -1,0 +1,28 @@
+appId: de.quavon.uptimepocket
+name: Smoke - full tab bar + add-server empty state
+description: |
+  The one-shot smoke test. Verifies:
+  1. App launches.
+  2. All 4 tab labels are present.
+  3. The empty state on the Monitors tab.
+  4. The Add Server modal opens.
+  5. Settings is reachable.
+  6. Servers tab is reachable.
+  7. Incidents tab is reachable.
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Monitors"
+- assertVisible: "Incidents"
+- assertVisible: "Servers"
+- assertVisible: "Settings"
+- assertVisible: "No monitors yet"
+- tapOn: "Add server"
+- assertVisible: "Add Kuma server"
+- tapOn: "Cancel"
+- tapOn: "Settings"
+- assertVisible: "Settings"
+- tapOn: "Incidents"
+- assertVisible: "Incidents"
+- tapOn: "Servers"
+- assertVisible: "Servers"

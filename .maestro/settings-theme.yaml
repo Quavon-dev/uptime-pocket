@@ -1,0 +1,20 @@
+appId: de.quavon.uptimepocket
+name: Settings - theme switch
+description: |
+  Switches the theme to Dark via the SegmentedControl, then
+  switches back to System. Verifies the picker is reachable from
+  the Appearance section.
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Monitors"
+- tapOn: "Settings"
+- assertVisible: "Settings"
+- assertVisible: "Appearance"
+# Tap the "Dark" segment in the theme picker
+- tapOn: "Dark"
+# The description under the picker should change
+- assertVisible: "Always uses the dark palette."
+# Switch back
+- tapOn: "System"
+- assertVisible: "Follows your iOS or Android system setting."

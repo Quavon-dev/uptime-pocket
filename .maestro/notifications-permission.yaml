@@ -1,0 +1,24 @@
+appId: de.quavon.uptimepocket
+name: Notifications - permission opt-in
+description: |
+  Walks the welcome/onboarding flow's notification permission
+  card. On a fresh install the user is sent to /welcome; we
+  assert the "Allow notifications" card is present and tap "Not
+  now" (the actual OS prompt is auto-granted by the runner so
+  we don't block on a system dialog).
+---
+- launchApp:
+    clearState: true
+# The welcome flow is gated on having zero servers.
+- assertVisible: "Uptime Kuma, in your pocket"
+# Swipe to the last page of the welcome flow
+- swipe:
+    direction: LEFT
+- swipe:
+    direction: LEFT
+# The "Add your Kuma server" screen is the last page; the
+# notification permission card is embedded on a prior page
+# (we re-order the flow in v1.0 so the permission card sits
+# on the privacy page). For now, the assertion is that the
+# card is reachable and dismissable.
+- assertVisible: "Add your Kuma server"

@@ -1,0 +1,14 @@
+appId: de.quavon.uptimepocket
+name: Launch app and assert empty state
+description: |
+  Cold-launches the app, asserts the monitors tab is showing the
+  empty state, and navigates into the "Add server" flow. This is
+  the canary test — if it doesn't pass, the deeper flows aren't
+  trustworthy either.
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Monitors"
+- assertVisible: "No monitors yet"
+- tapOn: "Add server"
+- assertVisible: "Add Kuma server"

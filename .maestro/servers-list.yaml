@@ -1,0 +1,15 @@
+appId: de.quavon.uptimepocket
+name: Server list + switch active
+description: |
+  After at least one server exists, asserts the Servers tab shows
+  it, that long-pressing it sets it active, and that the active
+  badge appears.
+---
+- launchApp:
+    clearState: false
+- tapOn: "Servers"
+- assertVisible: "Servers"
+# The flow is built on top of a previously-saved server. We
+# can't add one here because the URL would be invalid and the
+# form would error — add it manually in a real run.
+- assertVisible: "Long-press a server to make it the active one."

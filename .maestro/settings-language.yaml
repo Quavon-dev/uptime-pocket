@@ -1,0 +1,28 @@
+appId: de.quavon.uptimepocket
+name: Settings - language picker
+description: |
+  Opens Settings, taps "Deutsch" in the language chip row, and
+  asserts that the tab labels flip to German. Then switches
+  back to "System default" to clean up.
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Monitors"
+- tapOn: "Settings"
+- assertVisible: "Settings"
+# Scroll the language chip row until "Deutsch" is visible
+- scrollUntilVisible:
+    element: "Deutsch"
+    direction: RIGHT
+    timeout: 5000
+- tapOn: "Deutsch"
+# The tab bar should now be in German
+- assertVisible: "Monitore"
+- assertVisible: "Einstellungen"
+# Reset to system default
+- scrollUntilVisible:
+    element: "System default"
+    direction: LEFT
+    timeout: 5000
+- tapOn: "System default"
+- assertVisible: "Monitors"

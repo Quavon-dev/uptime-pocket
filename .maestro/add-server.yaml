@@ -1,0 +1,33 @@
+appId: de.quavon.uptimepocket
+name: Add a server (form validation + save)
+description: |
+  Walks the full Add Server form. Submits empty first to assert
+  validation, then fills it in with a fake URL, taps Save, and
+  asserts we land back on the monitors list with a banner.
+---
+- launchApp:
+    clearState: true
+- assertVisible: "No monitors yet"
+- tapOn: "Add server"
+- assertVisible: "Add Kuma server"
+
+# Validation: tap save with no input, expect the error hint
+- tapOn: "Save server"
+- assertVisible: "Please enter a valid URL"
+- assertVisible: "Please enter a token"
+
+# Fill the form
+- inputText: "https://kuma.example.com"
+- inputText: "test-token-abc123"
+# (inputText focuses whichever field is currently focused; the
+#  URL field is the first focusable, then we tap the token field
+#  to move focus. If this gets flaky, switch to the explicit
+#  id-based inputText that Maestro supports.)
+
+# Save
+- tapOn: "Save server"
+
+# We expect to land back on the monitors tab. The server won't
+# actually connect (fake URL), but the form should submit and
+# return to the list view, where the connecting banner appears.
+- assertVisible: "Connecting to your Kuma server…"
