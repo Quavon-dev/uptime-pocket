@@ -10,9 +10,9 @@
  * Every change writes through to SQLite via the store's persist path.
  */
 
-import { View, Text, Pressable, Switch, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, Pressable, Switch, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { Sparkles, ChevronRight, Bell, Moon, Globe, Bug, Shield } from 'lucide-react-native';
+import { Sparkles, ChevronRight, Bell, Moon, Globe, Bug, Shield, RotateCcw } from 'lucide-react-native';
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import {
   SafeScrollView,
@@ -21,7 +21,7 @@ import {
   formatMinute,
   quietHoursHint,
 } from '@/components/ui';
-import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
+import { spacing, typography, semanticRadius, useAppTheme, colors } from '@/theme';
 import { ACCENT_SWATCHES } from '@/theme/swatches';
 import { useSettings, type ThemeMode } from '@/data/store/settings';
 import { t } from '@/i18n';
@@ -49,6 +49,12 @@ export default function SettingsScreen() {
 
   const sentryEnabled = useSettings((s) => s.sentryEnabled);
   const setSentryEnabled = useSettings((s) => s.setSentryEnabled);
+
+  // Destructive: resets ALL settings (theme, accent, language, biometric
+  // lock, quiet hours, sentry opt-in) to defaults. Servers, monitors,
+  // and credentials in expo-secure-store are NOT touched. See
+  // settings.reset.* in the i18n files.
+  const resetAll = useSettings((s) => s.resetAll);
 
   const quietEnabled = useSettings((s) => s.quietHoursEnabled);
   const quietStart = useSettings((s) => s.quietHoursStartMinute);
@@ -409,6 +415,53 @@ export default function SettingsScreen() {
             <Row label="Version" value="0.2.0" />
             <Row label="Kuma target" value="2.0+" />
             <Row label="License" value="MIT" />
+          </Card>
+        </Section>
+
+        {/* Danger zone — reset all settings. The confirmation
+            dialog spells out exactly what's affected and what's
+            preserved, so the user can decide with full information. */}
+        <Section title={t('settings.reset.sectionTitle')}>
+          <Card>
+            <Pressable
+              onPress={() => {
+                Alert.alert(
+                  t('settings.reset.confirmTitle'),
+                  t('settings.reset.confirmBody'),
+                  [
+                    { text: t('common.cancel'), style: 'cancel' },
+                    {
+                      text: t('settings.reset.confirmAction'),
+                      style: 'destructive',
+                      onPress: () => {
+                        void resetAll();
+                      },
+                    },
+                  ]
+                );
+              }}
+              style={({ pressed }) => [
+                styles.row,
+                { opacity: pressed ? 0.6 : 1 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={t('settings.reset.title')}>
+              <View style={styles.rowLeft}>
+                <RotateCcw size={18} color={colors.status.down} strokeWidth={1.75} />
+                <View style={{ flex: 1 }}>
+                  <Text style={typography.body}>
+                    {t('settings.reset.title')}
+                  </Text>
+                  <Text
+                    style={[
+                      typography.caption,
+                      { color: surface.textMuted, marginTop: 2 },
+                    ]}>
+                    {t('settings.reset.description')}
+                  </Text>
+                </View>
+              </View>
+            </Pressable>
           </Card>
         </Section>
 

@@ -57,8 +57,8 @@ export default function ServersScreen() {
           <View style={styles.empty}>
             <EmptyState
               icon={Server}
-              title="No servers yet"
-              body="Add your first Kuma instance to start monitoring."
+              title={t('empty.servers.title')}
+              body={t('empty.servers.body')}
               action={{
                 label: t('servers.list.addServer'),
                 onPress: () => router.push('/servers/add'),

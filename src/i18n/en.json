@@ -71,6 +71,53 @@
     "servers": "Servers",
     "settings": "Settings"
   },
+  "tabTitle": {
+    "monitors": "Monitors",
+    "incidents": "Incidents",
+    "servers": "Servers",
+    "settings": "Settings"
+  },
+  "filter": {
+    "all": "All",
+    "up": "Up",
+    "down": "Down",
+    "search": "Search monitors…"
+  },
+  "serverCard": {
+    "active": "Active",
+    "monitor": "monitor",
+    "monitors": "monitors",
+    "modeRelay": "Push",
+    "modeDirect": "Direct",
+    "modeNone": "Off",
+    "lastConnected": "Last seen {when}",
+    "neverConnected": "Never connected"
+  },
+  "monitorCard": {
+    "uptime": "Uptime",
+    "response": "Response",
+    "type": "Type"
+  },
+  "notFound": {
+    "title": "404",
+    "body": "This screen doesn't exist.",
+    "action": "Go home"
+  },
+  "empty": {
+    "servers": {
+      "title": "No servers yet",
+      "body": "Add your first Kuma instance to start monitoring."
+    },
+    "incidents": {
+      "title": "No incidents yet",
+      "body": "Add a Kuma server to start monitoring. Incidents will appear here as status changes happen."
+    },
+    "incidentsInSession": {
+      "title": "No incidents in this session",
+      "bodyWithServer": "When a monitor on {server} goes down or recovers, it'll show up here.",
+      "bodyGeneric": "Incidents will appear here as your monitors change status."
+    }
+  },
   "status": {
     "up": "Up",
     "down": "Down",
@@ -310,6 +357,15 @@
       "requiresRebuildNotice": "Crash reports require a DSN to be configured at build time. If this toggle has no effect, the build you are running was not configured for crash reporting.",
       "dsnNotConfiguredTitle": "Not configured",
       "dsnNotConfiguredBody": "This build was not configured with a crash-reporting endpoint. The toggle is here so you can record your preference for the next time you install a configured build."
+    },
+    "reset": {
+      "sectionTitle": "Danger zone",
+      "title": "Reset all settings",
+      "description": "Restores theme, accent, language, biometric lock, quiet hours, and crash-report preference to their defaults. Your servers, monitors, and stored credentials are not affected.",
+      "confirmTitle": "Reset all settings?",
+      "confirmBody": "This restores all preferences to their defaults. Your servers, monitors, and stored credentials will not be deleted.",
+      "confirmAction": "Reset",
+      "success": "Settings reset"
     }
   },
   "lock": {

@@ -26,6 +26,7 @@ import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/them
 import { useMonitorsStoreForMonitorName } from '@/features/incidents/useIncidentMonitorName';
 import { formatRelativeTime } from '@/domain/format';
 import { AlertTriangle, Server } from 'lucide-react-native';
+import { t, tn } from '@/i18n';
 
 export default function IncidentsScreen() {
   const router = useRouter();
@@ -42,13 +43,13 @@ export default function IncidentsScreen() {
   if (servers.length === 0) {
     return (
       <View style={[styles.container, { backgroundColor: surface.background }]}>
-        <GlassNavBar title="Incidents" />
+        <GlassNavBar title={t('tabTitle.incidents')} />
         <EmptyState
           icon={Server}
-          title="No incidents yet"
-          body="Add a Kuma server to start monitoring. Incidents will appear here as status changes happen."
+          title={t('empty.incidents.title')}
+          body={t('empty.incidents.body')}
           action={{
-            label: 'Add server',
+            label: t('servers.list.addServer'),
             onPress: () => router.push('/servers/add'),
           }}
         />
@@ -58,7 +59,7 @@ export default function IncidentsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: surface.background }]}>
-      <GlassNavBar title="Incidents" />
+      <GlassNavBar title={t('tabTitle.incidents')} />
 
       <SafeScrollView
         contentContainerStyle={{ padding: spacing[4] }}
@@ -66,11 +67,11 @@ export default function IncidentsScreen() {
         {incidents.length === 0 ? (
           <EmptyState
             icon={AlertTriangle}
-            title="No incidents in this session"
+            title={t('empty.incidentsInSession.title')}
             body={
               active
-                ? `When a monitor on ${active.name} goes down or recovers, it'll show up here.`
-                : 'Incidents will appear here as your monitors change status.'
+                ? tn('empty.incidentsInSession.bodyWithServer', { server: active.name })
+                : t('empty.incidentsInSession.bodyGeneric')
             }
           />
         ) : (

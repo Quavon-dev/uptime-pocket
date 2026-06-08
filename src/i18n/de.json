@@ -71,6 +71,53 @@
     "servers": "Server",
     "settings": "Einstellungen"
   },
+  "tabTitle": {
+    "monitors": "Monitore",
+    "incidents": "Vorfälle",
+    "servers": "Server",
+    "settings": "Einstellungen"
+  },
+  "filter": {
+    "all": "Alle",
+    "up": "Online",
+    "down": "Offline",
+    "search": "Monitore suchen…"
+  },
+  "serverCard": {
+    "active": "Aktiv",
+    "monitor": "Monitor",
+    "monitors": "Monitore",
+    "modeRelay": "Push",
+    "modeDirect": "Direkt",
+    "modeNone": "Aus",
+    "lastConnected": "Zuletzt gesehen {when}",
+    "neverConnected": "Nie verbunden"
+  },
+  "monitorCard": {
+    "uptime": "Verfügbarkeit",
+    "response": "Antwortzeit",
+    "type": "Typ"
+  },
+  "notFound": {
+    "title": "404",
+    "body": "Diesen Bildschirm gibt es nicht.",
+    "action": "Zur Startseite"
+  },
+  "empty": {
+    "servers": {
+      "title": "Noch keine Server",
+      "body": "Füge deine erste Kuma-Instanz hinzu, um mit der Überwachung zu beginnen."
+    },
+    "incidents": {
+      "title": "Noch keine Vorfälle",
+      "body": "Füge einen Kuma-Server hinzu, um die Überwachung zu starten. Vorfälle erscheinen hier, sobald sich der Status ändert."
+    },
+    "incidentsInSession": {
+      "title": "Keine Vorfälle in dieser Sitzung",
+      "bodyWithServer": "Wenn ein Monitor auf {server} ausfällt oder sich erholt, erscheint er hier.",
+      "bodyGeneric": "Vorfälle erscheinen hier, sobald sich der Status deiner Monitore ändert."
+    }
+  },
   "status": {
     "up": "Online",
     "down": "Offline",
@@ -310,6 +357,15 @@
       "requiresRebuildNotice": "Absturzberichte erfordern eine zur Build-Zeit konfigurierte DSN. Wenn dieser Schalter keine Wirkung zeigt, wurde der Build nicht für Absturzberichte konfiguriert.",
       "dsnNotConfiguredTitle": "Nicht konfiguriert",
       "dsnNotConfiguredBody": "Dieser Build wurde nicht mit einem Endpunkt für Absturzberichte konfiguriert. Der Schalter speichert deine Präferenz für den nächsten installierten Build."
+    },
+    "reset": {
+      "sectionTitle": "Gefahrenzone",
+      "title": "Alle Einstellungen zurücksetzen",
+      "description": "Stellt Theme, Akzentfarbe, Sprache, biometrische Sperre, Ruhezeiten und Absturzbericht-Einstellung auf die Standardwerte zurück. Deine Server, Monitore und gespeicherten Zugangsdaten bleiben unberührt.",
+      "confirmTitle": "Alle Einstellungen zurücksetzen?",
+      "confirmBody": "Dies setzt alle Einstellungen auf die Standardwerte zurück. Deine Server, Monitore und gespeicherten Zugangsdaten werden nicht gelöscht.",
+      "confirmAction": "Zurücksetzen",
+      "success": "Einstellungen zurückgesetzt"
     }
   },
   "lock": {

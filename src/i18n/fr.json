@@ -71,6 +71,53 @@
     "servers": "Serveurs",
     "settings": "Réglages"
   },
+  "tabTitle": {
+    "monitors": "Moniteurs",
+    "incidents": "Incidents",
+    "servers": "Serveurs",
+    "settings": "Réglages"
+  },
+  "filter": {
+    "all": "Tous",
+    "up": "En ligne",
+    "down": "Hors ligne",
+    "search": "Rechercher des moniteurs…"
+  },
+  "serverCard": {
+    "active": "Actif",
+    "monitor": "moniteur",
+    "monitors": "moniteurs",
+    "modeRelay": "Push",
+    "modeDirect": "Direct",
+    "modeNone": "Off",
+    "lastConnected": "Vu {when}",
+    "neverConnected": "Jamais connecté"
+  },
+  "monitorCard": {
+    "uptime": "Disponibilité",
+    "response": "Réponse",
+    "type": "Type"
+  },
+  "notFound": {
+    "title": "404",
+    "body": "Cet écran n'existe pas.",
+    "action": "Retour à l'accueil"
+  },
+  "empty": {
+    "servers": {
+      "title": "Aucun serveur pour l'instant",
+      "body": "Ajoute ta première instance Kuma pour commencer la surveillance."
+    },
+    "incidents": {
+      "title": "Aucun incident pour l'instant",
+      "body": "Ajoute un serveur Kuma pour commencer la surveillance. Les incidents apparaîtront ici à chaque changement de statut."
+    },
+    "incidentsInSession": {
+      "title": "Aucun incident dans cette session",
+      "bodyWithServer": "Quand un moniteur sur {server} tombe ou revient, il apparaîtra ici.",
+      "bodyGeneric": "Les incidents apparaîtront ici au fur et à mesure que tes moniteurs changent de statut."
+    }
+  },
   "status": {
     "up": "En ligne",
     "down": "Hors ligne",
@@ -310,6 +357,15 @@
       "requiresRebuildNotice": "Les rapports de plantage nécessitent un DSN configuré au moment du build. Si ce bouton est sans effet, le build que vous utilisez n'a pas été configuré pour les rapports de plantage.",
       "dsnNotConfiguredTitle": "Non configuré",
       "dsnNotConfiguredBody": "Ce build n'a pas été configuré avec un point de terminaison pour les rapports de plantage. Le bouton enregistre votre préférence pour la prochaine fois que vous installerez un build configuré."
+    },
+    "reset": {
+      "sectionTitle": "Zone sensible",
+      "title": "Réinitialiser tous les réglages",
+      "description": "Restaure le thème, la couleur d'accent, la langue, le verrou biométrique, les heures silencieuses et la préférence de rapports de plantage à leurs valeurs par défaut. Tes serveurs, moniteurs et identifiants enregistrés ne sont pas affectés.",
+      "confirmTitle": "Réinitialiser tous les réglages ?",
+      "confirmBody": "Ceci restaure toutes les préférences à leurs valeurs par défaut. Tes serveurs, moniteurs et identifiants enregistrés ne seront pas supprimés.",
+      "confirmAction": "Réinitialiser",
+      "success": "Réglages réinitialisés"
     }
   },
   "lock": {

@@ -71,6 +71,53 @@
     "servers": "Servidores",
     "settings": "Ajustes"
   },
+  "tabTitle": {
+    "monitors": "Monitores",
+    "incidents": "Incidencias",
+    "servers": "Servidores",
+    "settings": "Ajustes"
+  },
+  "filter": {
+    "all": "Todos",
+    "up": "En línea",
+    "down": "Caído",
+    "search": "Buscar monitores…"
+  },
+  "serverCard": {
+    "active": "Activo",
+    "monitor": "monitor",
+    "monitors": "monitores",
+    "modeRelay": "Push",
+    "modeDirect": "Directo",
+    "modeNone": "Apagado",
+    "lastConnected": "Visto {when}",
+    "neverConnected": "Nunca conectado"
+  },
+  "monitorCard": {
+    "uptime": "Disponibilidad",
+    "response": "Respuesta",
+    "type": "Tipo"
+  },
+  "notFound": {
+    "title": "404",
+    "body": "Esta pantalla no existe.",
+    "action": "Ir al inicio"
+  },
+  "empty": {
+    "servers": {
+      "title": "Aún no hay servidores",
+      "body": "Añade tu primera instancia de Kuma para empezar a monitorizar."
+    },
+    "incidents": {
+      "title": "Aún no hay incidencias",
+      "body": "Añade un servidor Kuma para empezar a monitorizar. Las incidencias aparecerán aquí cuando cambie el estado."
+    },
+    "incidentsInSession": {
+      "title": "Sin incidencias en esta sesión",
+      "bodyWithServer": "Cuando un monitor en {server} caiga o se recupere, aparecerá aquí.",
+      "bodyGeneric": "Las incidencias aparecerán aquí a medida que tus monitores cambien de estado."
+    }
+  },
   "status": {
     "up": "En línea",
     "down": "Caído",
@@ -308,8 +355,17 @@
       "privacyNoticeTitle": "Qué se envía",
       "privacyNoticeBody": "Cuando esta opción está activada, la aplicación envía informes de fallos y trazas de errores a nuestro servicio de reporte de errores. No incluimos URL de servidores, nombres de monitores, tokens de autenticación ni ningún dato que pueda identificar tu infraestructura. Puedes desactivarlo en cualquier momento.",
       "requiresRebuildNotice": "Los informes de fallos requieren un DSN configurado en el momento de compilar. Si este interruptor no tiene efecto, la compilación que estás usando no fue configurada para informes de fallos.",
-      "dsnNotConfiguredTitle": "Sin configurar",
-      "dsnNotConfiguredBody": "Esta compilación no se configuró con un punto de envío de informes de fallos. El interruptor guarda tu preferencia para la próxima vez que instales una compilación configurada."
+      "dsnNotConfiguredTitle": "No configurado",
+      "dsnNotConfiguredBody": "Esta build no se configuró con un endpoint para informes de fallos. El interruptor guarda tu preferencia para la próxima vez que instales una build configurada."
+    },
+    "reset": {
+      "sectionTitle": "Zona sensible",
+      "title": "Restablecer todos los ajustes",
+      "description": "Restaura el tema, color de acento, idioma, bloqueo biométrico, horas de silencio y preferencia de informes de fallos a sus valores por defecto. Tus servidores, monitores y credenciales guardadas no se ven afectados.",
+      "confirmTitle": "¿Restablecer todos los ajustes?",
+      "confirmBody": "Esto restaura todas las preferencias a sus valores por defecto. Tus servidores, monitores y credenciales guardadas no se eliminarán.",
+      "confirmAction": "Restablecer",
+      "success": "Ajustes restablecidos"
     }
   },
   "lock": {

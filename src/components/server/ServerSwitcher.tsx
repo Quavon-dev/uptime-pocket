@@ -21,6 +21,7 @@ import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import { SafeScrollView } from '@/components/ui';
 import { ServerCard } from './ServerCard';
 import { useServers } from '@/data/store/servers';
+import { t } from '@/i18n';
 
 interface ServerSwitcherProps {
   onClose?: () => void;
@@ -41,7 +42,7 @@ export function ServerSwitcher({ onClose }: ServerSwitcherProps) {
   return (
     <View style={[styles.container, { backgroundColor: surface.background }]}>
       <GlassNavBar
-        title="Switch server"
+        title={t('serverSwitcher.title')}
         right={
           onClose ? (
             <Pressable onPress={onClose} hitSlop={10}>

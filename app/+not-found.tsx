@@ -1,12 +1,17 @@
 /**
  * 404 / not-found screen.
  *
+ * Reached via expo-router when a route doesn't match. The 404 hero
+ * is surface.text so it reads as a typographic moment rather than
+ * an error state.
+ *
  * Theme: page bg = surface.background; the 404 hero is surface.text.
  */
 
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { spacing, typography, useAppTheme } from '@/theme';
+import { t } from '@/i18n';
 
 export default function NotFoundScreen() {
   const router = useRouter();
@@ -14,18 +19,22 @@ export default function NotFoundScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: surface.background }]}>
-      <Text style={[typography.display, { color: surface.text }]}>404</Text>
+      <Text style={[typography.display, { color: surface.text }]}>
+        {t('notFound.title')}
+      </Text>
       <Text style={[typography.body, { color: surface.textMuted, textAlign: 'center' }]}>
-        This screen doesn&apos;t exist.
+        {t('notFound.body')}
       </Text>
       <Pressable
         onPress={() => router.replace('/')}
         style={({ pressed }) => [
           styles.btn,
           { backgroundColor: brand, opacity: pressed ? 0.85 : 1 },
-        ]}>
+        ]}
+        accessibilityRole="link"
+        accessibilityLabel={t('notFound.action')}>
         <Text style={[typography.bodyEmphasized, { color: 'white' }]}>
-          Go home
+          {t('notFound.action')}
         </Text>
       </Pressable>
     </View>

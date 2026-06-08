@@ -19,10 +19,10 @@
  */
 
 import { useState, useMemo } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronDown, Server, WifiOff, Loader, Plus } from 'lucide-react-native';
+import { ChevronDown, Server, WifiOff, Loader, Plus, Search, X } from 'lucide-react-native';
 
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import { Chip, EmptyState, SafeScrollView } from '@/components/ui';
@@ -52,6 +52,10 @@ export default function MonitorsScreen() {
   const activeId = useServers((s) => s.activeServerId);
   const [filter, setFilter] = useState<FilterMode>('all');
   const [tagFilter, setTagFilter] = useState<TagFilter>({ selectedTagIds: [] });
+  // Search query for the search field at the top of the list. We
+  // do a case-insensitive substring match against monitor name, url,
+  // and hostname. Empty string = no search.
+  const [search, setSearch] = useState('');
   const { status: notifyStatus, setStatus: setNotifyStatus } = useNotificationOptIn();
 
   // Live data from the active server.
@@ -65,8 +69,19 @@ export default function MonitorsScreen() {
   );
 
   const filteredMonitors = useMemo(() => {
-    return applyFilters(monitorsRaw, filter, tagFilter);
-  }, [filter, monitorsRaw, tagFilter]);
+    const statusFiltered = applyFilters(monitorsRaw, filter, tagFilter);
+    const q = search.trim().toLowerCase();
+    if (!q) return statusFiltered;
+    return statusFiltered.filter((m) => {
+      // Match against any of the user-visible identifiers. We don't
+      // match on the id (numeric) or the type code, since those are
+      // never what the user is looking for.
+      if (m.name.toLowerCase().includes(q)) return true;
+      if (m.url && m.url.toLowerCase().includes(q)) return true;
+      if (m.hostname && m.hostname.toLowerCase().includes(q)) return true;
+      return false;
+    });
+  }, [filter, monitorsRaw, tagFilter, search]);
 
   // Available tags, derived from the active server's monitor list.
   // We re-derive on every render; the cost is O(monitors * tags) which
@@ -80,7 +95,11 @@ export default function MonitorsScreen() {
   if (servers.length === 0) {
     return (
       <View style={[styles.container, { backgroundColor: surface.background }]}>
-        <GlassNavBar title="Monitors" large subtitle={t('app.tagline')} />
+        <GlassNavBar
+          title={t('tabTitle.monitors')}
+          large
+          subtitle={t('app.tagline')}
+        />
 
         <View style={[styles.content, { paddingBottom: insets.bottom + 80 }]}>
           <EmptyState
@@ -100,7 +119,7 @@ export default function MonitorsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: surface.background }]}>
       <GlassNavBar
-        title="Monitors"
+        title={t('tabTitle.monitors')}
         large
         right={
           // flexShrink:1 on the chip so the + button is always
@@ -136,7 +155,7 @@ export default function MonitorsScreen() {
                   typography.captionEmphasized,
                   { color: brand, maxWidth: 120 },
                 ]}>
-                {active?.name ?? 'Server'}
+                {active?.name ?? t('tabTitle.servers')}
               </Text>
               <ChevronDown size={14} color={brand} strokeWidth={2} />
             </Pressable>
@@ -178,24 +197,64 @@ export default function MonitorsScreen() {
           </View>
         )}
 
+        {/* Search field. We render it as a single input that
+            matches against name/url/hostname. The clear button (X)
+            only shows when there's a query. */}
+        <View
+          style={[
+            styles.searchRow,
+            {
+              backgroundColor: surface.sunken,
+              borderColor: surface.border,
+            },
+          ]}>
+          <Search size={16} color={surface.textMuted} strokeWidth={1.75} />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder={t('filter.search')}
+            placeholderTextColor={surface.textSubtle}
+            // a11y: the visible search icon already explains the
+            // purpose, but screen readers need an explicit label.
+            accessibilityLabel={t('filter.search')}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+            style={[
+              styles.searchInput,
+              typography.body,
+              { color: surface.text },
+            ]}
+          />
+          {search.length > 0 && (
+            <Pressable
+              onPress={() => setSearch('')}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.cancel')}>
+              <X size={16} color={surface.textMuted} strokeWidth={1.75} />
+            </Pressable>
+          )}
+        </View>
+
         {/* Filter chips */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ gap: spacing[2], paddingVertical: spacing[2] }}>
           <Chip
-            label="All"
+            label={t('filter.all')}
             selected={filter === 'all'}
             onPress={() => setFilter('all')}
           />
           <Chip
-            label="Up"
+            label={t('filter.up')}
             selected={filter === 'up'}
             onPress={() => setFilter('up')}
             selectedColor={colors.status.up}
           />
           <Chip
-            label="Down"
+            label={t('filter.down')}
             selected={filter === 'down'}
             onPress={() => setFilter('down')}
             selectedColor={colors.status.down}
@@ -291,6 +350,20 @@ const styles = StyleSheet.create({
     borderRadius: semanticRadius.button,
     borderWidth: 1,
     marginTop: spacing[2],
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+    borderRadius: semanticRadius.button,
+    borderWidth: 0.5,
+    marginTop: spacing[2],
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 0, // strip RN's default vertical padding
   },
   noResults: { paddingVertical: spacing[10] },
 });

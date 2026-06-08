@@ -7,6 +7,7 @@
  * - Kuma version (if known)
  * - Number of monitors
  * - Notification mode
+ * - Last connected time (relative)
  *
  * Used in:
  * - Servers tab list
@@ -23,7 +24,8 @@ import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/them
 import { HeartbeatPulse } from '@/components/status';
 import type { Server as ServerType } from '@/domain/models';
 import type { ConnectionStatus } from '@/data/store/monitors';
-import { t } from '@/i18n';
+import { t, tn } from '@/i18n';
+import { formatRelativeTime } from '@/domain/format';
 
 interface ServerCardProps {
   server: ServerType;
@@ -68,6 +70,12 @@ export function ServerCard({
     ? statusTints.pending.bg
     : statusTints.down.bg;
 
+  // The status text for the a11y label uses the same string the detail
+  // screen renders so screen-reader users hear consistent wording.
+  const statusKey = `servers.detail.status.${
+    isConnected ? 'connected' : isPending ? 'connecting' : 'idle'
+  }` as const;
+
   return (
     <Pressable
       onPress={onPress}
@@ -75,7 +83,7 @@ export function ServerCard({
       // name + connection state + active flag in one read instead of
       // a stutter of separate <Text> nodes.
       accessibilityRole="button"
-      accessibilityLabel={[server.name, t(`servers.detail.status.${status}`), isActive && t('serverSwitcher.active')]
+      accessibilityLabel={[server.name, t(statusKey), isActive && t('serverCard.active')]
         .filter(Boolean)
         .join(', ')}
       accessibilityState={{ selected: isActive }}
@@ -106,7 +114,7 @@ export function ServerCard({
           </Text>
           {isActive && (
             <View style={[styles.activeBadge, { backgroundColor: brand }]}>
-              <Text style={styles.activeBadgeText}>Active</Text>
+              <Text style={styles.activeBadgeText}>{t('serverCard.active')}</Text>
             </View>
           )}
         </View>
@@ -124,7 +132,10 @@ export function ServerCard({
             )}
             <View style={[styles.metaItem, { backgroundColor: surface.sunken }]}>
               <Text style={[styles.metaText, { color: surface.textMuted }]}>
-                {monitorCount} {monitorCount === 1 ? 'monitor' : 'monitors'}
+                {monitorCount}{' '}
+                {monitorCount === 1
+                  ? t('serverCard.monitor')
+                  : t('serverCard.monitors')}
               </Text>
             </View>
             <View style={[styles.metaItem, { backgroundColor: surface.sunken }]}>
@@ -137,10 +148,22 @@ export function ServerCard({
               )}
               <Text style={[styles.metaText, { color: surface.textMuted }]}>
                 {server.notificationMode === 'relay'
-                  ? 'Push'
+                  ? t('serverCard.modeRelay')
                   : server.notificationMode === 'direct'
-                  ? 'Direct'
-                  : 'Off'}
+                  ? t('serverCard.modeDirect')
+                  : t('serverCard.modeNone')}
+              </Text>
+            </View>
+            {/* Last-connected timestamp. Shown only when we have a
+                recorded timestamp — for a fresh server with no
+                successful connection yet we show "Never connected". */}
+            <View style={[styles.metaItem, { backgroundColor: surface.sunken }]}>
+              <Text style={[styles.metaText, { color: surface.textMuted }]}>
+                {server.lastConnectedAt
+                  ? tn('serverCard.lastConnected', {
+                      when: formatRelativeTime(new Date(server.lastConnectedAt)),
+                    })
+                  : t('serverCard.neverConnected')}
               </Text>
             </View>
           </View>

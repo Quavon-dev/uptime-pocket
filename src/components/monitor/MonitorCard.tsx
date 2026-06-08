@@ -126,7 +126,7 @@ export function MonitorCard({
       {/* Stats row: uptime, response time */}
       <View style={[styles.stats, { marginTop: compact ? spacing[3] : spacing[4] }]}>
         <Stat
-          label="Uptime"
+          label={t('monitorCard.uptime')}
           value={formatUptime(monitor.uptime24h)}
           color={s}
           valueSize={statSize}
@@ -135,7 +135,7 @@ export function MonitorCard({
           tileBg={surface.sunken}
         />
         <Stat
-          label="Response"
+          label={t('monitorCard.response')}
           value={formatResponseTime(monitor.responseTime)}
           color={surface.text}
           valueSize={statSize}
@@ -144,7 +144,7 @@ export function MonitorCard({
           tileBg={surface.sunken}
         />
         <Stat
-          label="Type"
+          label={t('monitorCard.type')}
           value={monitor.type}
           color={surface.textMuted}
           valueSize={statSize}
