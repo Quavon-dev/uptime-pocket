@@ -210,9 +210,23 @@
       "descriptionDark": "Always uses the dark palette."
     },
     "accent": "Accent color",
+    "accentSwatch": {
+      "title": "Accent",
+      "description": "Used for buttons, links, and the up indicator on monitors."
+    },
     "biometric": {
       "title": "Lock with biometrics",
       "description": "Require Face ID, Touch ID, or fingerprint to open the app"
+    },
+    "quietHours": {
+      "title": "Quiet hours",
+      "description": "Silence notifications during a set time range. Useful for overnight.",
+      "start": "Start",
+      "end": "End",
+      "format": "{h}:{m}",
+      "overnightHint": "Spans midnight (e.g. 22:00 to 07:00).",
+      "allDayHint": "Spans the entire day (start == end).",
+      "invalidRangeHint": "End must differ from start."
     }
   },
   "designSystem": {

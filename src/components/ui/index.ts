@@ -12,6 +12,7 @@ export { Tag } from './Tag';
 export { EmptyState } from './EmptyState';
 export { ErrorState } from './ErrorState';
 export { SafeScrollView, type SafeScrollViewProps } from './SafeScrollView';
+export { TimePicker, formatMinute, quietHoursHint } from './TimePicker';
 
 // Icons - explicit named exports to avoid clashing with our components
 export {

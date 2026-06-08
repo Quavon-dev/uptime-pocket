@@ -1,27 +1,51 @@
 /**
  * Settings tab - app preferences.
- * Phase 0.2: shows app info, theme switcher, and link to design system.
  *
- * Theme: page bg = surface.background. The Theme picker is a
- * SegmentedControl bound to the settings store. We read the current
- * theme via useAppTheme() so the UI updates instantly when the user
- * picks a new value.
+ * Phase A4/A5: theme, accent color picker, biometric lock, quiet hours.
+ *
+ * Theme: page bg = surface.background. Theme picker is a SegmentedControl
+ * bound to the settings store. Accent picker is a horizontal row of
+ * swatches. Quiet hours uses a custom two-column TimePicker.
+ *
+ * Every change writes through to SQLite via the store's persist path.
  */
 
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, Switch, StyleSheet } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { Sparkles, ChevronRight } from 'lucide-react-native';
+import { Sparkles, ChevronRight, Bell, Moon } from 'lucide-react-native';
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
-import { SafeScrollView, SegmentedControl } from '@/components/ui';
+import {
+  SafeScrollView,
+  SegmentedControl,
+  TimePicker,
+  formatMinute,
+  quietHoursHint,
+} from '@/components/ui';
 import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
+import { ACCENT_SWATCHES } from '@/theme/swatches';
 import { useSettings, type ThemeMode } from '@/data/store/settings';
 import { t } from '@/i18n';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { surface, brand, brandFill } = useAppTheme();
+
+  // Read everything via individual selectors so each row only re-renders
+  // when its own field changes.
   const theme = useSettings((s) => s.theme);
   const setTheme = useSettings((s) => s.setTheme);
+
+  const accentSwatchId = useSettings((s) => s.accentSwatchId);
+  const setAccentSwatchId = useSettings((s) => s.setAccentSwatchId);
+  const setAccentColor = useSettings((s) => s.setAccentColor);
+
+  const biometricLock = useSettings((s) => s.biometricLock);
+  const setBiometricLock = useSettings((s) => s.setBiometricLock);
+
+  const quietEnabled = useSettings((s) => s.quietHoursEnabled);
+  const quietStart = useSettings((s) => s.quietHoursStartMinute);
+  const quietEnd = useSettings((s) => s.quietHoursEndMinute);
+  const setQuietHours = useSettings((s) => s.setQuietHours);
 
   return (
     <View style={[styles.container, { backgroundColor: surface.background }]}>
@@ -32,16 +56,8 @@ export default function SettingsScreen() {
         contentContainerStyle={{
           padding: spacing[4],
           gap: spacing[5],
+          paddingBottom: spacing[10],
         }}>
-        {/* App info */}
-        <Section title={t('settings.about')}>
-          <Card>
-            <Row label="Version" value="0.2.0" />
-            <Row label="Kuma target" value="2.0+" />
-            <Row label="License" value="MIT" />
-          </Card>
-        </Section>
-
         {/* Theme */}
         <Section title={t('settings.appearance')}>
           <Card>
@@ -86,19 +102,160 @@ export default function SettingsScreen() {
           </Card>
         </Section>
 
-        {/* Accent color preview (read-only, parked) */}
-        <Section title={t('settings.accent')}>
+        {/* Accent color picker */}
+        <Section title={t('settings.accentSwatch.title')}>
           <Card>
-            <View style={styles.accentRow}>
-              <View style={[styles.accentSwatch, { backgroundColor: brandFill }]}>
-                <View style={[styles.accentDot, { backgroundColor: brand }]} />
+            <View style={styles.swatchRow}>
+              {ACCENT_SWATCHES.map((sw) => {
+                const active = sw.id === accentSwatchId;
+                return (
+                  <Pressable
+                    key={sw.id}
+                    onPress={() => {
+                      setAccentSwatchId(sw.id);
+                      setAccentColor(sw.hex);
+                    }}
+                    style={({ pressed }) => [
+                      styles.swatchPress,
+                      { opacity: pressed ? 0.7 : 1 },
+                    ]}
+                    accessibilityRole="radio"
+                    accessibilityLabel={sw.name}
+                    accessibilityState={{ selected: active }}>
+                    <View
+                      style={[
+                        styles.swatchRing,
+                        {
+                          borderColor: active ? brand : 'transparent',
+                        },
+                      ]}>
+                      <View
+                        style={[
+                          styles.swatchFill,
+                          { backgroundColor: sw.fill },
+                        ]}>
+                        <View
+                          style={[
+                            styles.swatchDot,
+                            { backgroundColor: sw.brand },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text
+              style={[
+                typography.caption,
+                {
+                  color: surface.textSubtle,
+                  paddingHorizontal: spacing[4],
+                  paddingTop: spacing[2],
+                  paddingBottom: spacing[3],
+                },
+              ]}>
+              {t('settings.accentSwatch.description')}
+            </Text>
+          </Card>
+        </Section>
+
+        {/* Notifications - quiet hours */}
+        <Section title={t('settings.notifications')}>
+          <Card>
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <Moon size={18} color={brand} strokeWidth={1.75} />
+                <View style={{ flex: 1 }}>
+                  <Text style={typography.body}>{t('settings.quietHours.title')}</Text>
+                  <Text
+                    style={[
+                      typography.caption,
+                      { color: surface.textMuted, marginTop: 2 },
+                    ]}>
+                    {t('settings.quietHours.description')}
+                  </Text>
+                </View>
               </View>
-              <Text style={[typography.body, { flex: 1 }]}>
-                {t('settings.accent')}
-              </Text>
-              <Text style={[typography.callout, { color: surface.textMuted }]}>
-                emerald-500
-              </Text>
+              <Switch
+                value={quietEnabled}
+                onValueChange={(v) =>
+                  setQuietHours({
+                    enabled: v,
+                    startMinute: quietStart,
+                    endMinute: quietEnd,
+                  })
+                }
+                trackColor={{ false: surface.sunken, true: brand }}
+              />
+            </View>
+
+            {quietEnabled && (
+              <View style={{ padding: spacing[3], gap: spacing[3] }}>
+                <TimePicker
+                  label={t('settings.quietHours.start')}
+                  value={quietStart}
+                  onChange={(v) =>
+                    setQuietHours({
+                      enabled: true,
+                      startMinute: v,
+                      endMinute: quietEnd,
+                    })
+                  }
+                />
+                <TimePicker
+                  label={t('settings.quietHours.end')}
+                  value={quietEnd}
+                  onChange={(v) =>
+                    setQuietHours({
+                      enabled: true,
+                      startMinute: quietStart,
+                      endMinute: v,
+                    })
+                  }
+                />
+                <View style={styles.quietSummary}>
+                  <Text style={[typography.caption, { color: surface.textMuted }]}>
+                    {formatMinute(quietStart)} → {formatMinute(quietEnd)}
+                  </Text>
+                  {quietHoursHint(quietStart, quietEnd) && (
+                    <Text
+                      style={[
+                        typography.caption,
+                        { color: surface.textSubtle, marginTop: 2 },
+                      ]}>
+                      {quietHoursHint(quietStart, quietEnd)}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            )}
+          </Card>
+        </Section>
+
+        {/* Security */}
+        <Section title={t('settings.security')}>
+          <Card>
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <Bell size={18} color={brand} strokeWidth={1.75} />
+                <View style={{ flex: 1 }}>
+                  <Text style={typography.body}>{t('settings.biometric.title')}</Text>
+                  <Text
+                    style={[
+                      typography.caption,
+                      { color: surface.textMuted, marginTop: 2 },
+                    ]}>
+                    {t('settings.biometric.description')}
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={biometricLock}
+                onValueChange={setBiometricLock}
+                trackColor={{ false: surface.sunken, true: brand }}
+              />
             </View>
           </Card>
         </Section>
@@ -120,6 +277,21 @@ export default function SettingsScreen() {
             </Pressable>
           </Card>
         </Section>
+
+        {/* App info */}
+        <Section title={t('settings.about')}>
+          <Card>
+            <Row label="Version" value="0.2.0" />
+            <Row label="Kuma target" value="2.0+" />
+            <Row label="License" value="MIT" />
+          </Card>
+        </Section>
+
+        {/* Hidden reference so TS sees the import even if user later
+            removes the dev section. */}
+        <View style={{ height: 0, opacity: 0 }} accessible={false}>
+          <Text>{brandFill}</Text>
+        </View>
       </SafeScrollView>
     </View>
   );
@@ -175,29 +347,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
+    gap: spacing[3],
   },
   rowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
+    flex: 1,
   },
-  accentRow: {
+  swatchRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
     gap: spacing[3],
     paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
+    paddingTop: spacing[4],
   },
-  accentSwatch: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  swatchPress: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  accentDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+  swatchRing: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  swatchFill: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  swatchDot: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+  },
+  quietSummary: {
+    paddingTop: spacing[1],
   },
 });
