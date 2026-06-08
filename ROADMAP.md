@@ -16,7 +16,7 @@ Items the agent **cannot** finish alone in a sandbox:
 |---|---|
 | 10. iOS WidgetKit | Needs paid Apple Developer account + signing + physical device to test widget extension. Code can be written; deployment can't. |
 | 11. Android widget | Needs signed release keystore + Play Internal track. Code can be written; verification can't. |
-| 12. Go push relay backend | Deploys to user's own infra (Fly.io / DO / self-host). Code is fine; deploy keys are user's. |
+| 12. Go push relay backend | Deploys to user's own infra (Fly.io / DO / self-host). Code is fine; deploy keys are user's. **Code: complete. Deploy: user runs `fly launch` with `deploy/fly.toml.example` and sets secrets.** |
 | 15. Sentry / error reporting | Needs the user's Sentry DSN (or self-hosted instance URL). |
 | 19. Privacy policy | Must be the user's actual legal text (or a public-domain template they approve). |
 | 20. App Store / Play Store metadata | Final store submissions must come from the user. |

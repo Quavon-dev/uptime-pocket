@@ -1,0 +1,20 @@
+# Build artifacts
+relay
+relay.db
+relay.db-*
+*.test
+*.out
+
+# Local config
+.env
+.env.*
+!.env.example
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Test cache
+coverage.txt

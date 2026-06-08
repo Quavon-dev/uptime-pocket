@@ -1,0 +1,53 @@
+# fly.toml — example config for the Uptime Pocket relay
+#
+# This is what `fly launch --no-deploy` generates, with the
+# relay-specific tweaks. Copy this into your fly.toml.
+
+app = "uptime-pocket-relay"
+primary_region = "fra"   # change to your nearest Fly region
+
+[build]
+  dockerfile = "Dockerfile"
+  # Set these in CI / .github/workflows for reproducible builds.
+  # [build.args]
+  #   VERSION = "0.1.0"
+  #   COMMIT = "abc123"
+
+[env]
+  RELAY_HTTP_ADDR = ":8080"
+  RELAY_DB_PATH = "/data/relay.db"
+  RELAY_COALESCE_WINDOW = "30s"
+  RELAY_COALESCE_MIN = "3"
+  RELAY_LOG_LEVEL = "info"
+  # For sandboxed / TestFlight builds:
+  # APNS_ENVIRONMENT = "sandbox"
+
+[[mounts]]
+  # Persistent volume for the BoltDB file. The volume must exist
+  # before first deploy; create it with:
+  #   fly volumes create relay_data --size 1
+  source = "relay_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false   # the relay needs to run 24/7
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  # Fly's healthcheck hits /v1/health. Returns 200 when the
+  # process is up + BoltDB is readable. (BoltDB read happens
+  # on every health request.)
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/v1/health"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "256mb"

@@ -1,61 +1,114 @@
 # Changelog
 
-All notable changes to Uptime Pocket are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+All notable changes to Uptime Pocket are documented here.
+Versions follow [SemVer](https://semver.org/) loosely:
+`MAJOR.MINOR.PATCH` where MAJOR is a breaking change to the
+Kuma protocol, MINOR is a new feature, PATCH is a bugfix.
 
-## [0.3.0] — 2026-06-07 — Phase 2: Auth + Servers
+## [Unreleased]
 
 ### Added
+- v0.6.0 work-in-progress: D6 privacy policy, D7 store
+  metadata, D2 Sentry, C1/C2 widgets. See ROADMAP.md.
 
-- **SQLite persistence** for server metadata (`servers` table) with an idempotent migration runner.
-- **`expo-secure-store` credential vault** with zod validation, namespaced by server id.
-- **`KumaConnectionManager`** class + **`useKumaConnection()`** hook — owns the socket + REST lifecycle for the active server and bridges events into Zustand stores.
-- **Live `monitors` store** with per-server maps for status, errors, monitors, and incidents.
-- **`/welcome` onboarding screen** + `OnboardingGate` in `app/_layout.tsx` (routes between `/welcome` and `/` based on `servers.length`).
-- **`/servers/[id]` server detail screen** with live connection banner, outdated-Kuma warning, metadata, notification mode, and delete confirm dialog.
-- **Version detection** via `GET /api/status` on connect — outdated Kuma (< 2.0.0) is surfaced in the UI.
-- **Jest infrastructure** (`jest.config.js`, `jest.setup.ts`) with in-memory mocks for `expo-secure-store` and `expo-sqlite`. 13 unit tests across credentials and the connection manager.
-- **Add Server flow rewired** with zod validation, persistence, version probe, and a `useReducer` state model.
+## [0.5.0] — 2026-06-08
+
+### Added
+- **Push notification relay** (`relay/`). A small Go service
+  that watches one or more Uptime Kuma instances via
+  Prometheus metrics scraping, diffs the state, and forwards
+  transitions to APNs (iOS) and FCM (Android). Self-hostable
+  on Fly.io, Render, DigitalOcean, or a home server.
+  - HTTP API: `POST /v1/devices`, `DELETE /v1/devices`,
+    `GET /v1/health`, `GET /v1/version`.
+  - Bearer-token auth (single key for v1.0; per-device
+    tokens in v1.1).
+  - Coalesce rule: 3+ transitions on the same Kuma instance
+    within 30s collapse into a single "critical" alert.
+  - Quiet hours honored server-side, so the user gets muted
+    even when their phone is locked.
+  - BoltDB-backed state. 1KB per device.
+  - App-side client: `src/data/relay/client.ts` (HTTP) +
+    `src/features/notifications/useRelayRegistration.ts`
+    (lifecycle hook).
+  - Deploy guides for Fly.io, Render, DigitalOcean, and
+    docker-compose.
 
 ### Changed
+- App-side notification flow now has a 3rd mode (`'relay'`)
+  alongside `'direct'` and `'none'`. The setting was already
+  in the domain model; the UI surfaces it via the
+  `useRelayRegistration` hook.
 
-- `Server.auth` (full strategy) → `Server.authKind` (`'bearer' | 'password'`). **Secrets no longer exist in the in-memory store.**
-- Servers tab rebuilt: persisted list, live `connectionStatus` prop, long-press to set active.
-- Monitors tab wired to live data with filter chips (All / Up / Down) and connection status banner.
-
-### Quality gates
-
-- `npm test` — 13/13 passing
-- `npm run typecheck` — 0 errors
-- `npm run lint` — clean
-- `npm run lint:doctor` — No issues found (69 files scanned)
-- `npx expo prebuild --platform ios` — succeeds
-
-### Known caveats
-
-- Web bundling is blocked by an `expo-sqlite` wasm bundler issue. iOS/Android unaffected.
-- `npm audit` flags 12 pre-existing transitive vulnerabilities, none reachable from our code.
-
-## [0.2.0] — 2026-06-07 — Phase 1: Design System
+## [0.4.0] — 2026-06-07
 
 ### Added
+- **Background fetch + connection revalidation.**
+  `expo-background-fetch` + `expo-task-manager` wake the
+  app every ~15 min on Android (WorkManager) or whatever
+  schedule iOS gives us, and the connection manager's
+  new `revalidateActiveServer()` re-establishes the Kuma
+  socket. For always-on delivery, the relay is the
+  recommended path; background fetch is the no-credentials
+  fallback.
+- **i18n.** Five locales (en, de, fr, ja, es), a new
+  `src/i18n/` module with parity-enforced translation
+  files, and a language picker in the Settings tab. The
+  device's system locale is used by default; explicit
+  override persists to SQLite.
+- **Accessibility audit.** Roles, labels, and decorative
+  hiding on every interactive primitive. Static-analysis
+  test suite (`tests/a11y/`) locks the structural
+  commitments. `docs/accessibility.md` has the on-device
+  manual checklist.
+- **Maestro E2E flows.** Nine flows covering launch,
+  add-server, theme, language, biometric, design system,
+  notifications permission, servers list, and a one-shot
+  smoke test. See `.maestro/README.md`.
+- **Android adaptive icon validator.** A pre-prebuild
+  check that the three adaptive-icon PNGs are the right
+  shape, have a safe zone, and that the monochrome layer
+  uses the alpha channel correctly. Currently flags the
+  shipped `android-icon-monochrome.png` for re-export.
 
-- **UI primitives** in `src/components/ui/`: `Button`, `Chip`, `SegmentedControl`, `Tag`, `EmptyState`, `ErrorState`, `icons.tsx` (Lucide wrapper).
-- **Monitor components** in `src/components/monitor/`: `MonitorCard`, `MonitorRow`.
-- **Server components** in `src/components/server/`: `ServerCard`, `ServerSwitcher`.
-- **Chart components** in `src/components/chart/`: `ResponseTimeChart` (Reanimated 4 fade-in), `UptimeBar`.
-- **`/design-system` Storybook** — every component rendered in light + dark.
-- **`/monitors/[monitorId]`** detail screen with chart, uptime bar, and actions.
-- **`/servers/switch`** server switcher modal.
-- `react-doctor` integration; fixed all 110 lint issues from the initial pass.
+### Changed
+- **Settings persistence.** Settings are now in SQLite
+  (v2 migration), not in-memory. Every setter writes
+  through to disk before updating the in-memory store.
+  New fields: `locale`, `accentSwatchId`.
+- **Connection manager singleton.** `getConnectionManager()`
+  replaces the per-mount manager, so the background fetch
+  task and the React tree share the same socket.
 
-### Removed
+## [0.3.0] — 2026-06-05
 
-- Dev sample data seed. Chart fixtures now live in a dedicated file. App boots into a clean state.
+### Added
+- Auth + servers (bearer + password). Socket-only auth
+  against Kuma 2.3+.
+- Add / edit / delete servers.
+- Add / edit / delete monitors via the Kuma 2.3+ socket.
+- Tag-based filter chips on the home tab.
 
-## [0.1.0] — 2026-06-07 — Phase 0: Foundation
+## [0.2.0] — 2026-05-30
 
-- Initial commit. Expo SDK 56 scaffold, Expo Router, NativeWind v5, Reanimated 4, Zustand, Zod, the AGENTS.md / CLAUDE.md / docs layout.
+### Added
+- Full design system: tokens, typography, spacing, motion.
+- Light + dark mode with system-follow default.
+- All primitive components (Button, Card, Chip, Segmented
+  Control, TimePicker, etc).
+- A11y scaffolding (a11yRole, a11yLabel, etc on primitives).
 
-[0.3.0]: https://github.com/Quavon-dev/uptime-pocket/releases/tag/v0.3.0
-[0.2.0]: https://github.com/Quavon-dev/uptime-pocket/releases/tag/v0.2.0
+## [0.1.0] — 2026-05-15
+
+### Added
+- Project scaffold: Expo SDK 56, Expo Router, NativeWind,
+  Reanimated, expo-notifications, socket.io-client, Zustand,
+  Zod.
+- Tabs layout, monitors placeholder, theme tokens.
+
+[Unreleased]: https://github.com/Quavon-dev/uptime-pocket/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Quavon-dev/uptime-pocket/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/Quavon-dev/uptime-pocket/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/Quavon-dev/uptime-pocket/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/Quavon-dev/uptime-pocket/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Quavon-dev/uptime-pocket/releases/tag/v0.1.0
