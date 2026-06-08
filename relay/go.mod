@@ -1,10 +1,9 @@
 module github.com/quavon-dev/uptime-pocket-relay
 
-go 1.22
-
-toolchain go1.22.5
+go 1.25.0
 
 require (
+	github.com/getsentry/sentry-go v0.34.0
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/go-chi/cors v1.2.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
@@ -19,7 +18,7 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	golang.org/x/net v0.22.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
-	google.golang.org/api v0.126.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 )

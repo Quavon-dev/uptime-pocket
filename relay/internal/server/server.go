@@ -39,9 +39,10 @@ import (
 // the auth key; the Kuma watcher (not in this package) reads
 // from storage independently.
 type Server struct {
-	cfg    *config.Config
-	store  *storage.Store
-	logger *slog.Logger
+	cfg     *config.Config
+	store   *storage.Store
+	logger  *slog.Logger
+	handler http.Handler // optional override for tests / middleware
 }
 
 // New constructs a Server. The caller is responsible for calling
@@ -51,6 +52,13 @@ func New(cfg *config.Config, store *storage.Store, logger *slog.Logger) *Server 
 		logger = slog.Default()
 	}
 	return &Server{cfg: cfg, store: store, logger: logger}
+}
+
+// SetHandler overrides the HTTP handler. If unset, Start uses
+// Router(). SetHandler is the right way to add outer middleware
+// (e.g. Sentry panic capture) without modifying the router config.
+func (s *Server) SetHandler(h http.Handler) {
+	s.handler = h
 }
 
 // Router builds the chi mux. Exposed so tests can mount the
@@ -94,9 +102,13 @@ func (s *Server) Router() http.Handler {
 // Start begins listening on cfg.HTTPAddr and blocks until ctx
 // is canceled. Returns the first error from ListenAndServe.
 func (s *Server) Start(ctx context.Context) error {
+	handler := s.handler
+	if handler == nil {
+		handler = s.Router()
+	}
 	srv := &http.Server{
 		Addr:              s.cfg.HTTPAddr,
-		Handler:           s.Router(),
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,

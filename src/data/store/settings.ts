@@ -51,6 +51,7 @@ interface SettingsState extends PersistedSettings {
   setQuietHours: (q: QuietHours) => void;
   setOnboarded: (v: boolean) => void;
   setLocale: (l: LocalePreference) => void;
+  setSentryEnabled: (v: boolean) => void;
 
   /** Hard reset back to defaults (and clear on disk). */
   resetAll: () => Promise<void>;
@@ -135,6 +136,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
     void persist({ locale });
   },
 
+  setSentryEnabled: (sentryEnabled) => {
+    set({ sentryEnabled });
+    void persist({ sentryEnabled });
+  },
+
   resetAll: async () => {
     await settingsRepo.clear().catch((err) => {
       console.warn('[settings] clear failed:', err);
@@ -158,5 +164,6 @@ export function getCurrentSettings(): PersistedSettings {
     quietHoursEndMinute: s.quietHoursEndMinute,
     hasOnboarded: s.hasOnboarded,
     locale: s.locale,
+    sentryEnabled: s.sentryEnabled,
   };
 }

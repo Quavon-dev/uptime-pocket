@@ -68,6 +68,16 @@ export const MIGRATIONS: Record<number, string> = {
     ALTER TABLE settings ADD COLUMN locale TEXT NOT NULL DEFAULT 'system'
       CHECK (locale IN ('system', 'en', 'de', 'fr', 'ja', 'es'));
   `,
+
+  4: /* sql */ `
+    -- Add opt-in flag for Sentry crash reporting. The user must explicitly
+    -- enable this in settings for Sentry to be initialized. We default
+    -- to 0 (off) so a fresh install does not phone home until the user
+    -- has made an informed choice. EXPO_PUBLIC_SENTRY_DSN must also be
+    -- set at build time; both gates must be open for any data to be sent.
+    ALTER TABLE settings ADD COLUMN sentry_enabled INTEGER NOT NULL DEFAULT 0
+      CHECK (sentry_enabled IN (0, 1));
+  `,
 };
 
 const DB_NAME = 'uptime-pocket.db';

@@ -39,7 +39,9 @@ const defaultWriteImpl = async (sql: string, ...params: unknown[]) => {
         quiet_hours_end: params[5],
         has_onboarded: params[6],
         accent_swatch_id: params[7],
-        updated_at: params[8],
+        locale: params[8],
+        sentry_enabled: params[9],
+        updated_at: params[10],
       },
     ];
   } else if (upper.startsWith('DELETE FROM SETTINGS')) {
@@ -101,6 +103,7 @@ describe('settingsRepo', () => {
           has_onboarded: 1,
           accent_swatch_id: 'magenta',
           locale: 'fr',
+          sentry_enabled: 1,
           updated_at: '2026-06-01T00:00:00.000Z',
         },
       ];
@@ -115,6 +118,7 @@ describe('settingsRepo', () => {
         quietHoursEndMinute: 420,
         hasOnboarded: true,
         locale: 'fr',
+        sentryEnabled: true,
       });
     });
 
@@ -130,6 +134,7 @@ describe('settingsRepo', () => {
           quiet_hours_end: 420,
           has_onboarded: 0,
           accent_swatch_id: null,
+          sentry_enabled: 0,
           updated_at: '2026-06-01T00:00:00.000Z',
         },
       ];
@@ -137,6 +142,7 @@ describe('settingsRepo', () => {
       expect(result?.biometricLock).toBe(false);
       expect(result?.quietHoursEnabled).toBe(false);
       expect(result?.hasOnboarded).toBe(false);
+      expect(result?.sentryEnabled).toBe(false);
     });
   });
 
@@ -175,6 +181,7 @@ describe('settingsRepo', () => {
         1, // hasOnboarded
         null, // accentSwatchId
         'system', // locale (default)
+        0, // sentryEnabled (default)
         expect.any(String) // updated_at
       );
     });
