@@ -35,38 +35,15 @@
 /**
  * Current schema version. Bump this when adding a new migration.
  * The migration runner reads this and applies any newer ones.
- */
-export const SCHEMA_VERSION = 1;
-
-/**
- * The full set of CREATE TABLE statements for the latest schema.
- * Used by `migrate()` which is idempotent (CREATE TABLE IF NOT EXISTS).
  *
- * SQLite quirks to know:
- * - TEXT is the standard type for both strings and ISO timestamps (we
- *   store dates as ISO strings and parse on read).
- * - INTEGER is used for booleans (0/1) per SQLite convention.
- * - REAL for floats (uptime percentages, response times in ms).
+ * Version history:
+ *   1 - servers table
+ *   2 - settings table (app-level persisted settings)
+ *
+ * The actual SQL for each migration lives in `migrate.ts` (MIGRATIONS),
+ * NOT here. This file just declares the version number.
  */
-export const SCHEMA_SQL = /* sql */ `
-CREATE TABLE IF NOT EXISTS schema_version (
-  version INTEGER PRIMARY KEY
-);
-
-CREATE TABLE IF NOT EXISTS servers (
-  id              TEXT PRIMARY KEY NOT NULL,
-  name            TEXT NOT NULL,
-  url             TEXT NOT NULL,
-  auth_kind       TEXT NOT NULL CHECK (auth_kind IN ('bearer', 'password')),
-  notification_mode TEXT NOT NULL CHECK (notification_mode IN ('none', 'direct', 'relay')),
-  kuma_version    TEXT,
-  connected       INTEGER NOT NULL DEFAULT 0,
-  last_connected_at TEXT,
-  created_at      TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_servers_created_at ON servers(created_at);
-`;
+export const SCHEMA_VERSION = 2;
 
 /**
  * Column name → row field mapping helpers. Centralized so we don't have

@@ -22,6 +22,7 @@ import { useFonts } from 'expo-font';
 
 import { useServers } from '@/data/store/servers';
 import { useServersHydrated } from '@/features/servers/useServersHydrated';
+import { useSettings } from '@/data/store/settings';
 import { useKumaConnection } from '@/data/connection/manager';
 import { colors, useAppTheme } from '@/theme';
 
@@ -35,19 +36,30 @@ export default function RootLayout() {
     // We don't load custom fonts in Phase 0; system fonts only.
   });
   const { hydrated: serversHydrated } = useServersHydrated();
+  const hydratedSettings = useSettings((s) => s.hydrated);
+  const hydrateSettings = useSettings((s) => s.hydrate);
   // Start the connection manager (no-op until activeServerId is set).
   useKumaConnection();
   const { surface, isDark } = useAppTheme();
+
+  // Fire-and-forget settings hydrate on first render. The store's
+  // `hydrated` flag starts false and flips true once the read resolves
+  // (or fails, in which case we use defaults).
+  useEffect(() => {
+    if (!hydratedSettings) {
+      void hydrateSettings();
+    }
+  }, [hydratedSettings, hydrateSettings]);
 
   useEffect(() => {
     if (error) throw error;
   }, [error]);
 
   useEffect(() => {
-    if (loaded && serversHydrated) {
+    if (loaded && serversHydrated && hydratedSettings) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [loaded, serversHydrated]);
+  }, [loaded, serversHydrated, hydratedSettings]);
 
   if (!loaded) {
     return (

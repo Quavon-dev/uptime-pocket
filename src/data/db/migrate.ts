@@ -12,18 +12,52 @@
  */
 
 import { type SQLiteDatabase } from 'expo-sqlite';
-import { SCHEMA_SQL, SCHEMA_VERSION } from './schema';
+import { SCHEMA_VERSION } from './schema';
 
 /**
- * Each migration is keyed by its target schema version.
- * The runner applies every migration strictly newer than the stored version,
- * in order.
+ * Per-version migration SQL. Each entry MUST be a SQL string that takes
+ * the database from version (v-1) to version v, idempotent where
+ * possible (CREATE ... IF NOT EXISTS, etc).
  *
- * Each entry is a SQL string. The CREATE TABLE statements are idempotent
- * (IF NOT EXISTS) so re-runs are safe.
+ * IMPORTANT: never edit a past migration. If you need to change what
+ * version 1 does, that's a NEW migration. The only thing that should
+ * grow is the MIGRATIONS object.
  */
-const MIGRATIONS: Record<number, string> = {
-  1: SCHEMA_SQL,
+export const MIGRATIONS: Record<number, string> = {
+  1: /* sql */ `
+    CREATE TABLE IF NOT EXISTS servers (
+      id              TEXT PRIMARY KEY NOT NULL,
+      name            TEXT NOT NULL,
+      url             TEXT NOT NULL,
+      auth_kind       TEXT NOT NULL CHECK (auth_kind IN ('bearer', 'password')),
+      notification_mode TEXT NOT NULL CHECK (notification_mode IN ('none', 'direct', 'relay')),
+      kuma_version    TEXT,
+      connected       INTEGER NOT NULL DEFAULT 0,
+      last_connected_at TEXT,
+      created_at      TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_servers_created_at ON servers(created_at);
+  `,
+
+  2: /* sql */ `
+    -- App-level settings. We use a single row keyed by the literal id
+    -- 'app' so reads are a single SELECT and writes are a single UPDATE.
+    -- This is the simplest possible shape and avoids needing a key/value
+    -- table for 5 fields. See ROADMAP.md "Phase A1" for the rationale.
+    CREATE TABLE IF NOT EXISTS settings (
+      id                  TEXT PRIMARY KEY NOT NULL CHECK (id = 'app'),
+      theme               TEXT NOT NULL CHECK (theme IN ('light', 'dark', 'system')) DEFAULT 'system',
+      accent_color        TEXT,
+      biometric_lock      INTEGER NOT NULL DEFAULT 0,
+      quiet_hours_enabled INTEGER NOT NULL DEFAULT 0,
+      quiet_hours_start   INTEGER NOT NULL DEFAULT 1320,
+      quiet_hours_end     INTEGER NOT NULL DEFAULT 420,
+      has_onboarded       INTEGER NOT NULL DEFAULT 0,
+      accent_swatch_id    TEXT,
+      updated_at          TEXT NOT NULL
+    );
+  `,
 };
 
 const DB_NAME = 'uptime-pocket.db';

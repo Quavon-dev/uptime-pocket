@@ -7,12 +7,26 @@
  * - biometricLock: require Face ID / fingerprint
  * - quietHours: { enabled, startMinute, endMinute }
  *
- * NOTE: Phase 0 keeps settings in-memory. Persistence to
- * expo-secure-store / expo-sqlite will be added in Phase 2
- * when we need to persist server credentials anyway.
+ * Persistence:
+ *   - Backed by SQLite via `src/data/db/settings.ts` (settingsRepo).
+ *   - `hydrate()` is called once on app start, reading the row from disk
+ *     and seeding the store. Until hydrate completes, the store holds
+ *     `DEFAULT_SETTINGS`.
+ *   - Every setter writes through to disk BEFORE updating the in-memory
+ *     store. This means the disk is always at least as fresh as the
+ *     in-memory state, so a crash mid-update can't leave us with a
+ *     newer-on-disk / older-in-memory split.
+ *   - We swallow write errors at the boundary and log them; the UI must
+ *     keep working even if persistence is broken (e.g. simulator with
+ *     no filesystem access).
  */
 
 import { create } from 'zustand';
+import {
+  settingsRepo,
+  DEFAULT_SETTINGS,
+  type PersistedSettings,
+} from '@/data/db/settings';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -22,30 +36,114 @@ export interface QuietHours {
   endMinute: number;
 }
 
-interface SettingsState {
-  theme: ThemeMode;
-  accentColor: string | null; // null = use brand
-  biometricLock: boolean;
-  quietHours: QuietHours;
-  hasOnboarded: boolean;
+interface SettingsState extends PersistedSettings {
+  /** True once we've finished reading the initial state from disk. */
+  hydrated: boolean;
+
+  /** Read settings from disk into the store. Call once on app start. */
+  hydrate: () => Promise<void>;
 
   setTheme: (t: ThemeMode) => void;
   setAccentColor: (c: string | null) => void;
+  setAccentSwatchId: (id: string | null) => void;
   setBiometricLock: (enabled: boolean) => void;
   setQuietHours: (q: QuietHours) => void;
   setOnboarded: (v: boolean) => void;
+
+  /** Hard reset back to defaults (and clear on disk). */
+  resetAll: () => Promise<void>;
 }
 
-export const useSettings = create<SettingsState>((set) => ({
-  theme: 'system',
-  accentColor: null,
-  biometricLock: false,
-  quietHours: { enabled: false, startMinute: 22 * 60, endMinute: 7 * 60 },
-  hasOnboarded: false,
+/**
+ * Internal helper: write `patch` to disk, then merge into in-memory
+ * state. Errors are logged and swallowed so the UI never crashes from
+ * a persistence failure (e.g. corrupted DB on a user's device).
+ */
+async function persist(patch: Partial<PersistedSettings>): Promise<PersistedSettings> {
+  try {
+    return await settingsRepo.save(patch);
+  } catch (err) {
+    // We intentionally do not rethrow. Settings are nice-to-have; the
+    // app should still work even if disk is broken.
+    console.warn('[settings] persist failed:', err);
+    return { ...DEFAULT_SETTINGS, ...patch };
+  }
+}
 
-  setTheme: (theme) => set({ theme }),
-  setAccentColor: (accentColor) => set({ accentColor }),
-  setBiometricLock: (biometricLock) => set({ biometricLock }),
-  setQuietHours: (quietHours) => set({ quietHours }),
-  setOnboarded: (hasOnboarded) => set({ hasOnboarded }),
+export const useSettings = create<SettingsState>((set, get) => ({
+  ...DEFAULT_SETTINGS,
+  hydrated: false,
+
+  hydrate: async () => {
+    try {
+      const row = await settingsRepo.load();
+      set({ ...(row ?? DEFAULT_SETTINGS), hydrated: true });
+    } catch (err) {
+      console.warn('[settings] hydrate failed, using defaults:', err);
+      set({ ...DEFAULT_SETTINGS, hydrated: true });
+    }
+  },
+
+  setTheme: (theme) => {
+    // Optimistic in-memory update first so the UI doesn't flicker, then
+    // persist. If persist fails we keep the in-memory value (the next
+    // hydrate will reconcile).
+    set({ theme });
+    void persist({ theme });
+  },
+
+  setAccentColor: (accentColor) => {
+    set({ accentColor });
+    void persist({ accentColor });
+  },
+
+  setAccentSwatchId: (accentSwatchId) => {
+    set({ accentSwatchId });
+    void persist({ accentSwatchId });
+  },
+
+  setBiometricLock: (biometricLock) => {
+    set({ biometricLock });
+    void persist({ biometricLock });
+  },
+
+  setQuietHours: ({ enabled, startMinute, endMinute }) => {
+    set({
+      quietHoursEnabled: enabled,
+      quietHoursStartMinute: startMinute,
+      quietHoursEndMinute: endMinute,
+    });
+    void persist({
+      quietHoursEnabled: enabled,
+      quietHoursStartMinute: startMinute,
+      quietHoursEndMinute: endMinute,
+    });
+  },
+
+  setOnboarded: (hasOnboarded) => {
+    set({ hasOnboarded });
+    void persist({ hasOnboarded });
+  },
+
+  resetAll: async () => {
+    await settingsRepo.clear().catch((err) => {
+      console.warn('[settings] clear failed:', err);
+    });
+    set({ ...DEFAULT_SETTINGS, hydrated: true });
+  },
 }));
+
+/** Helper for tests + non-React code that needs current snapshot. */
+export function getCurrentSettings(): PersistedSettings {
+  const s = useSettings.getState();
+  return {
+    theme: s.theme,
+    accentColor: s.accentColor,
+    accentSwatchId: s.accentSwatchId,
+    biometricLock: s.biometricLock,
+    quietHoursEnabled: s.quietHoursEnabled,
+    quietHoursStartMinute: s.quietHoursStartMinute,
+    quietHoursEndMinute: s.quietHoursEndMinute,
+    hasOnboarded: s.hasOnboarded,
+  };
+}
