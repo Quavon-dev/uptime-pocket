@@ -78,6 +78,17 @@ export const MIGRATIONS: Record<number, string> = {
     ALTER TABLE settings ADD COLUMN sentry_enabled INTEGER NOT NULL DEFAULT 0
       CHECK (sentry_enabled IN (0, 1));
   `,
+
+  5: /* sql */ `
+    -- Track whether the user has seen and dismissed the first-launch
+    -- consent prompt. The prompt itself is rendered in app/_layout.tsx
+    -- when this flag is 0; tapping "Continue" sets it to 1. We default
+    -- to 0 so a fresh install shows the prompt, and so we can re-surface
+    -- it later by clearing the flag (e.g. after a material privacy
+    -- policy change). See docs/privacy.md and the in-app legal screen.
+    ALTER TABLE settings ADD COLUMN privacy_consent_dismissed INTEGER NOT NULL DEFAULT 0
+      CHECK (privacy_consent_dismissed IN (0, 1));
+  `,
 };
 
 const DB_NAME = 'uptime-pocket.db';

@@ -69,8 +69,8 @@
           }
         }
       ],
-      "./plugins/android-widget/plugin.ts",
-      "./plugins/ios-widget/plugin.ts"
+      "./plugins/android-widget/plugin.mts",
+      "./plugins/ios-widget/plugin.mts"
     ],
     "experiments": {
       "typedRoutes": true
@@ -78,7 +78,8 @@
     "extra": {
       "eas": {
         "projectId": "your-eas-project-id-here"
-      }
+      },
+      "privacyPolicyUrl": "https://quavon.de/privacy/uptime-pocket"
     }
   }
 }

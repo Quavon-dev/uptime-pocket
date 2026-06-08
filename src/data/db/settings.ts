@@ -38,6 +38,15 @@ export interface PersistedSettings {
    * until this is true AND EXPO_PUBLIC_SENTRY_DSN is set.
    */
   sentryEnabled: boolean;
+  /**
+   * Whether the user has seen and dismissed the first-launch privacy
+   * consent prompt. False on a fresh install; flipped to true when the
+   * user taps "Continue" on the bottom sheet in app/_layout.tsx. The
+   * prompt can be re-shown by clearing the flag (e.g. after a material
+   * privacy policy change), which is why we keep it as a separate
+   * boolean rather than just gating on `hasOnboarded`.
+   */
+  privacyConsentDismissed: boolean;
 }
 
 interface SettingsRow {
@@ -52,6 +61,7 @@ interface SettingsRow {
   accent_swatch_id: string | null;
   locale: string | null;
   sentry_enabled: number;
+  privacy_consent_dismissed: number;
   updated_at: string;
 }
 
@@ -67,6 +77,7 @@ function rowToSettings(row: SettingsRow): PersistedSettings {
     hasOnboarded: row.has_onboarded === 1,
     locale: (row.locale ?? 'system') as LocalePreference,
     sentryEnabled: row.sentry_enabled === 1,
+    privacyConsentDismissed: row.privacy_consent_dismissed === 1,
   };
 }
 
@@ -82,6 +93,7 @@ export const DEFAULT_SETTINGS: PersistedSettings = {
   hasOnboarded: false,
   locale: 'system',
   sentryEnabled: false,
+  privacyConsentDismissed: false,
 };
 
 export const settingsRepo = {
@@ -95,7 +107,8 @@ export const settingsRepo = {
     const row = await db.getFirstAsync<SettingsRow>(
       `SELECT id, theme, accent_color, biometric_lock, quiet_hours_enabled,
               quiet_hours_start, quiet_hours_end, has_onboarded,
-              accent_swatch_id, locale, sentry_enabled, updated_at
+              accent_swatch_id, locale, sentry_enabled,
+              privacy_consent_dismissed, updated_at
          FROM settings
         WHERE id = 'app'`
     );
@@ -119,9 +132,10 @@ export const settingsRepo = {
       `INSERT OR REPLACE INTO settings
          (id, theme, accent_color, biometric_lock, quiet_hours_enabled,
           quiet_hours_start, quiet_hours_end, has_onboarded,
-          accent_swatch_id, locale, sentry_enabled, updated_at)
+          accent_swatch_id, locale, sentry_enabled,
+          privacy_consent_dismissed, updated_at)
        VALUES
-         ('app', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         ('app', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       next.theme,
       next.accentColor,
       next.biometricLock ? 1 : 0,
@@ -132,6 +146,7 @@ export const settingsRepo = {
       next.accentSwatchId,
       next.locale,
       next.sentryEnabled ? 1 : 0,
+      next.privacyConsentDismissed ? 1 : 0,
       new Date().toISOString()
     );
 

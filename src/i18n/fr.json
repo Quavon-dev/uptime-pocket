@@ -37,6 +37,34 @@
       }
     }
   },
+  "legal": {
+    "sectionTitle": "Mentions légales",
+    "consent": {
+      "title": "Avant de commencer",
+      "body": "Uptime Pocket communique avec ta propre instance Uptime Kuma. Nous ne voyons pas ce trafic et ne collectons aucune analyse. En continuant, tu acceptes notre politique de confidentialité.",
+      "readFull": "Lire la politique complète",
+      "continue": "Je comprends"
+    },
+    "privacy": {
+      "title": "Politique de confidentialité",
+      "lastUpdated": "Dernière mise à jour {date}",
+      "shortVersion": "En bref : Uptime Pocket est un client pour un serveur que tu contrôles. Nous n'avons pas de backend, ne collectons pas d'analyses et ne vendons rien.",
+      "sections": {
+        "onDevice": {
+          "title": "Données stockées sur ton appareil",
+          "body": "Liste des serveurs, identifiants (dans le Trousseau iOS ou le Keystore Android), réglages, derniers heartbeats et — si tu l'acceptes — un jeton de notification push. Rien ne quitte ton appareil sauf si tu l'actives explicitement."
+        },
+        "offDevice": {
+          "title": "Données envoyées hors de ton appareil",
+          "body": "Requêtes HTTPS vers ton instance Kuma (tes identifiants, ton choix). Jetons push vers APNs / FCM (seulement si tu actives les notifications). Rapports de plantage vers notre point de terminaison Sentry (seulement si tu acceptes les rapports de plantage)."
+        },
+        "control": {
+          "title": "Ton contrôle",
+          "body": "Tu peux supprimer n'importe quel serveur, révoquer les jetons push, refuser les rapports de plantage, et effacer toutes les données locales en désinstallant l'app. Nous ne détenons aucune donnée de notre côté : il n'y a rien à exporter ou à supprimer sur un serveur."
+        }
+      }
+    }
+  },
   "tabs": {
     "monitors": "Moniteurs",
     "incidents": "Incidents",

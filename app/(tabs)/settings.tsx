@@ -12,7 +12,7 @@
 
 import { View, Text, Pressable, Switch, StyleSheet, ScrollView } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { Sparkles, ChevronRight, Bell, Moon, Globe, Bug } from 'lucide-react-native';
+import { Sparkles, ChevronRight, Bell, Moon, Globe, Bug, Shield } from 'lucide-react-native';
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import {
   SafeScrollView,
@@ -374,6 +374,29 @@ export default function SettingsScreen() {
               <View style={styles.rowLeft}>
                 <Sparkles size={18} color={brand} strokeWidth={1.75} />
                 <Text style={typography.body}>{t('settings.designSystem')}</Text>
+              </View>
+              <ChevronRight size={18} color={surface.textMuted} strokeWidth={1.5} />
+            </Pressable>
+          </Card>
+        </Section>
+
+        {/* Legal — link to the in-app privacy policy screen. We use
+            the same Card/Pressable/ChevronRight pattern as the
+            Developer section so the entry visually matches its
+            neighbors. */}
+        <Section title={t('legal.sectionTitle')}>
+          <Card>
+            <Pressable
+              onPress={() => router.push('/settings/legal')}
+              style={({ pressed }) => [
+                styles.row,
+                { opacity: pressed ? 0.6 : 1 },
+              ]}
+              accessibilityRole="link"
+              accessibilityLabel={t('legal.privacy.title')}>
+              <View style={styles.rowLeft}>
+                <Shield size={18} color={brand} strokeWidth={1.75} />
+                <Text style={typography.body}>{t('legal.privacy.title')}</Text>
               </View>
               <ChevronRight size={18} color={surface.textMuted} strokeWidth={1.5} />
             </Pressable>

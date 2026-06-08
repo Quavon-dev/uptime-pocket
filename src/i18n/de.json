@@ -37,6 +37,34 @@
       }
     }
   },
+  "legal": {
+    "sectionTitle": "Rechtliches",
+    "consent": {
+      "title": "Bevor es losgeht",
+      "body": "Uptime Pocket spricht mit deiner eigenen Uptime-Kuma-Instanz. Wir sehen diesen Datenverkehr nicht und sammeln keine Analytik. Mit dem Fortfahren stimmst du unserer Datenschutzerklärung zu.",
+      "readFull": "Vollständige Erklärung lesen",
+      "continue": "Ich verstehe"
+    },
+    "privacy": {
+      "title": "Datenschutzerklärung",
+      "lastUpdated": "Zuletzt aktualisiert {date}",
+      "shortVersion": "Kurzfassung: Uptime Pocket ist ein Client für einen Server, den du kontrollierst. Wir betreiben kein Backend, sammeln keine Analytik und verkaufen nichts.",
+      "sections": {
+        "onDevice": {
+          "title": "Daten auf deinem Gerät",
+          "body": "Serverliste, Zugangsdaten (im iOS-Schlüsselbund oder Android-Keystore), Einstellungen, letzte Heartbeats und — falls du zustimmst — ein Push-Benachrichtigungs-Token. Nichts verlässt dein Gerät, außer du aktivierst es ausdrücklich."
+        },
+        "offDevice": {
+          "title": "Daten, die dein Gerät verlassen",
+          "body": "HTTPS-Anfragen an deine Kuma-Instanz (deine Zugangsdaten, deine Wahl). Push-Tokens an APNs / FCM (nur wenn du Benachrichtigungen aktivierst). Absturzberichte an unseren Sentry-Endpunkt (nur wenn du Absturzberichte aktivierst)."
+        },
+        "control": {
+          "title": "Deine Kontrolle",
+          "body": "Du kannst jeden Server löschen, Push-Tokens widerrufen, Absturzberichte deaktivieren und alle lokalen Daten durch Deinstallation entfernen. Wir haben keine Daten auf unserer Seite, also gibt es nichts zu exportieren oder auf einem Server zu löschen."
+        }
+      }
+    }
+  },
   "tabs": {
     "monitors": "Monitore",
     "incidents": "Vorfälle",

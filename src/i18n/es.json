@@ -37,6 +37,34 @@
       }
     }
   },
+  "legal": {
+    "sectionTitle": "Legal",
+    "consent": {
+      "title": "Antes de empezar",
+      "body": "Uptime Pocket habla con tu propia instancia de Uptime Kuma. No vemos ese tráfico y no recopilamos análisis. Al continuar, aceptas nuestra política de privacidad.",
+      "readFull": "Leer la política completa",
+      "continue": "Entendido"
+    },
+    "privacy": {
+      "title": "Política de privacidad",
+      "lastUpdated": "Última actualización {date}",
+      "shortVersion": "En resumen: Uptime Pocket es un cliente para un servidor que tú controlas. No tenemos backend, no recopilamos análisis y no vendemos nada.",
+      "sections": {
+        "onDevice": {
+          "title": "Datos guardados en tu dispositivo",
+          "body": "Lista de servidores, credenciales (en el Llavero de iOS o el Keystore de Android), ajustes, heartbeats recientes y — si lo activas — un token de notificaciones push. Nada sale de tu dispositivo a menos que lo actives explícitamente."
+        },
+        "offDevice": {
+          "title": "Datos enviados fuera de tu dispositivo",
+          "body": "Peticiones HTTPS a tu instancia Kuma (tus credenciales, tu elección). Tokens push a APNs / FCM (solo si activas las notificaciones). Informes de fallos a nuestro endpoint de Sentry (solo si aceptas los informes de fallos)."
+        },
+        "control": {
+          "title": "Tu control",
+          "body": "Puedes eliminar cualquier servidor, revocar tokens push, desactivar los informes de fallos y borrar todos los datos locales desinstalando la app. No guardamos datos en nuestro lado, así que no hay nada que exportar o borrar en un servidor."
+        }
+      }
+    }
+  },
   "tabs": {
     "monitors": "Monitores",
     "incidents": "Incidencias",

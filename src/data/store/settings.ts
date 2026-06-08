@@ -52,6 +52,7 @@ interface SettingsState extends PersistedSettings {
   setOnboarded: (v: boolean) => void;
   setLocale: (l: LocalePreference) => void;
   setSentryEnabled: (v: boolean) => void;
+  setPrivacyConsentDismissed: (v: boolean) => void;
 
   /** Hard reset back to defaults (and clear on disk). */
   resetAll: () => Promise<void>;
@@ -141,6 +142,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
     void persist({ sentryEnabled });
   },
 
+  setPrivacyConsentDismissed: (privacyConsentDismissed) => {
+    set({ privacyConsentDismissed });
+    void persist({ privacyConsentDismissed });
+  },
+
   resetAll: async () => {
     await settingsRepo.clear().catch((err) => {
       console.warn('[settings] clear failed:', err);
@@ -165,5 +171,6 @@ export function getCurrentSettings(): PersistedSettings {
     hasOnboarded: s.hasOnboarded,
     locale: s.locale,
     sentryEnabled: s.sentryEnabled,
+    privacyConsentDismissed: s.privacyConsentDismissed,
   };
 }

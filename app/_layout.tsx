@@ -25,6 +25,7 @@ import { useServersHydrated } from '@/features/servers/useServersHydrated';
 import { useSettings } from '@/data/store/settings';
 import { useBiometricLock, LockScreen } from '@/features/security';
 import { useNotificationBridge } from '@/features/notifications';
+import { PrivacyConsentGate } from '@/features/legal';
 import { useKumaConnection } from '@/data/connection/manager';
 import { useWidgetSnapshot } from '@/platform/widget';
 import { initSentry, wrapWithSentry } from '@/platform/sentry';
@@ -123,25 +124,34 @@ function RootAppBody() {
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <StatusBar style={isDark ? 'light' : 'dark'} />
-        <OnboardingGate>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: {
-                backgroundColor: surface.background,
-              },
-            }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="welcome" />
-            <Stack.Screen
-              name="servers/add"
-              options={{
-                presentation: 'modal',
-                gestureEnabled: true,
-              }}
-            />
-          </Stack>
-        </OnboardingGate>
+        <PrivacyConsentGate>
+          <OnboardingGate>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: {
+                  backgroundColor: surface.background,
+                },
+              }}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="welcome" />
+              <Stack.Screen
+                name="servers/add"
+                options={{
+                  presentation: 'modal',
+                  gestureEnabled: true,
+                }}
+              />
+              <Stack.Screen
+                name="settings/legal"
+                options={{
+                  presentation: 'modal',
+                  gestureEnabled: true,
+                }}
+              />
+            </Stack>
+          </OnboardingGate>
+        </PrivacyConsentGate>
         <LockScreen
           status={lockStatus}
           biometryName={biometryName}

@@ -41,7 +41,8 @@ const defaultWriteImpl = async (sql: string, ...params: unknown[]) => {
         accent_swatch_id: params[7],
         locale: params[8],
         sentry_enabled: params[9],
-        updated_at: params[10],
+        privacy_consent_dismissed: params[10],
+        updated_at: params[11],
       },
     ];
   } else if (upper.startsWith('DELETE FROM SETTINGS')) {
@@ -104,6 +105,7 @@ describe('settingsRepo', () => {
           accent_swatch_id: 'magenta',
           locale: 'fr',
           sentry_enabled: 1,
+          privacy_consent_dismissed: 1,
           updated_at: '2026-06-01T00:00:00.000Z',
         },
       ];
@@ -119,6 +121,7 @@ describe('settingsRepo', () => {
         hasOnboarded: true,
         locale: 'fr',
         sentryEnabled: true,
+        privacyConsentDismissed: true,
       });
     });
 
@@ -182,6 +185,7 @@ describe('settingsRepo', () => {
         null, // accentSwatchId
         'system', // locale (default)
         0, // sentryEnabled (default)
+        0, // privacyConsentDismissed (default)
         expect.any(String) // updated_at
       );
     });

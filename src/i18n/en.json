@@ -37,6 +37,34 @@
       }
     }
   },
+  "legal": {
+    "sectionTitle": "Legal",
+    "consent": {
+      "title": "Before you start",
+      "body": "Uptime Pocket talks to your own Uptime Kuma instance. We don't see that traffic, and we don't collect analytics. By continuing, you agree to our privacy policy.",
+      "readFull": "Read the full policy",
+      "continue": "I understand"
+    },
+    "privacy": {
+      "title": "Privacy policy",
+      "lastUpdated": "Last updated {date}",
+      "shortVersion": "The short version: Uptime Pocket is a client for a server you control. We don't run a backend, we don't collect analytics, and we don't sell anything.",
+      "sections": {
+        "onDevice": {
+          "title": "Data stored on your device",
+          "body": "Server list, credentials (in the iOS Keychain or Android Keystore), settings, recent heartbeats, and — if you opt in — a push notification token. Nothing leaves your device unless you explicitly enable it."
+        },
+        "offDevice": {
+          "title": "Data sent off your device",
+          "body": "HTTPS requests to your Kuma instance (your credentials, your choice). Push tokens to APNs / FCM (only if you enable notifications). Crash reports to our Sentry endpoint (only if you opt in to crash reports)."
+        },
+        "control": {
+          "title": "Your control",
+          "body": "You can delete any server, revoke push tokens, opt out of crash reports, and remove all local data by uninstalling the app. We hold no data on our side, so there is nothing to export or delete on a server."
+        }
+      }
+    }
+  },
   "tabs": {
     "monitors": "Monitors",
     "incidents": "Incidents",
