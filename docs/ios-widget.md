@@ -31,6 +31,11 @@ app writes, and never writes back. This is by design (see
 │  useWidgetSnapshot()    │
 │   └→ buildSnapshot()    │
 │   └→ writeSnapshotFile()│
+│        │                │
+│        │ native module  │
+│        ▼                │
+│  UptimePocketAppGroup   │
+│   (Swift, in main app)  │
 └────────┬────────────────┘
          │ JSON via App Group container
          │ (group.de.quavon.uptimepocket)
@@ -58,20 +63,26 @@ Apple Developer Portal.
 
 The `uptime-pocket-ios-widget` config plugin (in
 `plugins/ios-widget/`) wires all of this up at
-`expo prebuild` time. It:
+`expo prebuild` time, with **zero manual Xcode work**. It:
 
-1. Adds the `UptimePocketWidget` target to the Xcode project
+1. Adds the `UptimePocketWidget` extension target to the
+   Xcode project
 2. Adds the App Group entitlement to **both** targets
 3. Embeds the extension into the main app
 4. Copies the Swift sources + Info.plist + entitlements
-5. Adds a native bridge module (`UptimePocketAppGroup`) to
-   the main app, so the JS side can write to the App Group
+5. Adds a native bridge module (`UptimePocketAppGroup.swift`
+   + `.m`) to the main app target's compile sources
+6. Sets up the Swift→ObjC bridging header (in case your
+   template doesn't already have one)
+7. Configures Swift build settings on the main app target
+
+The plugin is idempotent — safe to re-run `expo prebuild`.
 
 ## Setup — what you (the operator) must do
 
-The plugin does the file-and-Xcode work. There are 3 things
-it **can't** do, all because they require your Apple Developer
-account:
+The plugin does all the file-and-Xcode work. There are 2
+things it **can't** do, both because they require your Apple
+Developer account:
 
 ### 1. Create the App Group on the Apple Developer Portal
 
@@ -114,50 +125,22 @@ If you skip this, the build will fail with:
 > "Provisioning profile ... doesn't include the
 > com.apple.security.application-groups entitlement"
 
-### 3. Add the native module files to the Xcode target
-
-The plugin copies `UptimePocketAppGroup.swift` and
-`UptimePocketAppGroup.m` into `ios/`, but it does NOT add
-them to the Xcode target automatically (because adding to
-the main target is intrusive and you might have customized
-it). Steps:
-
-1. In Xcode, select the main app target
-2. Right-click the project root → "Add Files to <Project>..."
-3. Select `UptimePocketAppGroup.swift` and
-   `UptimePocketAppGroup.m`
-4. Make sure "Copy items if needed" is **off** (the files
-   are already in the project root)
-5. Make sure the main app target is checked under
-   "Add to targets"
-6. Add
-
-Xcode will prompt you to create a bridging header (since we
-mixed Swift and ObjC in the main target). Click "Don't
-Create" — we don't need one because the .m file uses
-`RCT_EXTERN_MODULE` which handles the bridge without a
-bridging header.
-
 ## Why the manual steps?
 
-The plugin handles 80% of the work — Xcode project structure,
-entitlements, file copying, target embedding. The remaining
-20% is genuinely operator-specific:
+The plugin handles 100% of the file-and-Xcode work — Xcode
+project structure, entitlements, file copying, target
+embedding, source file membership, build settings. The
+remaining steps are genuinely operator-specific:
 
 - **App Group creation** requires the Apple Developer Portal
   and your team credentials.
 - **Signing** requires your team and a paid developer account.
-- **Adding the native module** requires Xcode to be open and
-  the user to be present. The plugin tries to be
-  non-intrusive — modifying the main app target's source
-  membership is more disruptive than helpful if the user has
-  already customized it.
 
-We could automate (2) and (3) with more invasive Xcode
-project edits, but the trade-off is making a plugin that
-fails on already-customized projects. The current design
-fails-soft: the plugin runs cleanly; the manual steps are
-documented; the user is in control.
+The reason we can't automate signing is that it requires
+credentials that don't live in the repo (your team
+identifier, provisioning profiles, certificates). Apple's
+own `fastlane match` tools are the canonical way to share
+those in CI, but they're out of scope for the plugin.
 
 ## Troubleshooting
 
@@ -202,6 +185,24 @@ to:
    Capabilities → uncheck "Automatically manage signing" →
    re-check it).
 
+### Build fails with "missing bridging header" or
+"module 'React' not found"
+
+The plugin should set up the bridging header
+(`UptimePocket-Bridging-Header.h`) and add it to the
+`SWIFT_OBJC_BRIDGING_HEADER` build setting. If your
+template was customized and those settings got stripped:
+
+1. In Xcode, select the main app target
+2. Build Settings → search for "bridging header"
+3. Set "Objective-C Bridging Header" to
+   `UptimePocket/UptimePocket-Bridging-Header.h` (or
+   wherever your template expects it)
+4. The file should contain:
+   ```objc
+   #import <React/RCTBridgeModule.h>
+   ```
+
 ### Build fails on `xcodebuild` step
 
 If the plugin added the widget target but the build fails,
@@ -217,6 +218,17 @@ quirk of the `xcode` npm package. The fix:
 Or in the pbxproj directly: search for the
 `PBXCopyFilesBuildPhase` named "Embed App Extensions" and
 move it after the linker phase.
+
+### Plugin ran but the bridge module isn't in the main target
+
+This usually means `expo prebuild` was run on a cached
+project, or the iOS folder was hand-modified. To recover:
+
+1. Delete the `ios/` folder
+2. Re-run `expo prebuild --platform ios --clean`
+3. The plugin will re-run and re-add everything
+   (it's idempotent, but starting from a clean tree
+   removes any partial-state confusion)
 
 ## See also
 

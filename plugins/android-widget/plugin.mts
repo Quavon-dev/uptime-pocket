@@ -17,7 +17,13 @@
  *
  * Reference: https://docs.expo.dev/config-plugins/development-guide/
  */
-import { ConfigPlugin, withAppBuildGradle, withAndroidManifest, withSettingsGradle } from 'expo/config-plugins';
+import cp from '@expo/config-plugins';
+const {
+  ConfigPlugin,
+  withAppBuildGradle,
+  withAndroidManifest,
+  withSettingsGradle,
+} = cp;
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
