@@ -306,33 +306,6 @@ export function normalizeHeartbeatListRow(
 }
 
 /**
- * Normalize a `heartbeatList` socket event payload.
- *
- * Event shape: `(monitorId: string, rows: array, important: boolean) => void`
- *   - `monitorId` is a string ("8"), not a number — Kuma quirk.
- *   - `rows` is the array of heartbeats, newest-first.
- *
- * Returns a list of normalized rows + the parsed monitorId (number).
- * Returns null if monitorId is not a valid number.
- */
-export function normalizeHeartbeatListEvent(
-  monitorId: unknown,
-  rows: unknown
-): { monitorId: number; rows: NormalizedHeartbeatRow[] } | null {
-  const id = typeof monitorId === 'string' ? Number(monitorId) : Number(monitorId);
-  if (!Number.isFinite(id)) return null;
-  if (!Array.isArray(rows)) return { monitorId: id, rows: [] };
-  const out: NormalizedHeartbeatRow[] = [];
-  for (const row of rows) {
-    const n = normalizeHeartbeatListRow(row);
-    if (n) out.push(n);
-  }
-  // Kuma sends newest-first; charts want oldest-first.
-  out.sort((a, b) => a.timestamp - b.timestamp);
-  return { monitorId: id, rows: out };
-}
-
-/**
  * Normalize a single `uptime` socket event.
  *
  * Event shape: `(monitorId: string, hours: number|string, ratio: number) => void`
@@ -357,6 +330,249 @@ export function normalizeUptimeEvent(
   else if (hours === '1y') h = '1y';
   else return null;
   return { monitorId: id, hours: h, ratio };
+}
+
+// ---- Kuma 2.3+ auxiliary events (originally used by the web SPA) -------
+
+/**
+ * Normalize a `info` socket event. Kuma sends this on connect.
+ *
+ * Source: `server/client.js:145-163` in Kuma 2.3.2. The payload is:
+ *   {
+ *     primaryBaseURL: string,
+ *     serverTimezone: string,            // e.g. "Europe/Berlin"
+ *     serverTimezoneOffset: number,      // minutes east of UTC
+ *     version?: string,                  // e.g. "2.3.2"
+ *     latestVersion?: string,            // empty if up to date
+ *     isContainer?: boolean,
+ *     dbType?: string,                   // "sqlite" | "mariadb" | ...
+ *     runtime?: { platform: string, arch: string },
+ *   }
+ *
+ * The `version` and `latestVersion` fields are what we use to surface
+ * "your Kuma is out of date" in the servers tab. Returns null for
+ * non-object input.
+ */
+export interface KumaServerInfo {
+  version: string | null;
+  latestVersion: string | null;
+  serverTimezone: string | null;
+  serverTimezoneOffsetMinutes: number | null;
+  primaryBaseURL: string | null;
+}
+
+export function normalizeInfo(data: unknown): KumaServerInfo | null {
+  if (!data || typeof data !== 'object') return null;
+  const d = data as Record<string, unknown>;
+  return {
+    version: typeof d.version === 'string' ? d.version : null,
+    latestVersion:
+      typeof d.latestVersion === 'string' && d.latestVersion.length > 0
+        ? d.latestVersion
+        : null,
+    serverTimezone:
+      typeof d.serverTimezone === 'string' ? d.serverTimezone : null,
+    serverTimezoneOffsetMinutes:
+      typeof d.serverTimezoneOffset === 'number' &&
+      isFinite(d.serverTimezoneOffset)
+        ? d.serverTimezoneOffset
+        : null,
+    primaryBaseURL:
+      typeof d.primaryBaseURL === 'string' ? d.primaryBaseURL : null,
+  };
+}
+
+/**
+ * Normalize an `avgPing` socket event.
+ *
+ * Source: `server/model/monitor.js:1356` in Kuma 2.3.2:
+ *   io.to(userID).emit("avgPing", monitorID, data24h.avgPing ? Number(...toFixed(2)) : null);
+ *
+ * The value is the 24h average ping in milliseconds, rounded to 2
+ * decimal places. Kuma sends `null` (not `undefined`, not `0`) for
+ * monitors that have no up-beats in the 24h window. Returns the
+ * monitorId + nullable ping.
+ */
+export function normalizeAvgPingEvent(
+  monitorId: unknown,
+  ping: unknown
+): { monitorId: number; ping: number | null } | null {
+  const id = typeof monitorId === 'string' ? Number(monitorId) : Number(monitorId);
+  if (!Number.isFinite(id)) return null;
+  if (ping == null) return { monitorId: id, ping: null };
+  if (typeof ping !== 'number' || !isFinite(ping)) return null;
+  return { monitorId: id, ping };
+}
+
+/**
+ * Normalize a `certInfo` socket event.
+ *
+ * Source: `server/model/monitor.js` (`sendCertInfo`) + `server/monitor.js`
+ * cert-info model in Kuma 2.3.2. The payload arrives as a JSON string
+ * (Kuma quirk — the server wraps the structured object in `JSON.stringify`
+ * before emitting). On parse failure we return null.
+ *
+ * Shape (post-parse):
+ *   {
+ *     valid: boolean,
+ *     certInfo?: {
+ *       subject: string,
+ *       issuer: string,
+ *       validFrom: string,    // ISO date
+ *       validTo: string,      // ISO date
+ *       daysRemaining: number,
+ *       validTLSAccepted: boolean,
+ *     }
+ *   }
+ */
+export interface KumaCertInfo {
+  valid: boolean;
+  daysRemaining: number | null;
+  validTo: string | null; // ISO date
+  subject: string | null;
+  issuer: string | null;
+}
+
+export function normalizeCertInfo(data: unknown): KumaCertInfo | null {
+  if (data == null) return null;
+  // Kuma wraps the object in JSON.stringify before emitting. Accept
+  // either a parsed object or a JSON string.
+  let parsed: unknown = data;
+  if (typeof data === 'string') {
+    try {
+      parsed = JSON.parse(data);
+    } catch {
+      return null;
+    }
+  }
+  if (!parsed || typeof parsed !== 'object') return null;
+  const d = parsed as Record<string, unknown>;
+  const inner = d.certInfo as Record<string, unknown> | undefined;
+  return {
+    valid: d.valid === true,
+    daysRemaining:
+      inner && typeof inner.daysRemaining === 'number' && isFinite(inner.daysRemaining)
+        ? inner.daysRemaining
+        : null,
+    validTo:
+      inner && typeof inner.validTo === 'string' ? inner.validTo : null,
+    subject:
+      inner && typeof inner.subject === 'string' ? inner.subject : null,
+    issuer:
+      inner && typeof inner.issuer === 'string' ? inner.issuer : null,
+  };
+}
+
+/**
+ * Normalize a `domainInfo` socket event.
+ *
+ * Source: `server/model/monitor.js` (`sendDomainInfo`) in Kuma 2.3.2.
+ * Emitted as `(monitorID, daysRemaining, expiresOn)` — three separate
+ * positional args, NOT an object.
+ */
+export function normalizeDomainInfoEvent(
+  monitorId: unknown,
+  daysRemaining: unknown,
+  expiresOn: unknown
+): {
+  monitorId: number;
+  daysRemaining: number | null;
+  expiresOn: string | null; // ISO date
+} | null {
+  const id = typeof monitorId === 'string' ? Number(monitorId) : Number(monitorId);
+  if (!Number.isFinite(id)) return null;
+  return {
+    monitorId: id,
+    daysRemaining:
+      typeof daysRemaining === 'number' && isFinite(daysRemaining)
+        ? daysRemaining
+        : null,
+    expiresOn: typeof expiresOn === 'string' ? expiresOn : null,
+  };
+}
+
+/**
+ * Normalize an `updateMonitorIntoList` socket event.
+ *
+ * Source: `server/uptime-kuma-server.js:234` in Kuma 2.3.2:
+ *   this.io.to(socket.userID).emit("updateMonitorIntoList", list);
+ *
+ * `list` is a `{ [monitorId: string]: Monitor }` object containing
+ * exactly one monitor (the one that just changed). Returns null for
+ * any other shape. The caller is responsible for the merge into the
+ * existing monitor list.
+ */
+export function normalizeUpdateMonitorIntoList(
+  data: unknown
+): { monitorId: number; monitor: import('@/domain/models').Monitor } | null {
+  if (!data || typeof data !== 'object') return null;
+  const list = data as Record<string, unknown>;
+  // The map has exactly one key — the changed monitor. Find it.
+  const keys = Object.keys(list);
+  if (keys.length === 0) return null;
+  const monitorIdStr = keys[0];
+  const monitorId = Number(monitorIdStr);
+  if (!Number.isFinite(monitorId)) return null;
+  const monitors = normalizeMonitorList(list);
+  const monitor = monitors.find((m) => m.id === monitorId);
+  if (!monitor) return null;
+  return { monitorId, monitor };
+}
+
+/**
+ * Normalize a `deleteMonitorFromList` socket event.
+ *
+ * Source: `server/uptime-kuma-server.js:245` in Kuma 2.3.2:
+ *   this.io.to(socket.userID).emit("deleteMonitorFromList", monitorID);
+ *
+ * `monitorID` may arrive as a string ("8") or a number.
+ */
+export function normalizeDeleteMonitorFromList(
+  monitorId: unknown
+): { monitorId: number } | null {
+  const id = typeof monitorId === 'string' ? Number(monitorId) : Number(monitorId);
+  if (!Number.isFinite(id)) return null;
+  return { monitorId: id };
+}
+
+/**
+ * Normalize a `heartbeatList` event that carries the optional `overwrite` flag.
+ *
+ * Kuma's `heartbeatList(monitorID, rows, overwrite=false)` event may pass
+ * `overwrite=true` to signal "the rows are the canonical list, replace
+ * whatever you have". The default `overwrite=false` means "merge these
+ * onto whatever you have" (the user may have accumulated heartbeats
+ * from a previous burst or live events that aren't in this list).
+ *
+ * Source: Kuma SPA, `src/mixins/socket.js:236-242`:
+ *   socket.on("heartbeatList", (monitorID, data, overwrite = false) => {
+ *     if (!(monitorID in this.heartbeatList) || overwrite) {
+ *       this.heartbeatList[monitorID] = data;
+ *     } else {
+ *       this.heartbeatList[monitorID] = data.concat(this.heartbeatList[monitorID]);
+ *     }
+ *   });
+ */
+export function normalizeHeartbeatListEventV2(
+  monitorId: unknown,
+  rows: unknown,
+  overwrite: unknown
+): {
+  monitorId: number;
+  rows: NormalizedHeartbeatRow[];
+  overwrite: boolean;
+} | null {
+  const id =
+    typeof monitorId === 'string' ? Number(monitorId) : Number(monitorId);
+  if (!Number.isFinite(id)) return null;
+  if (!Array.isArray(rows)) return { monitorId: id, rows: [], overwrite: !!overwrite };
+  const out: NormalizedHeartbeatRow[] = [];
+  for (const row of rows) {
+    const n = normalizeHeartbeatListRow(row);
+    if (n) out.push(n);
+  }
+  out.sort((a, b) => a.timestamp - b.timestamp);
+  return { monitorId: id, rows: out, overwrite: overwrite === true };
 }
 
 // ---- Kuma 2.3+ chart data (request/response) --------------------------

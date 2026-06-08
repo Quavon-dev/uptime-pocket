@@ -43,13 +43,21 @@ import {
   normalizeHeartbeat,
   normalizeMonitorStatus,
   normalizeIncident,
-  normalizeHeartbeatListEvent,
+  normalizeHeartbeatListEventV2,
   normalizeHeartbeatListRow,
   normalizeUptimeEvent,
   normalizeChartDatapoint,
   normalizeChartDataResponse,
+  normalizeInfo,
+  normalizeAvgPingEvent,
+  normalizeCertInfo,
+  normalizeDomainInfoEvent,
+  normalizeUpdateMonitorIntoList,
+  normalizeDeleteMonitorFromList,
   type NormalizedHeartbeatRow,
   type NormalizedChartDatapoint,
+  type KumaServerInfo,
+  type KumaCertInfo,
 } from './normalize';
 
 export type KumaEvent =
@@ -75,13 +83,26 @@ export type KumaEvent =
       type: 'heartbeatList';
       monitorId: number;
       rows: NormalizedHeartbeatRow[];
+      /** When true, REPLACE the existing cache (not merge). */
+      overwrite: boolean;
     }
   | {
       type: 'uptime';
       monitorId: number;
       hours: '24' | '168' | '720' | '1y';
       ratio: number; // 0-1
-    };
+    }
+  | { type: 'info'; info: KumaServerInfo }
+  | { type: 'avgPing'; monitorId: number; ping: number | null }
+  | { type: 'certInfo'; monitorId: number; info: KumaCertInfo }
+  | {
+      type: 'domainInfo';
+      monitorId: number;
+      daysRemaining: number | null;
+      expiresOn: string | null;
+    }
+  | { type: 'monitorUpdated'; monitorId: number; monitor: Monitor }
+  | { type: 'monitorDeleted'; monitorId: number };
 
 type Listener = (event: KumaEvent) => void;
 
@@ -200,11 +221,29 @@ export class KumaSocket {
     });
 
     // ---- Domain events ----
+    this.socket.on('info', (data: unknown) => {
+      const norm = normalizeInfo(data);
+      if (!norm) return;
+      this.emit({ type: 'info', info: norm });
+    });
+
     this.socket.on('monitorList', (data: unknown) => {
       this.emit({
         type: 'monitorList',
         monitors: normalizeMonitorList(data),
       });
+    });
+
+    this.socket.on('updateMonitorIntoList', (data: unknown) => {
+      const norm = normalizeUpdateMonitorIntoList(data);
+      if (!norm) return;
+      this.emit({ type: 'monitorUpdated', ...norm });
+    });
+
+    this.socket.on('deleteMonitorFromList', (monitorId: unknown) => {
+      const norm = normalizeDeleteMonitorFromList(monitorId);
+      if (!norm) return;
+      this.emit({ type: 'monitorDeleted', ...norm });
     });
 
     this.socket.on('monitorStatus', (data: any) => {
@@ -219,6 +258,30 @@ export class KumaSocket {
       this.emit({ type: 'heartbeat', ...norm });
     });
 
+    this.socket.on('avgPing', (mid: unknown, ping: unknown) => {
+      const norm = normalizeAvgPingEvent(mid, ping);
+      if (!norm) return;
+      this.emit({ type: 'avgPing', ...norm });
+    });
+
+    this.socket.on('certInfo', (mid: unknown, data: unknown) => {
+      const info = normalizeCertInfo(data);
+      if (!info) return;
+      const id =
+        typeof mid === 'string' ? Number(mid) : Number(mid);
+      if (!Number.isFinite(id)) return;
+      this.emit({ type: 'certInfo', monitorId: id, info });
+    });
+
+    this.socket.on(
+      'domainInfo',
+      (mid: unknown, daysRemaining: unknown, expiresOn: unknown) => {
+        const norm = normalizeDomainInfoEvent(mid, daysRemaining, expiresOn);
+        if (!norm) return;
+        this.emit({ type: 'domainInfo', ...norm });
+      }
+    );
+
     this.socket.on('incident', (data: any) => {
       const norm = normalizeIncident(data);
       if (!norm) return;
@@ -232,11 +295,21 @@ export class KumaSocket {
     });
 
     // ---- Kuma 2.3+ bulk data events ----
-    this.socket.on('heartbeatList', (mid: unknown, rows: unknown) => {
-      const norm = normalizeHeartbeatListEvent(mid, rows);
-      if (!norm) return;
-      this.emit({ type: 'heartbeatList', ...norm });
-    });
+    this.socket.on(
+      'heartbeatList',
+      (mid: unknown, rows: unknown, overwrite: unknown) => {
+        // Kuma 2.3+ may emit heartbeatList in two forms:
+        //   - (mid, rows)                 — original 2-arg form, overwrite=undefined
+        //   - (mid, rows, overwrite=true) — explicit-overwrite form
+        // We always use the V2 normalizer, which accepts both. The
+        // third arg is honored end-to-end: the store replaces vs.
+        // merges based on it, matching the Kuma SPA's own logic in
+        // `src/mixins/socket.js:236-242`.
+        const norm = normalizeHeartbeatListEventV2(mid, rows, overwrite);
+        if (!norm) return;
+        this.emit({ type: 'heartbeatList', ...norm });
+      }
+    );
 
     this.socket.on('uptime', (mid: unknown, hours: unknown, ratio: unknown) => {
       const norm = normalizeUptimeEvent(mid, hours, ratio);

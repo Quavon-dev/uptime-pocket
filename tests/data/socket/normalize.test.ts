@@ -26,6 +26,13 @@ import {
   normalizeUptime,
   normalizeChartDatapoint,
   normalizeChartDataResponse,
+  normalizeInfo,
+  normalizeAvgPingEvent,
+  normalizeCertInfo,
+  normalizeDomainInfoEvent,
+  normalizeUpdateMonitorIntoList,
+  normalizeDeleteMonitorFromList,
+  normalizeHeartbeatListEventV2,
 } from '@/data/socket/normalize';
 
 // --- Captured live payloads (uptime.quavon.de, Kuma 2.3.2, 2026-06-07) ---
@@ -615,5 +622,236 @@ describe('normalizeChartDataResponse', () => {
     const out = normalizeChartDataResponse({ ok: true, data: [] });
     expect(out.points).toEqual([]);
     expect(out.error).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Kuma 2.3+ auxiliary event normalizers (info, avgPing, certInfo, etc.)
+// ---------------------------------------------------------------------------
+
+describe('normalizeInfo', () => {
+  it('extracts version + timezone + offset from a real Kuma info payload', () => {
+    const out = normalizeInfo({
+      primaryBaseURL: 'https://uptime.quavon.de',
+      serverTimezone: 'Europe/Berlin',
+      serverTimezoneOffset: -60,
+      version: '2.3.2',
+      latestVersion: '',
+      isContainer: true,
+      dbType: 'sqlite',
+      runtime: { platform: 'linux', arch: 'x64' },
+    });
+    expect(out).toEqual({
+      version: '2.3.2',
+      latestVersion: null, // empty string treated as null
+      serverTimezone: 'Europe/Berlin',
+      serverTimezoneOffsetMinutes: -60,
+      primaryBaseURL: 'https://uptime.quavon.de',
+    });
+  });
+
+  it('returns null for non-object input', () => {
+    expect(normalizeInfo(null)).toBeNull();
+    expect(normalizeInfo('x')).toBeNull();
+    expect(normalizeInfo(42)).toBeNull();
+  });
+
+  it('handles missing fields gracefully (all nulls)', () => {
+    const out = normalizeInfo({});
+    expect(out).toEqual({
+      version: null,
+      latestVersion: null,
+      serverTimezone: null,
+      serverTimezoneOffsetMinutes: null,
+      primaryBaseURL: null,
+    });
+  });
+
+  it('preserves a non-empty latestVersion (an update IS available)', () => {
+    const out = normalizeInfo({ version: '2.3.2', latestVersion: '2.4.0' });
+    expect(out?.latestVersion).toBe('2.4.0');
+  });
+});
+
+describe('normalizeAvgPingEvent', () => {
+  it('returns a positive ping for a string monitorId', () => {
+    const out = normalizeAvgPingEvent('8', 87.42);
+    expect(out).toEqual({ monitorId: 8, ping: 87.42 });
+  });
+
+  it('returns a positive ping for a numeric monitorId', () => {
+    const out = normalizeAvgPingEvent(8, 87.42);
+    expect(out).toEqual({ monitorId: 8, ping: 87.42 });
+  });
+
+  it('preserves null ping (Kuma sends null for monitors with no up-beats)', () => {
+    const out = normalizeAvgPingEvent('8', null);
+    expect(out).toEqual({ monitorId: 8, ping: null });
+  });
+
+  it('returns null for invalid monitorId', () => {
+    expect(normalizeAvgPingEvent('oops', 87)).toBeNull();
+    expect(normalizeAvgPingEvent(undefined, 87)).toBeNull();
+  });
+
+  it('returns null for non-numeric non-null ping', () => {
+    expect(normalizeAvgPingEvent('8', '87ms')).toBeNull();
+    expect(normalizeAvgPingEvent('8', NaN)).toBeNull();
+  });
+});
+
+describe('normalizeCertInfo', () => {
+  it('parses the Kuma certInfo object directly (no JSON.parse needed)', () => {
+    const out = normalizeCertInfo({
+      valid: true,
+      certInfo: {
+        subject: 'CN=uptime.quavon.de',
+        issuer: "Let's Encrypt R3",
+        validFrom: '2026-05-01T00:00:00.000Z',
+        validTo: '2026-08-01T00:00:00.000Z',
+        daysRemaining: 54,
+        validTLSAccepted: true,
+      },
+    });
+    expect(out).toEqual({
+      valid: true,
+      daysRemaining: 54,
+      validTo: '2026-08-01T00:00:00.000Z',
+      subject: 'CN=uptime.quavon.de',
+      issuer: "Let's Encrypt R3",
+    });
+  });
+
+  it('parses the JSON-stringified form Kuma actually emits over the wire', () => {
+    const jsonStr = JSON.stringify({
+      valid: true,
+      certInfo: {
+        subject: 'CN=example.com',
+        issuer: 'CN=Issuer',
+        validFrom: '2026-01-01T00:00:00.000Z',
+        validTo: '2026-12-01T00:00:00.000Z',
+        daysRemaining: 200,
+        validTLSAccepted: true,
+      },
+    });
+    const out = normalizeCertInfo(jsonStr);
+    expect(out?.daysRemaining).toBe(200);
+    expect(out?.subject).toBe('CN=example.com');
+  });
+
+  it('returns null on bad JSON', () => {
+    expect(normalizeCertInfo('{not valid json')).toBeNull();
+  });
+
+  it('returns null for null/undefined input', () => {
+    expect(normalizeCertInfo(null)).toBeNull();
+    expect(normalizeCertInfo(undefined)).toBeNull();
+  });
+
+  it('handles missing certInfo inner object', () => {
+    const out = normalizeCertInfo({ valid: false });
+    expect(out).toEqual({
+      valid: false,
+      daysRemaining: null,
+      validTo: null,
+      subject: null,
+      issuer: null,
+    });
+  });
+});
+
+describe('normalizeDomainInfoEvent', () => {
+  it('parses the 3-arg Kuma event signature', () => {
+    const out = normalizeDomainInfoEvent('8', 45, '2026-08-01T00:00:00.000Z');
+    expect(out).toEqual({
+      monitorId: 8,
+      daysRemaining: 45,
+      expiresOn: '2026-08-01T00:00:00.000Z',
+    });
+  });
+
+  it('accepts a numeric monitorId', () => {
+    const out = normalizeDomainInfoEvent(8, 45, '2026-08-01');
+    expect(out?.monitorId).toBe(8);
+  });
+
+  it('preserves null daysRemaining (Kuma sends null when the lookup fails)', () => {
+    const out = normalizeDomainInfoEvent('8', null, null);
+    expect(out).toEqual({ monitorId: 8, daysRemaining: null, expiresOn: null });
+  });
+
+  it('returns null for invalid monitorId', () => {
+    expect(normalizeDomainInfoEvent('oops', 45, '2026')).toBeNull();
+  });
+});
+
+describe('normalizeUpdateMonitorIntoList', () => {
+  it('extracts the single monitor from the one-key map', () => {
+    const out = normalizeUpdateMonitorIntoList({
+      '8': {
+        id: 8,
+        name: 'Renamed',
+        url: 'https://example.com',
+        type: 'http',
+        interval: 60,
+        retryInterval: 60,
+        timeout: 48,
+        active: 1,
+        status: 1,
+      },
+    });
+    expect(out?.monitorId).toBe(8);
+    expect(out?.monitor.name).toBe('Renamed');
+  });
+
+  it('returns null for empty input', () => {
+    expect(normalizeUpdateMonitorIntoList({})).toBeNull();
+  });
+
+  it('returns null for non-object input', () => {
+    expect(normalizeUpdateMonitorIntoList(null)).toBeNull();
+    expect(normalizeUpdateMonitorIntoList('x')).toBeNull();
+  });
+});
+
+describe('normalizeDeleteMonitorFromList', () => {
+  it('parses a string monitorId', () => {
+    expect(normalizeDeleteMonitorFromList('8')).toEqual({ monitorId: 8 });
+  });
+
+  it('parses a numeric monitorId', () => {
+    expect(normalizeDeleteMonitorFromList(8)).toEqual({ monitorId: 8 });
+  });
+
+  it('returns null for invalid monitorId', () => {
+    expect(normalizeDeleteMonitorFromList('oops')).toBeNull();
+    expect(normalizeDeleteMonitorFromList(undefined)).toBeNull();
+  });
+});
+
+describe('normalizeHeartbeatListEventV2', () => {
+  it('honors overwrite=true (replaces the cached list)', () => {
+    const out = normalizeHeartbeatListEventV2('8', [
+      { id: 1, time: '2026-06-07T00:00:00.000Z', status: 1, ping: 50, important: 0, monitor_id: 8, msg: '', duration: 0, down_count: 0, end_time: '2026-06-07T00:00:00.000Z', retries: 0, response: null },
+    ], true);
+    expect(out?.overwrite).toBe(true);
+    expect(out?.rows).toHaveLength(1);
+  });
+
+  it('defaults overwrite to false when the 3rd arg is undefined', () => {
+    const out = normalizeHeartbeatListEventV2('8', [], undefined);
+    expect(out?.overwrite).toBe(false);
+  });
+
+  it('sorts the rows oldest-first (matches the V1 behavior)', () => {
+    const out = normalizeHeartbeatListEventV2('8', [
+      { id: 2, time: '2026-06-07T00:01:00.000Z', status: 1, ping: 50, important: 0, monitor_id: 8, msg: '', duration: 0, down_count: 0, end_time: '2026-06-07T00:01:00.000Z', retries: 0, response: null },
+      { id: 1, time: '2026-06-07T00:00:00.000Z', status: 1, ping: 50, important: 0, monitor_id: 8, msg: '', duration: 0, down_count: 0, end_time: '2026-06-07T00:00:00.000Z', retries: 0, response: null },
+    ], false);
+    expect(out?.rows[0].timestamp).toBeLessThan(out!.rows[1].timestamp);
+  });
+
+  it('returns null for invalid monitorId', () => {
+    expect(normalizeHeartbeatListEventV2('oops', [], false)).toBeNull();
   });
 });

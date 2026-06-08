@@ -452,11 +452,61 @@ export class KumaConnectionManager {
       case 'heartbeatList':
         // Cache the rows on the monitors store (separate from live
         // heartbeats) so the detail screen can read them on mount.
-        monitors.setHeartbeatHistory(serverId, event.monitorId, event.rows);
+        // Honor Kuma's overwrite semantics: when overwrite=true, the
+        // event is "this is the canonical list, replace whatever you
+        // have". When false (the default), prepend — matches the
+        // Kuma SPA's own merge logic.
+        monitors.setHeartbeatHistory(
+          serverId,
+          event.monitorId,
+          event.rows,
+          event.overwrite
+        );
         break;
 
       case 'uptime':
         monitors.setUptimeRatio(serverId, event.monitorId, event.hours, event.ratio);
+        break;
+
+      case 'info':
+        // Kuma pushes this on connect. We surface the version in the
+        // servers tab so the user can see "Kuma 2.3.2" at a glance,
+        // and persist it on the server record so it's available
+        // before the next connect (e.g., for the splash screen).
+        monitors.setInfo(serverId, event.info);
+        if (event.info.version) {
+          void servers.setKumaVersion(serverId, event.info.version);
+        }
+        break;
+
+      case 'avgPing':
+        monitors.setAvgPing(serverId, event.monitorId, event.ping);
+        break;
+
+      case 'certInfo':
+        monitors.setCertInfo(serverId, event.monitorId, event.info);
+        break;
+
+      case 'domainInfo':
+        monitors.setDomainInfo(
+          serverId,
+          event.monitorId,
+          event.daysRemaining,
+          event.expiresOn
+        );
+        break;
+
+      case 'monitorUpdated':
+        // Kuma's updateMonitorIntoList: one monitor changed (e.g.,
+        // renamed, paused, edited from the web dashboard). Patch in
+        // place so the UI doesn't have to wait for a reconnect.
+        monitors.updateMonitor(serverId, event.monitorId, event.monitor);
+        break;
+
+      case 'monitorDeleted':
+        // Kuma's deleteMonitorFromList: a monitor was deleted. Drop
+        // it from the cached list so the UI doesn't show a ghost.
+        monitors.deleteMonitor(serverId, event.monitorId);
         break;
 
       case 'incident': {

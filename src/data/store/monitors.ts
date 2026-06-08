@@ -24,7 +24,11 @@ import type {
   MonitorStatus,
   Incident,
 } from '@/domain/models';
-import type { NormalizedHeartbeatRow } from '@/data/socket/normalize';
+import type {
+  NormalizedHeartbeatRow,
+  KumaServerInfo,
+  KumaCertInfo,
+} from '@/data/socket/normalize';
 
 export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error';
 
@@ -55,10 +59,43 @@ interface ServerMonitorsState {
       Partial<Record<'24' | '168' | '720' | '1y', number>>
     >
   >;
+  /**
+   * Per server: the `info` event payload (server version, timezone, etc.).
+   * Used to surface "Kuma X.Y.Z" + "Update available" in the servers tab.
+   */
+  infoByServer: Record<string, KumaServerInfo>;
+  /**
+   * Per server, per monitor: the 24h average ping in ms. Kuma pushes
+   * this once on connect via the `avgPing` event.
+   */
+  avgPingByServer: Record<string, Record<number, number | null>>;
+  /**
+   * Per server, per monitor: the latest cert info Kuma has for HTTPS
+   * monitors. null if the monitor isn't HTTPS, the cert check failed,
+   * or Kuma hasn't pushed it yet.
+   */
+  certInfoByServer: Record<string, Record<number, KumaCertInfo | null>>;
+  /**
+   * Per server, per monitor: domain-expiry info for domain monitors.
+   * null if the monitor isn't a domain monitor, the check failed,
+   * or Kuma hasn't pushed it yet.
+   */
+  domainInfoByServer: Record<
+    string,
+    Record<
+      number,
+      {
+        daysRemaining: number | null;
+        expiresOn: string | null;
+      } | null
+    >
+  >;
 
   // ---- Mutators (called by the connection manager) ----
   setStatus: (serverId: string, status: ConnectionStatus, error?: string | null) => void;
   setMonitors: (serverId: string, monitors: Monitor[]) => void;
+  updateMonitor: (serverId: string, monitorId: number, monitor: Monitor) => void;
+  deleteMonitor: (serverId: string, monitorId: number) => void;
   updateMonitorStatus: (
     serverId: string,
     monitorId: number,
@@ -73,11 +110,19 @@ interface ServerMonitorsState {
     timestamp: number
   ) => void;
   addIncident: (serverId: string, incident: Incident) => void;
-  /** Cache heartbeat-history rows for a monitor (Kuma 2.3+). */
+  /**
+   * Cache heartbeat-history rows for a monitor (Kuma 2.3+).
+   * @param overwrite when true (the original Kuma behavior when
+   *   `overwrite=true` is passed in the event), REPLACE the existing
+   *   cache. When false (the default), the incoming rows are
+   *   prepended to the existing cache (oldest-first). This matches
+   *   the Kuma SPA's own handling in `src/mixins/socket.js:236-242`.
+   */
   setHeartbeatHistory: (
     serverId: string,
     monitorId: number,
-    rows: NormalizedHeartbeatRow[]
+    rows: NormalizedHeartbeatRow[],
+    overwrite?: boolean
   ) => void;
   /** Cache an uptime ratio for a monitor + window (Kuma 2.3+). */
   setUptimeRatio: (
@@ -85,6 +130,15 @@ interface ServerMonitorsState {
     monitorId: number,
     hours: '24' | '168' | '720' | '1y',
     ratio: number
+  ) => void;
+  setInfo: (serverId: string, info: KumaServerInfo) => void;
+  setAvgPing: (serverId: string, monitorId: number, ping: number | null) => void;
+  setCertInfo: (serverId: string, monitorId: number, info: KumaCertInfo) => void;
+  setDomainInfo: (
+    serverId: string,
+    monitorId: number,
+    daysRemaining: number | null,
+    expiresOn: string | null
   ) => void;
   clearServer: (serverId: string) => void;
 }
@@ -99,6 +153,10 @@ export const useMonitors = create<ServerMonitorsState>()(
     incidentsByServer: {},
     heartbeatHistoryByServer: {},
     uptimeByServer: {},
+    infoByServer: {},
+    avgPingByServer: {},
+    certInfoByServer: {},
+    domainInfoByServer: {},
 
     setStatus: (serverId, status, error = null) =>
       set((state) => ({
@@ -110,6 +168,30 @@ export const useMonitors = create<ServerMonitorsState>()(
       set((state) => ({
         monitorsByServer: { ...state.monitorsByServer, [serverId]: monitors },
       })),
+
+    updateMonitor: (serverId, monitorId, monitor) =>
+      set((state) => {
+        const list = state.monitorsByServer[serverId];
+        if (!list) return state;
+        return {
+          monitorsByServer: {
+            ...state.monitorsByServer,
+            [serverId]: list.map((m) => (m.id === monitorId ? monitor : m)),
+          },
+        };
+      }),
+
+    deleteMonitor: (serverId, monitorId) =>
+      set((state) => {
+        const list = state.monitorsByServer[serverId];
+        if (!list) return state;
+        return {
+          monitorsByServer: {
+            ...state.monitorsByServer,
+            [serverId]: list.filter((m) => m.id !== monitorId),
+          },
+        };
+      }),
 
     updateMonitorStatus: (serverId, monitorId, status, timestamp) =>
       set((state) => {
@@ -163,10 +245,33 @@ export const useMonitors = create<ServerMonitorsState>()(
         };
       }),
 
-    setHeartbeatHistory: (serverId, monitorId, rows) =>
+    setHeartbeatHistory: (serverId, monitorId, rows, overwrite = false) =>
       set((state) => {
         const perServer = { ...(state.heartbeatHistoryByServer[serverId] ?? {}) };
-        perServer[monitorId] = rows;
+        if (overwrite) {
+          // Kuma's heartbeatList(overwrite=true) — replace.
+          perServer[monitorId] = rows;
+        } else {
+          // Kuma's default (overwrite=false) — prepend, then de-dup by
+          // timestamp so live `heartbeat` events that landed between
+          // bursts don't double up.
+          const existing = perServer[monitorId] ?? [];
+          const seen = new Set<number>();
+          const merged: NormalizedHeartbeatRow[] = [];
+          // Iterate newest-first (rows come from Kuma newest-first
+          // when concat'd to the front), but our normalizer already
+          // sorts oldest-first, so iterate normally.
+          for (const r of [...rows, ...existing]) {
+            if (seen.has(r.timestamp)) continue;
+            seen.add(r.timestamp);
+            merged.push(r);
+          }
+          // Cap to the 100 most-recent rows (matches Kuma's own cap).
+          const capped = merged
+            .sort((a, b) => a.timestamp - b.timestamp)
+            .slice(-100);
+          perServer[monitorId] = capped;
+        }
         return {
           heartbeatHistoryByServer: {
             ...state.heartbeatHistoryByServer,
@@ -189,6 +294,47 @@ export const useMonitors = create<ServerMonitorsState>()(
         };
       }),
 
+    setInfo: (serverId, info) =>
+      set((state) => ({
+        infoByServer: { ...state.infoByServer, [serverId]: info },
+      })),
+
+    setAvgPing: (serverId, monitorId, ping) =>
+      set((state) => {
+        const perServer = { ...(state.avgPingByServer[serverId] ?? {}) };
+        perServer[monitorId] = ping;
+        return {
+          avgPingByServer: {
+            ...state.avgPingByServer,
+            [serverId]: perServer,
+          },
+        };
+      }),
+
+    setCertInfo: (serverId, monitorId, info) =>
+      set((state) => {
+        const perServer = { ...(state.certInfoByServer[serverId] ?? {}) };
+        perServer[monitorId] = info;
+        return {
+          certInfoByServer: {
+            ...state.certInfoByServer,
+            [serverId]: perServer,
+          },
+        };
+      }),
+
+    setDomainInfo: (serverId, monitorId, daysRemaining, expiresOn) =>
+      set((state) => {
+        const perServer = { ...(state.domainInfoByServer[serverId] ?? {}) };
+        perServer[monitorId] = { daysRemaining, expiresOn };
+        return {
+          domainInfoByServer: {
+            ...state.domainInfoByServer,
+            [serverId]: perServer,
+          },
+        };
+      }),
+
     clearServer: (serverId) =>
       set((state) => {
         const { [serverId]: _m, ...monitorsByServer } = state.monitorsByServer;
@@ -197,6 +343,10 @@ export const useMonitors = create<ServerMonitorsState>()(
         const { [serverId]: _i, ...incidentsByServer } = state.incidentsByServer;
         const { [serverId]: _h, ...heartbeatHistoryByServer } = state.heartbeatHistoryByServer;
         const { [serverId]: _u, ...uptimeByServer } = state.uptimeByServer;
+        const { [serverId]: _info, ...infoByServer } = state.infoByServer;
+        const { [serverId]: _ap, ...avgPingByServer } = state.avgPingByServer;
+        const { [serverId]: _ci, ...certInfoByServer } = state.certInfoByServer;
+        const { [serverId]: _di, ...domainInfoByServer } = state.domainInfoByServer;
         return {
           monitorsByServer,
           statusByServer,
@@ -204,6 +354,10 @@ export const useMonitors = create<ServerMonitorsState>()(
           incidentsByServer,
           heartbeatHistoryByServer,
           uptimeByServer,
+          infoByServer,
+          avgPingByServer,
+          certInfoByServer,
+          domainInfoByServer,
         };
       }),
   }))
@@ -272,6 +426,41 @@ export function selectUptimeRatios(
   monitorId: number
 ): Partial<Record<'24' | '168' | '720' | '1y', number>> {
   return state.uptimeByServer[serverId]?.[monitorId] ?? {};
+}
+
+/** Get the `info` event payload for a server (version, timezone, etc.). */
+export function selectServerInfo(
+  state: ServerMonitorsState,
+  serverId: string
+): KumaServerInfo | null {
+  return state.infoByServer[serverId] ?? null;
+}
+
+/** Get the 24h average ping for a monitor, or null if not yet known. */
+export function selectAvgPing(
+  state: ServerMonitorsState,
+  serverId: string,
+  monitorId: number
+): number | null {
+  return state.avgPingByServer[serverId]?.[monitorId] ?? null;
+}
+
+/** Get the cert info for a monitor (HTTPS monitors only), or null. */
+export function selectCertInfo(
+  state: ServerMonitorsState,
+  serverId: string,
+  monitorId: number
+): KumaCertInfo | null {
+  return state.certInfoByServer[serverId]?.[monitorId] ?? null;
+}
+
+/** Get the domain-expiry info for a monitor (domain monitors only). */
+export function selectDomainInfo(
+  state: ServerMonitorsState,
+  serverId: string,
+  monitorId: number
+): { daysRemaining: number | null; expiresOn: string | null } | null {
+  return state.domainInfoByServer[serverId]?.[monitorId] ?? null;
 }
 
 /** Count monitors by status for a server. */
