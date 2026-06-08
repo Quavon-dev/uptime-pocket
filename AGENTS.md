@@ -55,14 +55,16 @@ This file provides guidance to AI coding agents working on Uptime Pocket.
 
 ## Phase status
 
-- **Phase 0 (in progress):** Foundation, scaffold, design tokens, app shell
+- **Phase 0:** Foundation, scaffold, design tokens, app shell
 - **Phase 1:** Design system, all primitive components
 - **Phase 2:** Auth + servers
 - **Phase 3:** Monitor list + detail
-- **Phase 4:** Local notifications (Direct mode)
+- **Phase 4 (in progress):** Local notifications (Direct mode)
 - **Phase 5:** Home screen widgets
 - **Phase 6:** Push relay
 - **Phase 7:** Polish + TestFlight/Play Internal
+
+See `ROADMAP.md` for the full v1.0 work plan (22 items, ~5 weeks).
 
 ## Resources
 
