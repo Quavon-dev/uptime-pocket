@@ -76,8 +76,7 @@ import { useKumaConnection } from '@/data/connection/manager';
 import { formatResponseTime, formatUptime, formatRelativeTime, formatCertExpiry } from '@/domain/format';
 import { assessCertExpiry, assessDomainExpiry } from '@/lib/expiryBanner';
 import type { TimePoint, UptimePoint, Incident, MonitorType } from '@/domain/models';
-import type { NormalizedHeartbeatRow } from '@/data/socket/normalize';
-import type { KumaCertInfo } from '@/data/socket/normalize';
+import type { NormalizedHeartbeatRow, KumaCertInfo } from '@/data/socket/normalize';
 
 type Range = 'recent' | '3h' | '6h' | '24h' | '1w';
 
