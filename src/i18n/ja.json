@@ -198,8 +198,20 @@
         "avg": "平均",
         "max": "最大"
       },
-      "chartRange": "{count} 件のハートビート · 最古は {span}",
-      "chartRangeServer": "{count} サーバーからのバケット · 最古は {span}"
+      "chartRange": "{count} ハートビート · 最古は {span}",
+      "chartRangeServer": "{count} サーバー側バケット · 最古は {span}",
+      "avgPing24h": "24時間平均",
+      "certExpiry": {
+        "title": "TLS証明書の有効期限が近づいています",
+        "body": "{subject} の証明書はあと {days} で期限切れです。",
+        "bodyInvalid": "{subject} の証明書は無効です。",
+        "expired": "{subject} の証明書は期限切れです。"
+      },
+      "domainExpiry": {
+        "title": "ドメインの有効期限が近づいています",
+        "body": "ドメインはあと {days} で期限切れです。",
+        "expired": "ドメインは期限切れです。"
+      }
     }
   },
   "servers": {
@@ -237,7 +249,9 @@
         "version": "Kuma のバージョン",
         "unknown": "不明",
         "lastConnected": "最終接続",
-        "added": "追加日"
+        "added": "追加日",
+        "timezone": "タイムゾーン",
+        "timezoneValue": "{tz} (UTC{offset})"
       },
       "notifications": {
         "title": "通知",

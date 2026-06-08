@@ -46,6 +46,12 @@ interface MonitorCardProps {
   showLastCheck?: boolean;
   /** Use compact layout (less padding, smaller text) */
   compact?: boolean;
+  /**
+   * 24h average response time in ms (Kuma's `avgPing` event). When
+   * provided, we show it as a small subtitle under the "Response"
+   * stat so the user can tell the live ping from the daily average.
+   */
+  avgPing24h?: number | null;
 }
 
 export function MonitorCard({
@@ -54,6 +60,7 @@ export function MonitorCard({
   showUrl = true,
   showLastCheck = true,
   compact = false,
+  avgPing24h = null,
 }: MonitorCardProps) {
   const { surface, statusTints } = useAppTheme();
   const TypeIcon = monitorTypeIcon(monitor.type);
@@ -142,6 +149,14 @@ export function MonitorCard({
           labelSize={statLabelSize}
           labelColor={surface.textMuted}
           tileBg={surface.sunken}
+          // When the 24h average is available, show it as a small
+          // muted subtitle under the live response time so the user
+          // can see both the instant ping and the daily average.
+          subtitle={
+            avgPing24h != null
+              ? `${t('monitors.detail.avgPing24h')} ${formatResponseTime(avgPing24h)}`
+              : null
+          }
         />
         <Stat
           label={t('monitorCard.type')}
@@ -179,6 +194,7 @@ function Stat({
   labelSize,
   labelColor,
   tileBg,
+  subtitle,
 }: {
   label: string;
   value: string;
@@ -187,6 +203,8 @@ function Stat({
   labelSize: number;
   labelColor: string;
   tileBg: string;
+  /** Optional small muted line under the value. */
+  subtitle?: string | null;
 }) {
   return (
     <View style={[styles.stat, { backgroundColor: tileBg }]}>
@@ -205,6 +223,16 @@ function Stat({
         numberOfLines={1}>
         {value}
       </Text>
+      {subtitle ? (
+        <Text
+          style={[
+            typography.caption,
+            { color: labelColor, fontSize: Math.max(9, labelSize - 1), marginTop: 1 },
+          ]}
+          numberOfLines={1}>
+          {subtitle}
+        </Text>
+      ) : null}
     </View>
   );
 }

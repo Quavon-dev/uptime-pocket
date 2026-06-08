@@ -198,8 +198,20 @@
         "avg": "Med",
         "max": "Máx"
       },
-      "chartRange": "{count} latidos · el más antiguo de {span}",
-      "chartRangeServer": "{count} intervalos del servidor · el más antiguo de {span}"
+      "chartRange": "{count} latidos · el más antiguo hace {span}",
+      "chartRangeServer": "{count} intervalos del servidor · el más antiguo hace {span}",
+      "avgPing24h": "Media 24h",
+      "certExpiry": {
+        "title": "El certificado TLS está por caducar",
+        "body": "El certificado de {subject} caduca en {days}.",
+        "bodyInvalid": "El certificado de {subject} no es válido.",
+        "expired": "El certificado de {subject} ha caducado."
+      },
+      "domainExpiry": {
+        "title": "El dominio está por caducar",
+        "body": "El dominio caduca en {days}.",
+        "expired": "El dominio ha caducado."
+      }
     }
   },
   "servers": {
@@ -237,7 +249,9 @@
         "version": "Versión de Kuma",
         "unknown": "Desconocida",
         "lastConnected": "Última conexión",
-        "added": "Añadido"
+        "added": "Añadido",
+        "timezone": "Zona horaria",
+        "timezoneValue": "{tz} (UTC{offset})"
       },
       "notifications": {
         "title": "Notificaciones",

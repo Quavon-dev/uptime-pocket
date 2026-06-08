@@ -44,6 +44,8 @@ import {
   Pause,
   Play,
   Pencil,
+  Lock,
+  Globe,
 } from 'lucide-react-native';
 
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
@@ -66,15 +68,16 @@ import {
   selectIncidentsForMonitor,
   selectHeartbeatHistory,
   selectUptimeRatios,
+  selectAvgPing,
+  selectCertInfo,
+  selectDomainInfo,
 } from '@/data/store/monitors';
 import { useKumaConnection } from '@/data/connection/manager';
-import {
-  formatResponseTime,
-  formatUptime,
-  formatRelativeTime,
-} from '@/domain/format';
+import { formatResponseTime, formatUptime, formatRelativeTime, formatCertExpiry } from '@/domain/format';
+import { assessCertExpiry, assessDomainExpiry } from '@/lib/expiryBanner';
 import type { TimePoint, UptimePoint, Incident, MonitorType } from '@/domain/models';
 import type { NormalizedHeartbeatRow } from '@/data/socket/normalize';
+import type { KumaCertInfo } from '@/data/socket/normalize';
 
 type Range = 'recent' | '3h' | '6h' | '24h' | '1w';
 
@@ -146,6 +149,20 @@ export default function MonitorDetailScreen() {
   );
   const cachedUptime = useMonitors((s) =>
     found ? selectUptimeRatios(s, found.serverId, monitorId) : {}
+  );
+  // 24h average ping (Kuma's `avgPing` event). Null while Kuma hasn't
+  // pushed it yet (it ships on connect, but a slow network can race).
+  const avgPing = useMonitors((s) =>
+    found ? selectAvgPing(s, found.serverId, monitorId) : null
+  );
+  // TLS cert info (HTTPS monitors only). Null when not applicable, not
+  // yet known, or the cert check failed.
+  const certInfo = useMonitors((s) =>
+    found ? selectCertInfo(s, found.serverId, monitorId) : null
+  );
+  // Domain-expiry info (domain monitors only). Same null semantics.
+  const domainInfo = useMonitors((s) =>
+    found ? selectDomainInfo(s, found.serverId, monitorId) : null
   );
 
   // Manager is used by the action handlers (recheck / pause / resume).
@@ -359,6 +376,11 @@ export default function MonitorDetailScreen() {
   // `getMonitorChartData` event and use the server's pre-aggregated
   // min/avg/max buckets — same path the Kuma web SPA uses for its
   // chart, so a fresh install gets real 1w data on first open.
+  //
+  // We also auto-refresh every 5 minutes while the screen is open
+  // and a non-Recent range is selected — matches Kuma's own
+  // PingChart.vue:258-267 polling pattern. The interval is reset
+  // whenever the range or monitor changes (or the effect tears down).
   useEffect(() => {
     if (rangeHours === 'recent') {
       // Clear the server data so the chart falls back to local
@@ -373,27 +395,38 @@ export default function MonitorDetailScreen() {
     setChartLoading(true);
     setChartError(null);
     setChartData(null);
-    manager
-      .getMonitorChartData(found.serverId, monitorId, rangeHours)
-      .then((points) => {
-        if (cancelled) return;
-        setChartData(points);
-        setChartLoading(false);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setChartError(
-          err instanceof Error ? err.message : 'Failed to load chart data'
-        );
-        setChartData([]);
-        setChartLoading(false);
-      });
+
+    const refetch = () => {
+      manager
+        .getMonitorChartData(found.serverId, monitorId, rangeHours)
+        .then((points) => {
+          if (cancelled) return;
+          setChartData(points);
+          setChartLoading(false);
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          setChartError(
+            err instanceof Error ? err.message : 'Failed to load chart data'
+          );
+          setChartData([]);
+          setChartLoading(false);
+        });
+    };
+
+    // Initial fetch.
+    refetch();
+    // 5-min polling. The interval is cleared on cleanup (range change,
+    // monitor change, unmount) so we never have overlapping fetches.
+    const interval = setInterval(refetch, 5 * 60 * 1000);
+
     return () => {
       cancelled = true;
+      clearInterval(interval);
     };
     // We intentionally only re-fetch when the range changes (or the
-    // monitor/server changes). The 5-min auto-refresh from Kuma's
-    // PingChart.vue pattern is not yet wired — easy to add later.
+    // monitor/server changes). The 5-min auto-refresh above handles
+    // the steady-state case.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rangeHours, found?.serverId, monitorId]);
 
@@ -513,6 +546,10 @@ export default function MonitorDetailScreen() {
               }
             />
             <Stat
+              label={t('monitors.detail.avgPing24h')}
+              value={avgPing != null ? formatResponseTime(avgPing) : '—'}
+            />
+            <Stat
               label="Last check"
               value={
                 monitor.lastCheckAt
@@ -559,6 +596,13 @@ export default function MonitorDetailScreen() {
             </View>
           )}
         </View>
+
+        {/* Cert / domain expiry banners. Kuma 2.3+ pushes these via
+            the `certInfo` (HTTPS) and `domainInfo` (domain monitor)
+            socket events. We only show the banner when the cert/domain
+            is actually at risk (expiring or already expired) — silent
+            when the cert is healthy. */}
+        <ExpiryBanner certInfo={certInfo} domainInfo={domainInfo} />
 
         {/* Action bar */}
         <View style={[styles.actionBar, { gap: spacing[2] }]}>
@@ -906,6 +950,127 @@ function PingStat({
   );
 }
 
+/**
+ * Banner that surfaces TLS cert and domain-expiry warnings to the
+ * user. Renders nothing when there's no actionable risk (cert valid
+ * with >30 days remaining, domain registered and not expiring soon,
+ * or Kuma hasn't pushed the event yet).
+ *
+ * Severity ladder:
+ *   - Cert invalid / expired        → red (down tint)
+ *   - Cert expiring in ≤30 days     → amber (pending tint)
+ *   - Cert expiring in >30 days     → not shown
+ *   - Domain expired                → red
+ *   - Domain expiring in ≤60 days   → amber
+ *   - Domain not expiring soon      → not shown
+ */
+function ExpiryBanner({
+  certInfo,
+  domainInfo,
+}: {
+  certInfo: KumaCertInfo | null;
+  domainInfo: { daysRemaining: number | null; expiresOn: string | null } | null;
+}) {
+  const { surface, statusTints } = useAppTheme();
+
+  // ---- TLS cert ----
+  // Pure decision logic lives in `src/lib/expiryBanner.ts` so the
+  // boundary conditions (30 days, 0 days, valid vs invalid) are
+  // unit-tested directly. Here we just translate the result into
+  // a rendered banner.
+  const certAssessment = assessCertExpiry(
+    certInfo,
+    (days) => formatCertExpiry(days),
+    (key, params) => tn(`monitors.detail.certExpiry.${key}`, params)
+  );
+  const cert =
+    certAssessment.severity && certAssessment.body
+      ? {
+          severity: certAssessment.severity,
+          title: t('monitors.detail.certExpiry.title'),
+          body: certAssessment.body,
+        }
+      : null;
+
+  // ---- Domain expiry ----
+  const domainAssessment = assessDomainExpiry(
+    domainInfo,
+    (days) => formatCertExpiry(days),
+    (key) => t(`monitors.detail.domainExpiry.${key}`)
+  );
+  const domain =
+    domainAssessment.severity && domainAssessment.body
+      ? {
+          severity: domainAssessment.severity,
+          title: t('monitors.detail.domainExpiry.title'),
+          body: domainAssessment.body,
+        }
+      : null;
+
+  if (!cert && !domain) return null;
+
+  return (
+    <View style={{ gap: spacing[2] }}>
+      {cert && (
+        <ExpiryRow
+          Icon={Lock}
+          severity={cert.severity}
+          title={cert.title}
+          body={cert.body}
+          surface={surface}
+          statusTints={statusTints}
+        />
+      )}
+      {domain && (
+        <ExpiryRow
+          Icon={Globe}
+          severity={domain.severity}
+          title={domain.title}
+          body={domain.body}
+          surface={surface}
+          statusTints={statusTints}
+        />
+      )}
+    </View>
+  );
+}
+
+function ExpiryRow({
+  Icon,
+  severity,
+  title,
+  body,
+  surface,
+  statusTints,
+}: {
+  Icon: typeof Lock;
+  severity: 'down' | 'pending';
+  title: string;
+  body: string;
+  surface: ReturnType<typeof useAppTheme>['surface'];
+  statusTints: ReturnType<typeof useAppTheme>['statusTints'];
+}) {
+  const tint = statusTints[severity];
+  const color = severity === 'down' ? colors.status.down : colors.status.pending;
+  return (
+    <View
+      style={[
+        styles.expiryBanner,
+        { backgroundColor: tint.bg, borderColor: tint.border },
+      ]}>
+      <Icon size={18} color={color} strokeWidth={1.75} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={[typography.bodyEmphasized, { color: surface.text }]}>
+          {title}
+        </Text>
+        <Text style={[typography.caption, { color: surface.textMuted }]}>
+          {body}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 // ---- Styles ------------------------------------------------------------
 
 const styles = StyleSheet.create({
@@ -978,6 +1143,15 @@ const styles = StyleSheet.create({
   actionBar: {
     flexDirection: 'row',
     marginTop: spacing[4],
+  },
+  expiryBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing[3],
+    padding: spacing[3],
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: spacing[2],
   },
   errorBox: {
     marginTop: spacing[2],

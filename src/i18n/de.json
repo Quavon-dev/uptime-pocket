@@ -199,7 +199,19 @@
         "max": "Max"
       },
       "chartRange": "{count} Heartbeats · ältester aus {span}",
-      "chartRangeServer": "{count} Buckets vom Server · ältester aus {span}"
+      "chartRangeServer": "{count} Buckets vom Server · ältester aus {span}",
+      "avgPing24h": "24h-Mittel",
+      "certExpiry": {
+        "title": "TLS-Zertifikat läuft ab",
+        "body": "Zertifikat für {subject} läuft in {days} ab.",
+        "bodyInvalid": "Zertifikat für {subject} ist ungültig.",
+        "expired": "Zertifikat für {subject} ist abgelaufen."
+      },
+      "domainExpiry": {
+        "title": "Domain läuft ab",
+        "body": "Domain läuft in {days} ab.",
+        "expired": "Domain ist abgelaufen."
+      }
     }
   },
   "servers": {
@@ -237,7 +249,9 @@
         "version": "Kuma-Version",
         "unknown": "Unbekannt",
         "lastConnected": "Zuletzt verbunden",
-        "added": "Hinzugefügt"
+        "added": "Hinzugefügt",
+        "timezone": "Zeitzone",
+        "timezoneValue": "{tz} (UTC{offset})"
       },
       "notifications": {
         "title": "Benachrichtigungen",

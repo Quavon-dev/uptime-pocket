@@ -32,9 +32,10 @@ import { ArrowLeft, Trash2, ExternalLink, AlertTriangle, CircleDot, Pencil } fro
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import { SafeScrollView } from '@/components/ui';
 import { useServers } from '@/data/store/servers';
-import { useMonitors } from '@/data/store/monitors';
+import { useMonitors, selectServerInfo } from '@/data/store/monitors';
 import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { t, tn } from '@/i18n';
+import { formatTimezoneOffset } from '@/lib/timezoneOffset';
 
 const MIN_KUMA_VERSION = '2.0.0';
 
@@ -50,6 +51,11 @@ export default function ServerDetailScreen() {
   const status: Status = useMonitors((s) => (id ? s.statusByServer[id] : 'idle') ?? 'idle') as Status;
   const error = useMonitors((s) => (id ? s.errorByServer[id] : null) ?? null);
   const monitorList = useMonitors((s) => (id ? s.monitorsByServer[id] : undefined));
+  // Server-reported info (version, timezone, etc.) — comes from Kuma's
+  // `info` socket event on connect. We display the timezone alongside
+  // the version, so the user can see at a glance whether their phone's
+  // clock and Kuma's clock are in sync.
+  const info = useMonitors((s) => (id ? selectServerInfo(s, id) : null));
   const monitorCount = monitorList?.length ?? 0;
   const upCount = monitorList?.filter((m) => m.status === 'up').length ?? 0;
   const downCount = monitorList?.filter((m) => m.status === 'down').length ?? 0;
@@ -198,6 +204,15 @@ export default function ServerDetailScreen() {
             label={t('servers.detail.connection.version')}
             value={server.kumaVersion ?? t('servers.detail.connection.unknown')}
           />
+          {info?.serverTimezone && (
+            <Row
+              label={t('servers.detail.connection.timezone')}
+              value={tn('servers.detail.connection.timezoneValue', {
+                tz: info.serverTimezone,
+                offset: formatTimezoneOffset(info.serverTimezoneOffsetMinutes),
+              })}
+            />
+          )}
           {server.lastConnectedAt && (
             <Row
               label={t('servers.detail.connection.lastConnected')}
@@ -346,6 +361,12 @@ function isOlderVersion(version: string, min: string): boolean {
   }
   return false;
 }
+
+/**
+ * Format a Kuma `serverTimezoneOffset` (minutes east of UTC) as the
+ * short string we display, e.g. `+02:00` or `-05:30`. Implemented in
+ * `@/lib/timezoneOffset` so the unit test can target it directly.
+ */
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

@@ -198,8 +198,20 @@
         "avg": "Moy",
         "max": "Max"
       },
-      "chartRange": "{count} battements · le plus ancien sur {span}",
-      "chartRangeServer": "{count} intervalles du serveur · le plus ancien sur {span}"
+      "chartRange": "{count} heartbeats · le plus ancien depuis {span}",
+      "chartRangeServer": "{count} buckets du serveur · le plus ancien depuis {span}",
+      "avgPing24h": "Moy. 24h",
+      "certExpiry": {
+        "title": "Certificat TLS expire bientôt",
+        "body": "Le certificat pour {subject} expire dans {days}.",
+        "bodyInvalid": "Le certificat pour {subject} est invalide.",
+        "expired": "Le certificat pour {subject} a expiré."
+      },
+      "domainExpiry": {
+        "title": "Domaine expire bientôt",
+        "body": "Le domaine expire dans {days}.",
+        "expired": "Le domaine a expiré."
+      }
     }
   },
   "servers": {
@@ -237,7 +249,9 @@
         "version": "Version de Kuma",
         "unknown": "Inconnue",
         "lastConnected": "Dernière connexion",
-        "added": "Ajouté"
+        "added": "Ajouté",
+        "timezone": "Fuseau horaire",
+        "timezoneValue": "{tz} (UTC{offset})"
       },
       "notifications": {
         "title": "Notifications",

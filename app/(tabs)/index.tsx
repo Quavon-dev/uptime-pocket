@@ -38,7 +38,7 @@ import {
   type TagFilter,
 } from '@/features/monitors/tagFilter';
 import { useServers, getActiveServer } from '@/data/store/servers';
-import { useMonitors, selectMonitorsForServer } from '@/data/store/monitors';
+import { useMonitors, selectMonitorsForServer, selectAvgPing } from '@/data/store/monitors';
 import { useKumaConnection } from '@/data/connection/manager';
 import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { t, tn } from '@/i18n';
@@ -95,6 +95,8 @@ export default function MonitorsScreen() {
     active ? selectMonitorsForServer(s, active.id) : []
   );
 
+  // Filter+search the raw list. Derived from `monitorsRaw`, `filter`,
+  // `tagFilter`, and `search`. Recomputed on each change.
   const filteredMonitors = useMemo(() => {
     const statusFiltered = applyFilters(monitorsRaw, filter, tagFilter);
     const q = search.trim().toLowerCase();
@@ -109,6 +111,16 @@ export default function MonitorsScreen() {
       return false;
     });
   }, [filter, monitorsRaw, tagFilter, search]);
+
+  // 24h average ping for the featured monitor (Kuma's `avgPing` event).
+  // Pulled separately so the card can show "24h avg: 124 ms" as a
+  // subtitle on the Response stat. Cheap to re-subscribe (single
+  // integer in the store).
+  const featuredAvgPing = useMonitors((s) =>
+    active && filteredMonitors[0]
+      ? selectAvgPing(s, active.id, filteredMonitors[0].id)
+      : null
+  );
 
   // Available tags, derived from the active server's monitor list.
   // We re-derive on every render; the cost is O(monitors * tags) which
@@ -326,6 +338,7 @@ export default function MonitorsScreen() {
             <MonitorCard
               monitor={filteredMonitors[0]}
               onPress={() => router.push(`/monitors/${filteredMonitors[0].id}`)}
+              avgPing24h={featuredAvgPing}
             />
           </View>
         )}

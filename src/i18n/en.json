@@ -199,7 +199,19 @@
         "max": "Max"
       },
       "chartRange": "{count} heartbeats · oldest from {span}",
-      "chartRangeServer": "{count} buckets from server · oldest from {span}"
+      "chartRangeServer": "{count} buckets from server · oldest from {span}",
+      "avgPing24h": "24h avg",
+      "certExpiry": {
+        "title": "TLS certificate expiring",
+        "body": "Certificate for {subject} expires in {days}.",
+        "bodyInvalid": "Certificate for {subject} is invalid.",
+        "expired": "Certificate for {subject} has expired."
+      },
+      "domainExpiry": {
+        "title": "Domain expiring",
+        "body": "Domain expires in {days}.",
+        "expired": "Domain has expired."
+      }
     }
   },
   "servers": {
@@ -237,7 +249,9 @@
         "version": "Kuma version",
         "unknown": "Unknown",
         "lastConnected": "Last connected",
-        "added": "Added"
+        "added": "Added",
+        "timezone": "Timezone",
+        "timezoneValue": "{tz} (UTC{offset})"
       },
       "notifications": {
         "title": "Notifications",
