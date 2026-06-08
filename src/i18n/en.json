@@ -21,7 +21,21 @@
       "body": "Manage prod, staging, and client instances in one app"
     },
     "cta": "Add your Kuma server",
-    "hint": "Self-hosted Uptime Kuma 2.0+ required. Free, MIT-licensed."
+    "hint": "Self-hosted Uptime Kuma 2.0+ required. Free, MIT-licensed.",
+    "flow": {
+      "intro": {
+        "title": "Uptime Kuma, in your pocket",
+        "body": "Glanceable status, fast history, and a tap to open any monitor in its full Kuma dashboard."
+      },
+      "privacy": {
+        "title": "Your data stays on your phone",
+        "body": "Credentials live in the iOS Keychain or Android Keystore. We never see them — there is no cloud sync, no analytics, no account."
+      },
+      "connect": {
+        "title": "Add your Kuma server",
+        "body": "You'll need the URL of your self-hosted Kuma instance and a bearer token (Settings → API Tokens in Kuma)."
+      }
+    }
   },
   "tabs": {
     "monitors": "Monitors",
@@ -52,7 +66,9 @@
     "filter": "Filter",
     "all": "All",
     "none": "None",
-    "openInKuma": "Open in Kuma"
+    "openInKuma": "Open in Kuma",
+    "continue": "Continue",
+    "skip": "Skip"
   },
   "monitors": {
     "empty": {
