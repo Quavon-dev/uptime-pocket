@@ -31,6 +31,12 @@ import {
   OptInCard,
   useNotificationOptIn,
 } from '@/features/notifications';
+import {
+  applyFilters,
+  collectAllTags,
+  toggleTag,
+  type TagFilter,
+} from '@/features/monitors/tagFilter';
 import { useServers, getActiveServer } from '@/data/store/servers';
 import { useMonitors, selectMonitorsForServer } from '@/data/store/monitors';
 import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/theme';
@@ -45,6 +51,7 @@ export default function MonitorsScreen() {
   const servers = useServers((s) => s.servers);
   const activeId = useServers((s) => s.activeServerId);
   const [filter, setFilter] = useState<FilterMode>('all');
+  const [tagFilter, setTagFilter] = useState<TagFilter>({ selectedTagIds: [] });
   const { status: notifyStatus, setStatus: setNotifyStatus } = useNotificationOptIn();
 
   // Live data from the active server.
@@ -58,10 +65,16 @@ export default function MonitorsScreen() {
   );
 
   const filteredMonitors = useMemo(() => {
-    if (filter === 'up') return monitorsRaw.filter((m) => m.status === 'up' || m.status === 'maintenance');
-    if (filter === 'down') return monitorsRaw.filter((m) => m.status === 'down' || m.status === 'pending');
-    return monitorsRaw;
-  }, [filter, monitorsRaw]);
+    return applyFilters(monitorsRaw, filter, tagFilter);
+  }, [filter, monitorsRaw, tagFilter]);
+
+  // Available tags, derived from the active server's monitor list.
+  // We re-derive on every render; the cost is O(monitors * tags) which
+  // is fine even for very large Kuma instances.
+  const availableTags = useMemo(
+    () => collectAllTags(monitorsRaw),
+    [monitorsRaw]
+  );
 
   // No servers connected — show the onboarding empty state
   if (servers.length === 0) {
@@ -187,6 +200,21 @@ export default function MonitorsScreen() {
             onPress={() => setFilter('down')}
             selectedColor={colors.status.down}
           />
+          {/* Per-tag chips. Tapping a chip toggles it. We use the
+              tag's own color (from Kuma) as the selected-color so
+              the user can tell tags apart at a glance. */}
+          {availableTags.map((tag) => {
+            const selected = tagFilter.selectedTagIds.includes(tag.id);
+            return (
+              <Chip
+                key={tag.id}
+                label={tag.name}
+                selected={selected}
+                onPress={() => setTagFilter((prev) => toggleTag(prev, tag.id))}
+                selectedColor={tag.color}
+              />
+            );
+          })}
         </ScrollView>
 
         {/* Featured: the first monitor as a large card */}
