@@ -28,14 +28,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/oauth2"
-	"google.golang.org/api/option"
-
-	// We deliberately use go-apns / sideshow/apns2 in
-	// production. For this skeleton we hand-roll the JWT
-	// signing + HTTP/2 call so the dependency surface is
-	// visible. Replace with a real library once you wire up
-	// an Apple Developer account.
 
 	"github.com/quavon-dev/uptime-pocket-relay/internal/config"
 )
@@ -244,10 +236,3 @@ type apnsAlert struct {
 	Title string `json:"title"`
 	Body  string `json:"body"`
 }
-
-// --- unused import suppression for the placeholder oauth/option ---
-// (kept here to make the build green in skeleton mode; remove
-// when you wire up FCM via firebase.google.com/go)
-
-var _ = oauth2.NoContext
-var _ = option.WithCredentialsFile

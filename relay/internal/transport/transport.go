@@ -100,6 +100,12 @@ func (m *Multiplexer) Fanout(
 		err      error
 	}
 	results := make(chan result, len(devices))
+	// We don't know up-front how many devices will actually be
+	// sent (some may be skipped because the platform's sender
+	// is nil). Track that with a counter rather than waiting
+	// for len(devices) results, which would deadlock when
+	// devices are skipped.
+	expected := 0
 	for _, d := range devices {
 		d := d
 		var s Sender
@@ -110,6 +116,7 @@ func (m *Multiplexer) Fanout(
 			s = m.fcm
 		default:
 			results <- result{deviceID: d.DeviceID, err: fmt.Errorf("unknown platform %q", d.Platform)}
+			expected++
 			continue
 		}
 		if s == nil {
@@ -118,6 +125,7 @@ func (m *Multiplexer) Fanout(
 			// already filters these.
 			continue
 		}
+		expected++
 		go func() {
 			// Per-device context timeout. We cap each push
 			// at 10s; APNs and FCM are both fast under
@@ -130,7 +138,7 @@ func (m *Multiplexer) Fanout(
 
 	sent := 0
 	var firstErr error
-	for i := 0; i < len(devices); i++ {
+	for i := 0; i < expected; i++ {
 		r := <-results
 		if r.err == nil {
 			sent++

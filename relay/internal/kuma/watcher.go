@@ -221,6 +221,7 @@ func parseMetrics(serverID, body string) []MonitorSnapshot {
 
 		// We only care about the per-monitor status lines.
 		var s status.Status
+		var isLegacy bool
 		switch name {
 		case "uptime_kuma_monitor_up":
 			s = status.StatusUp
@@ -233,8 +234,11 @@ func parseMetrics(serverID, body string) []MonitorSnapshot {
 		case "uptime_kuma_monitor_paused":
 			s = status.StatusPaused
 		case "monitor_status":
-			// Legacy combined metric; "status" label has the
-			// numeric code Kuma 1.x used.
+			// Legacy combined metric; the value IS the
+			// status code (0=pending, 1=up, 2=down, 3=maintenance).
+			// Don't apply the "value must be 1" filter below
+			// because every code is meaningful here.
+			isLegacy = true
 			code, err := strconv.Atoi(value)
 			if err != nil {
 				continue
@@ -255,11 +259,14 @@ func parseMetrics(serverID, body string) []MonitorSnapshot {
 			continue
 		}
 
-		// Only emit a row if the metric value is 1 (i.e.
-		// this monitor IS in this state). The Kuma
-		// /metrics exposes all states per monitor with
-		// 0/1 values; the 0s are noise.
-		if value != "1" {
+		// For the modern multi-metric format, only emit a
+		// row if the metric value is 1 (i.e. this monitor
+		// IS in this state). The Kuma /metrics exposes all
+		// states per monitor with 0/1 values; the 0s are
+		// noise. The legacy combined format (above) uses
+		// the value as a status code and must NOT be
+		// filtered this way.
+		if !isLegacy && value != "1" {
 			continue
 		}
 

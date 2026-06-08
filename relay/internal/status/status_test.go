@@ -62,7 +62,7 @@ func TestClassify_FirstHeartbeatIsSilent(t *testing.T) {
 		Time:        time.Now(),
 	}
 	for _, startStatus := range []Status{"", StatusUp, StatusDown, StatusPending} {
-		kind, persisted := Classify(startStatus, hb)
+		kind, persisted := ClassifyWithFirst(startStatus, hb, true /* firstSeen */)
 		if kind != NoChange {
 			t.Errorf("first heartbeat from prev=%q should be NoChange, got %v", startStatus, kind)
 		}

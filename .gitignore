@@ -74,6 +74,12 @@ Thumbs.db
 relay/data/
 relay/.env
 
+# Go (relay)
+relay/relay
+relay/relay.exe
+relay/coverage.out
+relay/dist/
+
 # Skills / agents tooling
 .agents/
 skills-lock.json

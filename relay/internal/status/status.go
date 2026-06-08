@@ -108,13 +108,22 @@ const (
 // This "no notification for the very first heartbeat" rule
 // is what makes the relay safe to restart.
 func Classify(prev Status, hb Heartbeat) (TransitionKind, Status) {
+	return ClassifyWithFirst(prev, hb, prev == "")
+}
+
+// ClassifyWithFirst is the lower-level form: callers that know
+// whether this is the first-ever heartbeat for a monitor pass
+// firstSeen=true to suppress notifications on the first hit,
+// even if prev is already a real value (e.g. when the previous
+// state was just hydrated from BoltDB on relay startup).
+func ClassifyWithFirst(prev Status, hb Heartbeat, firstSeen bool) (TransitionKind, Status) {
 	curr := hb.Status
 
-	// If there's no previous state (zero value), the relay
-	// hasn't seen this monitor before. In that case we silently
-	// adopt the current state. The caller will persist it and
-	// subsequent heartbeats will diff against it.
-	if prev == "" {
+	// If this is the very first heartbeat for this monitor,
+	// silently adopt the current state regardless of what prev
+	// says. The caller will persist it; subsequent heartbeats
+	// will diff against it.
+	if firstSeen {
 		return NoChange, curr
 	}
 
