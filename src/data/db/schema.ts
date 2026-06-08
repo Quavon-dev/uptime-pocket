@@ -39,11 +39,12 @@
  * Version history:
  *   1 - servers table
  *   2 - settings table (app-level persisted settings)
+ *   3 - settings.locale column (i18n)
  *
  * The actual SQL for each migration lives in `migrate.ts` (MIGRATIONS),
  * NOT here. This file just declares the version number.
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /**
  * Column name → row field mapping helpers. Centralized so we don't have

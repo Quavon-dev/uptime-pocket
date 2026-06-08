@@ -20,6 +20,7 @@
 
 import { getDatabase } from './index';
 import type { ThemeMode } from '@/data/store/settings';
+import type { LocalePreference } from '@/i18n';
 
 export interface PersistedSettings {
   theme: ThemeMode;
@@ -30,6 +31,7 @@ export interface PersistedSettings {
   quietHoursStartMinute: number; // 0..1439
   quietHoursEndMinute: number; // 0..1439
   hasOnboarded: boolean;
+  locale: LocalePreference;
 }
 
 interface SettingsRow {
@@ -42,6 +44,7 @@ interface SettingsRow {
   quiet_hours_end: number;
   has_onboarded: number;
   accent_swatch_id: string | null;
+  locale: string | null;
   updated_at: string;
 }
 
@@ -55,6 +58,7 @@ function rowToSettings(row: SettingsRow): PersistedSettings {
     quietHoursStartMinute: row.quiet_hours_start,
     quietHoursEndMinute: row.quiet_hours_end,
     hasOnboarded: row.has_onboarded === 1,
+    locale: (row.locale ?? 'system') as LocalePreference,
   };
 }
 
@@ -68,6 +72,7 @@ export const DEFAULT_SETTINGS: PersistedSettings = {
   quietHoursStartMinute: 22 * 60, // 22:00
   quietHoursEndMinute: 7 * 60, // 07:00
   hasOnboarded: false,
+  locale: 'system',
 };
 
 export const settingsRepo = {
@@ -81,7 +86,7 @@ export const settingsRepo = {
     const row = await db.getFirstAsync<SettingsRow>(
       `SELECT id, theme, accent_color, biometric_lock, quiet_hours_enabled,
               quiet_hours_start, quiet_hours_end, has_onboarded,
-              accent_swatch_id, updated_at
+              accent_swatch_id, locale, updated_at
          FROM settings
         WHERE id = 'app'`
     );
@@ -105,9 +110,9 @@ export const settingsRepo = {
       `INSERT OR REPLACE INTO settings
          (id, theme, accent_color, biometric_lock, quiet_hours_enabled,
           quiet_hours_start, quiet_hours_end, has_onboarded,
-          accent_swatch_id, updated_at)
+          accent_swatch_id, locale, updated_at)
        VALUES
-         ('app', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         ('app', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       next.theme,
       next.accentColor,
       next.biometricLock ? 1 : 0,
@@ -116,6 +121,7 @@ export const settingsRepo = {
       next.quietHoursEndMinute,
       next.hasOnboarded ? 1 : 0,
       next.accentSwatchId,
+      next.locale,
       new Date().toISOString()
     );
 

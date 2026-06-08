@@ -10,9 +10,9 @@
  * Every change writes through to SQLite via the store's persist path.
  */
 
-import { View, Text, Pressable, Switch, StyleSheet } from 'react-native';
+import { View, Text, Pressable, Switch, StyleSheet, ScrollView } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { Sparkles, ChevronRight, Bell, Moon } from 'lucide-react-native';
+import { Sparkles, ChevronRight, Bell, Moon, Globe } from 'lucide-react-native';
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import {
   SafeScrollView,
@@ -25,6 +25,7 @@ import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { ACCENT_SWATCHES } from '@/theme/swatches';
 import { useSettings, type ThemeMode } from '@/data/store/settings';
 import { t } from '@/i18n';
+import { SUPPORTED_LOCALES, type LocalePreference, LOCALE_SYSTEM } from '@/i18n';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -34,6 +35,9 @@ export default function SettingsScreen() {
   // when its own field changes.
   const theme = useSettings((s) => s.theme);
   const setTheme = useSettings((s) => s.setTheme);
+
+  const locale = useSettings((s) => s.locale);
+  const setLocale = useSettings((s) => s.setLocale);
 
   const accentSwatchId = useSettings((s) => s.accentSwatchId);
   const setAccentSwatchId = useSettings((s) => s.setAccentSwatchId);
@@ -99,6 +103,48 @@ export default function SettingsScreen() {
                 ? t('settings.theme.descriptionLight')
                 : t('settings.theme.descriptionDark')}
             </Text>
+          </Card>
+
+          {/* Language picker. Horizontal chip row so 6 options don't
+              crowd the layout. Native names come from t() so the row
+              renders in the user's current language — picking a chip
+              then flips the whole UI to the picked locale. */}
+          <Card>
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <Globe size={18} color={brand} strokeWidth={1.75} />
+                <View style={{ flex: 1 }}>
+                  <Text style={typography.body}>{t('settings.language.title')}</Text>
+                  <Text
+                    style={[
+                      typography.caption,
+                      { color: surface.textMuted, marginTop: 2 },
+                    ]}>
+                    {t('settings.language.description')}
+                  </Text>
+                </View>
+              </View>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.localeRow}>
+              <LocaleChip
+                code={LOCALE_SYSTEM}
+                label={t('settings.language.system')}
+                active={locale === LOCALE_SYSTEM}
+                onPress={setLocale}
+              />
+              {SUPPORTED_LOCALES.map((code) => (
+                <LocaleChip
+                  key={code}
+                  code={code}
+                  label={t(`settings.language.${code}` as 'settings.language.en')}
+                  active={locale === code}
+                  onPress={setLocale}
+                />
+              ))}
+            </ScrollView>
           </Card>
         </Section>
 
@@ -339,6 +385,45 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
+function LocaleChip({
+  code,
+  label,
+  active,
+  onPress,
+}: {
+  code: LocalePreference;
+  label: string;
+  active: boolean;
+  onPress: (c: LocalePreference) => void;
+}) {
+  const { surface, brand, brandFill } = useAppTheme();
+  return (
+    <Pressable
+      onPress={() => onPress(code)}
+      style={({ pressed }) => [
+        styles.localeChip,
+        {
+          backgroundColor: active ? brandFill : surface.sunken,
+          borderColor: active ? brand : surface.border,
+          opacity: pressed ? 0.7 : 1,
+        },
+      ]}
+      accessibilityRole="radio"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}>
+      <Text
+        style={[
+          typography.bodyEmphasized,
+          {
+            color: active ? '#FFFFFF' : surface.text,
+          },
+        ]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   row: {
@@ -389,5 +474,17 @@ const styles = StyleSheet.create({
   },
   quietSummary: {
     paddingTop: spacing[1],
+  },
+  localeRow: {
+    flexDirection: 'row',
+    gap: spacing[2],
+    paddingHorizontal: spacing[4],
+    paddingBottom: spacing[3],
+  },
+  localeChip: {
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+    borderRadius: semanticRadius.pill,
+    borderWidth: 1,
   },
 });

@@ -1,0 +1,397 @@
+{
+  "app": {
+    "name": "Uptime Pocket",
+    "tagline": "ポケットに入る Uptime Kuma"
+  },
+  "onboarding": {
+    "feature1": {
+      "title": "全サービスを一目で",
+      "body": "Kuma が監視するすべてのモニターの状態を一目で確認"
+    },
+    "feature2": {
+      "title": "プッシュ通知",
+      "body": "障害発生時と復旧時にすぐにお知らせ"
+    },
+    "feature3": {
+      "title": "データはあなたのもの",
+      "body": "認証情報は iOS キーチェーン / Android Keystore に保存 — クラウドなし"
+    },
+    "feature4": {
+      "title": "複数サーバー対応",
+      "body": "本番・ステージング・クライアント環境を 1 つのアプリで管理"
+    },
+    "cta": "Kuma サーバーを追加",
+    "hint": "セルフホストの Uptime Kuma 2.0+ が必要です。無料、MIT ライセンス。",
+    "flow": {
+      "intro": {
+        "title": "Uptime Kuma がポケットに",
+        "body": "状態をすばやく確認、履歴もすぐ参照、ワンタップで各モニターの Kuma ダッシュボードを開けます。"
+      },
+      "privacy": {
+        "title": "データはあなたの端末に",
+        "body": "認証情報は iOS キーチェーンまたは Android Keystore に保存されます。クラウド同期も analytics もアカウントも不要です。"
+      },
+      "connect": {
+        "title": "Kuma サーバーを追加",
+        "body": "セルフホストの Kuma インスタンスの URL とベアラートークン（Kuma の「設定 → API トークン」）が必要です。"
+      }
+    }
+  },
+  "tabs": {
+    "monitors": "モニター",
+    "incidents": "インシデント",
+    "servers": "サーバー",
+    "settings": "設定"
+  },
+  "status": {
+    "up": "正常",
+    "down": "停止",
+    "pending": "保留",
+    "maintenance": "メンテナンス",
+    "paused": "一時停止"
+  },
+  "common": {
+    "loading": "読み込み中…",
+    "retry": "再試行",
+    "cancel": "キャンセル",
+    "save": "保存",
+    "delete": "削除",
+    "edit": "編集",
+    "add": "追加",
+    "back": "戻る",
+    "done": "完了",
+    "yes": "はい",
+    "no": "いいえ",
+    "search": "検索",
+    "filter": "フィルター",
+    "all": "すべて",
+    "none": "なし",
+    "openInKuma": "Kuma で開く",
+    "continue": "続ける",
+    "skip": "スキップ"
+  },
+  "monitors": {
+    "empty": {
+      "title": "モニターがまだありません",
+      "body": "Kuma サーバーを追加して監視を始めましょう。",
+      "action": "サーバーを追加",
+      "filtered": "該当するモニターはありません。",
+      "connecting": "モニターを待機中…"
+    },
+    "connectingBanner": "Kuma サーバーに接続中…",
+    "errorBanner": "接続エラー: {error}",
+    "list": {
+      "title": "モニター",
+      "filterAll": "すべて",
+      "filterDown": "停止",
+      "filterUp": "正常",
+      "searchPlaceholder": "モニターを検索…"
+    },
+    "detail": {
+      "title": "モニター #{id}",
+      "notFound": {
+        "title": "モニターが見つかりません",
+        "body": "モニターが削除されたか、接続が失われた可能性があります。"
+      },
+      "responseTime": "応答時間",
+      "uptime": "稼働率",
+      "incidents": "最近のインシデント",
+      "actions": {
+        "recheck": "今すぐ再確認",
+        "pause": "一時停止",
+        "resume": "再開",
+        "openInKuma": "Kuma で開く"
+      },
+      "ranges": {
+        "24h": "24 時間",
+        "7d": "7 日",
+        "30d": "30 日"
+      },
+      "chartRange": "{count} 件のハートビート · 最古は {span}"
+    }
+  },
+  "servers": {
+    "list": {
+      "title": "サーバー",
+      "addServer": "サーバーを追加",
+      "longPressHint": "長押しでサーバーをアクティブに設定します。"
+    },
+    "edit": {
+      "title": "サーバーを編集",
+      "secretsHint": "シークレットを空のままにすると既存の値が保持されます。"
+    },
+    "detail": {
+      "notFound": {
+        "title": "サーバーが見つかりません",
+        "body": "サーバーが削除された可能性があります。"
+      },
+      "status": {
+        "idle": "未接続",
+        "connecting": "接続中…",
+        "connected": "接続済み",
+        "reconnecting": "再接続中…",
+        "error": "接続エラー"
+      },
+      "outdated": {
+        "title": "Kuma のバージョンが古い",
+        "body": "検出バージョン {version}。最適な体験には Kuma {min} 以降を推奨します。"
+      },
+      "connection": {
+        "title": "接続",
+        "url": "URL",
+        "auth": "認証方式",
+        "bearerToken": "ベアラートークン",
+        "password": "ユーザー名とパスワード",
+        "version": "Kuma のバージョン",
+        "unknown": "不明",
+        "lastConnected": "最終接続",
+        "added": "追加日"
+      },
+      "notifications": {
+        "title": "通知",
+        "mode": "モード",
+        "none": "オフ",
+        "direct": "ダイレクト",
+        "relay": "リレー"
+      },
+      "monitors": {
+        "title": "モニター",
+        "total": "合計",
+        "totalCount": "{count}",
+        "up": "正常",
+        "down": "停止"
+      },
+      "deleteConfirm": {
+        "title": "サーバーを削除しますか?",
+        "body": "「{name}」と保存された認証情報を削除しますか? この操作は元に戻せません。"
+      },
+      "openInKuma": "Kuma で開く"
+    },
+    "add": {
+      "title": "Kuma サーバーを追加",
+      "name": "名前",
+      "namePlaceholder": "マイ Kuma",
+      "url": "サーバー URL",
+      "urlPlaceholder": "https://kuma.example.com",
+      "authMethod": "認証",
+      "bearer": "ベアラートークン(推奨)",
+      "bearerHint": "Kuma 2.0+ は API トークンに対応しています。Kuma ダッシュボードの「設定 → API キー」で作成してください。",
+      "bearerToken": "API トークン",
+      "password": "ユーザー名とパスワード",
+      "username": "ユーザー名",
+      "password": "パスワード",
+      "test": "接続テスト",
+      "save": "サーバーを保存",
+      "error": {
+        "invalidUrl": "有効な URL を入力してください",
+        "unreachable": "サーバーに到達できません",
+        "authFailed": "認証に失敗しました",
+        "missingToken": "トークンを入力してください",
+        "outdatedKuma": "Kuma バージョン {version} は最小要件 (2.0.0) を下回っています。一部機能が動作しない可能性があります。"
+      }
+    }
+  },
+  "notifications": {
+    "title": "通知",
+    "mode": {
+      "title": "通知モード",
+      "none": "オフ",
+      "noneHint": "通知なし、閲覧専用",
+      "direct": "ダイレクト",
+      "directHint": "アプリは Kuma との接続を維持、ローカル通知のみ",
+      "relay": "リレー",
+      "relayHint": "完全なプッシュ通知、オプションのリレーが必要"
+    },
+    "relay": {
+      "url": "リレー URL",
+      "token": "リレートークン",
+      "testConnection": "リレーをテスト"
+    },
+    "quiet": {
+      "title": "おやすみ時間",
+      "description": "この時間帯は通知をミュートします"
+    },
+    "permission": {
+      "title": "最新情報を逃さない",
+      "body": "Uptime Pocket はモニターの停止・復旧をすぐに通知できます。サーバーや登録は不要、システム通知だけです。",
+      "allow": "通知を許可",
+      "skip": "あとで",
+      "laterHint": "設定からいつでも変更できます。"
+    },
+    "copy": {
+      "downTitle": "{monitor} が停止しました",
+      "downBody": "{server} の {monitor} が応答していません。",
+      "recoveredTitle": "{monitor} が復旧しました",
+      "recoveredBody": "{server} の {monitor} が応答を再開しました。",
+      "criticalTitle": "{count} 件のモニターが停止",
+      "criticalBody": "複数のモニターが同時に停止しています — インフラを確認してください。"
+    }
+  },
+  "settings": {
+    "title": "設定",
+    "appearance": "外観",
+    "notifications": "通知",
+    "security": "セキュリティ",
+    "about": "アプリについて",
+    "developer": "開発者",
+    "designSystem": "デザインシステム",
+    "language": {
+      "title": "言語",
+      "description": "表示言語を選択します。デフォルトではシステム言語が使用されます。",
+      "system": "システムに従う",
+      "en": "English",
+      "de": "Deutsch",
+      "fr": "Français",
+      "ja": "日本語",
+      "es": "Español"
+    },
+    "theme": {
+      "title": "テーマ",
+      "system": "システム",
+      "light": "ライト",
+      "dark": "ダーク",
+      "descriptionSystem": "iOS / Android のシステム設定に従います。",
+      "descriptionLight": "常にライト配色を 사용します。",
+      "descriptionDark": "常にダーク配色を使用します。"
+    },
+    "accent": "アクセントカラー",
+    "accentSwatch": {
+      "title": "アクセント",
+      "description": "ボタン、リンク、モニターの「正常」表示に使用されます。"
+    },
+    "biometric": {
+      "title": "生体認証でロック",
+      "description": "Face ID / Touch ID / 指紋認証を必須にする"
+    },
+    "quietHours": {
+      "title": "おやすみ時間",
+      "description": "指定した時間帯は通知をミュートします。夜間などに便利です。",
+      "start": "開始",
+      "end": "終了",
+      "format": "{h}:{m}",
+      "overnightHint": "日付をまたぎます(例: 22:00 〜 07:00)。",
+      "allDayHint": "一日全体に及びます(開始 == 終了)。",
+      "invalidRangeHint": "開始と終了は異なる時刻にしてください。"
+    }
+  },
+  "lock": {
+    "title": "Uptime Pocket はロックされています",
+    "body": "モニターと通知を表示するにはロックを解除してください。",
+    "bodyWithBiometry": "モニターと通知を表示するには {biometry} で認証してください。",
+    "unlock": "ロック解除",
+    "unavailableTitle": "生体認証ロックがオンですが利用できません",
+    "unavailableBody": "この端末には生体認証またはデバイス認証情報が設定されていません。設定からロックをオフにしてください。",
+    "openSettings": "設定を開く"
+  },
+  "designSystem": {
+    "title": "デザインシステム",
+    "subtitle": "v0.2.0"
+  },
+  "monitorDetail": {
+    "recheck": "再確認",
+    "pause": "一時停止",
+    "resume": "再開",
+    "edit": "編集",
+    "delete": "削除",
+    "deleteConfirm": {
+      "title": "モニターを削除しますか?",
+      "body": "{server} の「{name}」を削除しますか? このモニターのすべてのチェックが停止し、元に戻せません。"
+    },
+    "responseTime": "応答時間",
+    "uptime": "稼働率",
+    "incidents": "最近のインシデント",
+    "noIncidents": "過去 24 時間のインシデントはありません。",
+    "ranges": {
+      "24h": "24 時間",
+      "7d": "7 日",
+      "30d": "30 日"
+    },
+    "stats": {
+      "uptime24h": "稼働率 24 時間",
+      "uptime7d": "稼働率 7 日",
+      "uptime30d": "稼働率 30 日",
+      "response": "応答"
+    }
+  },
+  "monitorForm": {
+    "addTitle": "モニターを追加",
+    "editTitle": "モニターを編集",
+    "fields": {
+      "name": "名前",
+      "namePlaceholder": "マイサービス",
+      "type": "種類",
+      "url": "URL",
+      "urlPlaceholder": "https://example.com",
+      "hostname": "ホスト名",
+      "hostnamePlaceholder": "example.com",
+      "port": "ポート",
+      "method": "HTTP メソッド",
+      "interval": "チェック間隔(秒)",
+      "retryInterval": "再試行間隔(秒)",
+      "maxretries": "最大再試行回数",
+      "upsideDown": "ステータスを反転(DOWN を UP として扱う)",
+      "active": "有効",
+      "description": "説明(任意)",
+      "tags": "タグ(カンマ区切り)",
+      "basicAuth": "Basic 認証(ユーザー:パスワード)",
+      "ignoreTls": "TLS エラーを無視",
+      "maxredirects": "最大リダイレクト数"
+    },
+    "types": {
+      "http": "HTTP(s)",
+      "ping": "Ping",
+      "port": "TCP ポート",
+      "dns": "DNS",
+      "keyword": "キーワード",
+      "json-query": "JSON クエリ",
+      "grpc-keyword": "gRPC キーワード",
+      "push": "プッシュ",
+      "docker": "Docker",
+      "mqtt": "MQTT",
+      "sqlserver": "SQL Server",
+      "postgres": "Postgres",
+      "mysql": "MySQL",
+      "mongodb": "MongoDB",
+      "redis": "Redis",
+      "snmp": "SNMP",
+      "smtp": "SMTP",
+      "sip": "SIP",
+      "steam": "Steam",
+      "gamedig": "ゲーム",
+      "websocket": "WebSocket",
+      "tailscale-ping": "Tailscale Ping",
+      "radius": "RADIUS"
+    },
+    "validation": {
+      "nameRequired": "名前は必須です",
+      "urlRequired": "URL は必須です",
+      "hostnameRequired": "ホスト名は必須です",
+      "portRequired": "ポートは必須です",
+      "portInvalid": "ポートは 1〜65535 の範囲で指定してください",
+      "intervalMin": "間隔は 20 秒以上にしてください"
+    },
+    "actions": {
+      "save": "保存",
+      "saving": "保存中…",
+      "cancel": "キャンセル",
+      "delete": "削除",
+      "deleting": "削除中…"
+    },
+    "error": {
+      "loadFailed": "モニターを読み込めませんでした: {msg}",
+      "saveFailed": "モニターを保存できませんでした: {msg}",
+      "deleteFailed": "モニターを削除できませんでした: {msg}",
+      "notConnected": "サーバーに接続されていません。再接続して再試行してください。"
+    },
+    "success": {
+      "added": "モニターを追加しました",
+      "edited": "モニターを保存しました",
+      "deleted": "モニターを削除しました"
+    }
+  },
+  "serverSwitcher": {
+    "title": "サーバーを切替",
+    "active": "アクティブ",
+    "addNew": "新しいサーバーを追加"
+  }
+}

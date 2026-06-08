@@ -1,0 +1,397 @@
+{
+  "app": {
+    "name": "Uptime Pocket",
+    "tagline": "Uptime Kuma dans ta poche"
+  },
+  "onboarding": {
+    "feature1": {
+      "title": "Statut en direct, tous tes services",
+      "body": "La santé d'un coup d'œil de chaque moniteur surveillé par Kuma"
+    },
+    "feature2": {
+      "title": "Notifications push",
+      "body": "Sois prévenu dès qu'un service tombe ou revient"
+    },
+    "feature3": {
+      "title": "Tes données restent à toi",
+      "body": "Identifiants dans le Trousseau iOS / Keystore Android — pas de cloud"
+    },
+    "feature4": {
+      "title": "Plusieurs serveurs",
+      "body": "Gère la prod, la pré-prod et les instances clients dans une seule appli"
+    },
+    "cta": "Ajouter ton serveur Kuma",
+    "hint": "Uptime Kuma auto-hébergé 2.0+ requis. Gratuit, sous licence MIT.",
+    "flow": {
+      "intro": {
+        "title": "Uptime Kuma, dans ta poche",
+        "body": "Statut lisible d'un coup d'œil, historique rapide, et un tap pour ouvrir chaque moniteur dans son tableau de bord Kuma complet."
+      },
+      "privacy": {
+        "title": "Tes données restent sur ton téléphone",
+        "body": "Les identifiants sont stockés dans le Trousseau iOS ou le Keystore Android. Nous ne les voyons jamais — pas de sync cloud, pas d'analyses, pas de compte."
+      },
+      "connect": {
+        "title": "Ajoute ton serveur Kuma",
+        "body": "Tu auras besoin de l'URL de ton instance Kuma auto-hébergée et d'un jeton bearer (Réglages → Jetons API dans Kuma)."
+      }
+    }
+  },
+  "tabs": {
+    "monitors": "Moniteurs",
+    "incidents": "Incidents",
+    "servers": "Serveurs",
+    "settings": "Réglages"
+  },
+  "status": {
+    "up": "En ligne",
+    "down": "Hors ligne",
+    "pending": "En attente",
+    "maintenance": "Maintenance",
+    "paused": "En pause"
+  },
+  "common": {
+    "loading": "Chargement…",
+    "retry": "Réessayer",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "add": "Ajouter",
+    "back": "Retour",
+    "done": "Terminé",
+    "yes": "Oui",
+    "no": "Non",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "all": "Tous",
+    "none": "Aucun",
+    "openInKuma": "Ouvrir dans Kuma",
+    "continue": "Continuer",
+    "skip": "Passer"
+  },
+  "monitors": {
+    "empty": {
+      "title": "Aucun moniteur",
+      "body": "Ajoute un serveur Kuma pour commencer la surveillance.",
+      "action": "Ajouter un serveur",
+      "filtered": "Aucun moniteur dans cet état.",
+      "connecting": "En attente des moniteurs…"
+    },
+    "connectingBanner": "Connexion à ton serveur Kuma…",
+    "errorBanner": "Erreur de connexion : {error}",
+    "list": {
+      "title": "Moniteurs",
+      "filterAll": "Tous",
+      "filterDown": "Hors ligne",
+      "filterUp": "En ligne",
+      "searchPlaceholder": "Rechercher des moniteurs…"
+    },
+    "detail": {
+      "title": "Moniteur n°{id}",
+      "notFound": {
+        "title": "Moniteur introuvable",
+        "body": "Ce moniteur a peut-être été supprimé ou la connexion a été perdue."
+      },
+      "responseTime": "Temps de réponse",
+      "uptime": "Disponibilité",
+      "incidents": "Incidents récents",
+      "actions": {
+        "recheck": "Re-vérifier",
+        "pause": "Mettre en pause",
+        "resume": "Reprendre",
+        "openInKuma": "Ouvrir dans Kuma"
+      },
+      "ranges": {
+        "24h": "24 h",
+        "7d": "7 j",
+        "30d": "30 j"
+      },
+      "chartRange": "{count} battements · le plus ancien sur {span}"
+    }
+  },
+  "servers": {
+    "list": {
+      "title": "Serveurs",
+      "addServer": "Ajouter un serveur",
+      "longPressHint": "Appuie longuement sur un serveur pour le définir comme actif."
+    },
+    "edit": {
+      "title": "Modifier le serveur",
+      "secretsHint": "Laisse un secret vide pour conserver l'existant."
+    },
+    "detail": {
+      "notFound": {
+        "title": "Serveur introuvable",
+        "body": "Ce serveur a peut-être été supprimé."
+      },
+      "status": {
+        "idle": "Non connecté",
+        "connecting": "Connexion…",
+        "connected": "Connecté",
+        "reconnecting": "Reconnexion…",
+        "error": "Erreur de connexion"
+      },
+      "outdated": {
+        "title": "Version de Kuma obsolète",
+        "body": "Version détectée {version}. Nous recommandons Kuma {min} ou ultérieur pour une meilleure expérience."
+      },
+      "connection": {
+        "title": "Connexion",
+        "url": "URL",
+        "auth": "Méthode d'authentification",
+        "bearerToken": "Jeton bearer",
+        "password": "Identifiant & mot de passe",
+        "version": "Version de Kuma",
+        "unknown": "Inconnue",
+        "lastConnected": "Dernière connexion",
+        "added": "Ajouté"
+      },
+      "notifications": {
+        "title": "Notifications",
+        "mode": "Mode",
+        "none": "Désactivé",
+        "direct": "Direct",
+        "relay": "Relais"
+      },
+      "monitors": {
+        "title": "Moniteurs",
+        "total": "Total",
+        "totalCount": "{count}",
+        "up": "En ligne",
+        "down": "Hors ligne"
+      },
+      "deleteConfirm": {
+        "title": "Supprimer le serveur ?",
+        "body": "Supprimer « {name} » et ses identifiants stockés ? Action irréversible."
+      },
+      "openInKuma": "Ouvrir dans Kuma"
+    },
+    "add": {
+      "title": "Ajouter un serveur Kuma",
+      "name": "Nom",
+      "namePlaceholder": "Mon Kuma",
+      "url": "URL du serveur",
+      "urlPlaceholder": "https://kuma.example.com",
+      "authMethod": "Authentification",
+      "bearer": "Jeton bearer (recommandé)",
+      "bearerHint": "Kuma 2.0+ prend en charge les jetons API. Crée-en un dans Réglages → Clés API du tableau de bord Kuma.",
+      "bearerToken": "Jeton API",
+      "password": "Identifiant & mot de passe",
+      "username": "Identifiant",
+      "password": "Mot de passe",
+      "test": "Tester la connexion",
+      "save": "Enregistrer le serveur",
+      "error": {
+        "invalidUrl": "Veuillez entrer une URL valide",
+        "unreachable": "Serveur injoignable",
+        "authFailed": "Échec de l'authentification",
+        "missingToken": "Veuillez entrer un jeton",
+        "outdatedKuma": "La version {version} de Kuma est inférieure au minimum (2.0.0). Certaines fonctionnalités peuvent ne pas fonctionner."
+      }
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "mode": {
+      "title": "Mode de notification",
+      "none": "Désactivé",
+      "noneHint": "Aucune notification, l'app est un simple lecteur",
+      "direct": "Direct",
+      "directHint": "L'app maintient la connexion à Kuma, notifications locales uniquement",
+      "relay": "Relais",
+      "relayHint": "Notifications push complètes, nécessite le relais optionnel"
+    },
+    "relay": {
+      "url": "URL du relais",
+      "token": "Jeton du relais",
+      "testConnection": "Tester le relais"
+    },
+    "quiet": {
+      "title": "Heures silencieuses",
+      "description": "Couper les notifications pendant cette plage horaire"
+    },
+    "permission": {
+      "title": "Reste informé",
+      "body": "Uptime Pocket peut te prévenir dès qu'un moniteur tombe ou se rétablit. Tu recevras une notification système — pas de serveur, pas d'inscription.",
+      "allow": "Autoriser les notifications",
+      "skip": "Pas maintenant",
+      "laterHint": "Tu peux changer cela à tout moment dans les Réglages."
+    },
+    "copy": {
+      "downTitle": "{monitor} est hors ligne",
+      "downBody": "{monitor} sur {server} ne répond pas.",
+      "recoveredTitle": "{monitor} est de retour",
+      "recoveredBody": "{monitor} sur {server} répond à nouveau.",
+      "criticalTitle": "{count} moniteurs hors ligne",
+      "criticalBody": "Plusieurs moniteurs sont hors ligne en même temps — vérifie ton infrastructure."
+    }
+  },
+  "settings": {
+    "title": "Réglages",
+    "appearance": "Apparence",
+    "notifications": "Notifications",
+    "security": "Sécurité",
+    "about": "À propos",
+    "developer": "Développeur",
+    "designSystem": "Design system",
+    "language": {
+      "title": "Langue",
+      "description": "Choisis la langue d'affichage. Par défaut, la langue du système est utilisée.",
+      "system": "Langue du système",
+      "en": "English",
+      "de": "Deutsch",
+      "fr": "Français",
+      "ja": "日本語",
+      "es": "Español"
+    },
+    "theme": {
+      "title": "Thème",
+      "system": "Système",
+      "light": "Clair",
+      "dark": "Sombre",
+      "descriptionSystem": "Suit le réglage système de ton iOS ou Android.",
+      "descriptionLight": "Utilise toujours la palette claire.",
+      "descriptionDark": "Utilise toujours la palette sombre."
+    },
+    "accent": "Couleur d'accent",
+    "accentSwatch": {
+      "title": "Accent",
+      "description": "Utilisé pour les boutons, les liens et l'indicateur « en ligne » des moniteurs."
+    },
+    "biometric": {
+      "title": "Verrouiller avec la biométrie",
+      "description": "Exiger Face ID, Touch ID ou empreinte pour ouvrir l'app"
+    },
+    "quietHours": {
+      "title": "Heures silencieuses",
+      "description": "Couper les notifications pendant une plage horaire. Utile la nuit.",
+      "start": "Début",
+      "end": "Fin",
+      "format": "{h}:{m}",
+      "overnightHint": "Traverse minuit (p. ex. 22:00 à 07:00).",
+      "allDayHint": "Couvre toute la journée (début == fin).",
+      "invalidRangeHint": "La fin doit différer du début."
+    }
+  },
+  "lock": {
+    "title": "Uptime Pocket est verrouillé",
+    "body": "Déverrouille pour voir tes moniteurs et notifications.",
+    "bodyWithBiometry": "Authentifie-toi avec {biometry} pour voir tes moniteurs et notifications.",
+    "unlock": "Déverrouiller",
+    "unavailableTitle": "Verrouillage biométrique activé mais indisponible",
+    "unavailableBody": "Cet appareil n'a pas de biométrie ni d'identifiants configurés. Ouvre les Réglages pour désactiver le verrou.",
+    "openSettings": "Ouvrir les Réglages"
+  },
+  "designSystem": {
+    "title": "Design System",
+    "subtitle": "v0.2.0"
+  },
+  "monitorDetail": {
+    "recheck": "Re-vérifier",
+    "pause": "Mettre en pause",
+    "resume": "Reprendre",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "deleteConfirm": {
+      "title": "Supprimer le moniteur ?",
+      "body": "Supprimer « {name} » de {server} ? Cela arrêtera toutes les vérifications pour ce moniteur et ne peut pas être annulé."
+    },
+    "responseTime": "Temps de réponse",
+    "uptime": "Disponibilité",
+    "incidents": "Incidents récents",
+    "noIncidents": "Aucun incident dans les dernières 24 heures.",
+    "ranges": {
+      "24h": "24 heures",
+      "7d": "7 jours",
+      "30d": "30 jours"
+    },
+    "stats": {
+      "uptime24h": "Dispo 24 h",
+      "uptime7d": "Dispo 7 j",
+      "uptime30d": "Dispo 30 j",
+      "response": "Réponse"
+    }
+  },
+  "monitorForm": {
+    "addTitle": "Ajouter un moniteur",
+    "editTitle": "Modifier le moniteur",
+    "fields": {
+      "name": "Nom",
+      "namePlaceholder": "Mon service",
+      "type": "Type",
+      "url": "URL",
+      "urlPlaceholder": "https://example.com",
+      "hostname": "Nom d'hôte",
+      "hostnamePlaceholder": "example.com",
+      "port": "Port",
+      "method": "Méthode HTTP",
+      "interval": "Intervalle de vérification (secondes)",
+      "retryInterval": "Intervalle de relance (secondes)",
+      "maxretries": "Tentatives max.",
+      "upsideDown": "Inverser le statut (traiter DOWN comme UP)",
+      "active": "Actif",
+      "description": "Description (facultative)",
+      "tags": "Étiquettes (séparées par des virgules)",
+      "basicAuth": "Auth basique (utilisateur:motdepasse)",
+      "ignoreTls": "Ignorer les erreurs TLS",
+      "maxredirects": "Redirections max."
+    },
+    "types": {
+      "http": "HTTP(s)",
+      "ping": "Ping",
+      "port": "Port TCP",
+      "dns": "DNS",
+      "keyword": "Mot-clé",
+      "json-query": "Requête JSON",
+      "grpc-keyword": "Mot-clé gRPC",
+      "push": "Push",
+      "docker": "Docker",
+      "mqtt": "MQTT",
+      "sqlserver": "SQL Server",
+      "postgres": "Postgres",
+      "mysql": "MySQL",
+      "mongodb": "MongoDB",
+      "redis": "Redis",
+      "snmp": "SNMP",
+      "smtp": "SMTP",
+      "sip": "SIP",
+      "steam": "Steam",
+      "gamedig": "Jeu",
+      "websocket": "WebSocket",
+      "tailscale-ping": "Ping Tailscale",
+      "radius": "RADIUS"
+    },
+    "validation": {
+      "nameRequired": "Le nom est requis",
+      "urlRequired": "L'URL est requise",
+      "hostnameRequired": "Le nom d'hôte est requis",
+      "portRequired": "Le port est requis",
+      "portInvalid": "Le port doit être compris entre 1 et 65535",
+      "intervalMin": "L'intervalle doit être d'au moins 20 secondes"
+    },
+    "actions": {
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "cancel": "Annuler",
+      "delete": "Supprimer",
+      "deleting": "Suppression…"
+    },
+    "error": {
+      "loadFailed": "Impossible de charger le moniteur : {msg}",
+      "saveFailed": "Impossible d'enregistrer le moniteur : {msg}",
+      "deleteFailed": "Impossible de supprimer le moniteur : {msg}",
+      "notConnected": "Le serveur n'est pas connecté. Reconnecte-toi et réessaie."
+    },
+    "success": {
+      "added": "Moniteur ajouté",
+      "edited": "Moniteur enregistré",
+      "deleted": "Moniteur supprimé"
+    }
+  },
+  "serverSwitcher": {
+    "title": "Changer de serveur",
+    "active": "Actif",
+    "addNew": "Ajouter un nouveau serveur"
+  }
+}

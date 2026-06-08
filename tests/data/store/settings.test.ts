@@ -22,6 +22,7 @@ jest.mock('@/data/db/settings', () => ({
     quietHoursStartMinute: 1320,
     quietHoursEndMinute: 420,
     hasOnboarded: false,
+    locale: 'system',
   },
   settingsRepo: {
     load: () => mockLoad(),
@@ -142,6 +143,21 @@ describe('settings store', () => {
       });
     });
 
+    it('setLocale() updates memory, calls save(), and pushes into the i18n module', () => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { getLocale } = require('@/i18n');
+      // Reset in case a prior test moved it.
+      getLocale(); // touch so require cache is warm
+      useSettings.getState().setLocale('fr');
+      expect(useSettings.getState().locale).toBe('fr');
+      return Promise.resolve().then(() => {
+        expect(mockSave).toHaveBeenCalledWith({ locale: 'fr' });
+        // The store is responsible for syncing the i18n module so
+        // a subsequent t() call uses the new locale.
+        expect(getLocale()).toBe('fr');
+      });
+    });
+
     it('setters keep the in-memory value even if save() throws', async () => {
       mockSave.mockRejectedValue(new Error('disk full'));
       const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -190,6 +206,7 @@ describe('settings store', () => {
         quietHoursStartMinute: 1320,
         quietHoursEndMinute: 420,
         hasOnboarded: true,
+        locale: 'de',
         hydrated: true,
       });
       expect(getCurrentSettings()).toEqual({
@@ -201,6 +218,7 @@ describe('settings store', () => {
         quietHoursStartMinute: 1320,
         quietHoursEndMinute: 420,
         hasOnboarded: true,
+        locale: 'de',
       });
     });
   });

@@ -210,6 +210,21 @@
     "quiet": {
       "title": "Quiet hours",
       "description": "Mute notifications during this window"
+    },
+    "permission": {
+      "title": "Stay in the loop",
+      "body": "Uptime Pocket can ping you the moment a monitor goes down or recovers. You'll get a system notification — no servers, no signup.",
+      "allow": "Allow notifications",
+      "skip": "Not now",
+      "laterHint": "You can change this anytime in Settings."
+    },
+    "copy": {
+      "downTitle": "{monitor} is down",
+      "downBody": "{monitor} on {server} is not responding.",
+      "recoveredTitle": "{monitor} is back up",
+      "recoveredBody": "{monitor} on {server} is responding again.",
+      "criticalTitle": "{count} monitors down",
+      "criticalBody": "Multiple monitors are down at once — check your infrastructure."
     }
   },
   "settings": {
@@ -238,6 +253,16 @@
       "title": "Lock with biometrics",
       "description": "Require Face ID, Touch ID, or fingerprint to open the app"
     },
+    "language": {
+      "title": "Language",
+      "description": "Choose the display language. Defaults to your system language.",
+      "system": "System default",
+      "en": "English",
+      "de": "Deutsch",
+      "fr": "Français",
+      "ja": "日本語",
+      "es": "Español"
+    },
     "quietHours": {
       "title": "Quiet hours",
       "description": "Silence notifications during a set time range. Useful for overnight.",
@@ -257,23 +282,6 @@
     "unavailableTitle": "Biometric lock is on, but unavailable",
     "unavailableBody": "This device has no biometric or device-credential set up. Open Settings to disable the lock.",
     "openSettings": "Open settings"
-  },
-  "notifications": {
-    "permission": {
-      "title": "Stay in the loop",
-      "body": "Uptime Pocket can ping you the moment a monitor goes down or recovers. You'll get a system notification — no servers, no signup.",
-      "allow": "Allow notifications",
-      "skip": "Not now",
-      "laterHint": "You can change this anytime in Settings."
-    },
-    "copy": {
-      "downTitle": "{monitor} is down",
-      "downBody": "{monitor} on {server} is not responding.",
-      "recoveredTitle": "{monitor} is back up",
-      "recoveredBody": "{monitor} on {server} is responding again.",
-      "criticalTitle": "{count} monitors down",
-      "criticalBody": "Multiple monitors are down at once — check your infrastructure."
-    }
   },
   "designSystem": {
     "title": "Design System",

@@ -1,0 +1,397 @@
+{
+  "app": {
+    "name": "Uptime Pocket",
+    "tagline": "Uptime Kuma en tu bolsillo"
+  },
+  "onboarding": {
+    "feature1": {
+      "title": "Estado en vivo, todos tus servicios",
+      "body": "La salud de un vistazo de cada monitor que tu Kuma vigila"
+    },
+    "feature2": {
+      "title": "Notificaciones push",
+      "body": "Entérate al instante cuando algo cae o se recupera"
+    },
+    "feature3": {
+      "title": "Tus datos siguen siendo tuyos",
+      "body": "Credenciales en el Llavero de iOS / Keystore de Android — sin nube"
+    },
+    "feature4": {
+      "title": "Varios servidores",
+      "body": "Gestiona producción, staging e instancias de clientes en una sola app"
+    },
+    "cta": "Añade tu servidor Kuma",
+    "hint": "Requiere Uptime Kuma 2.0+ autoalojado. Gratis, bajo licencia MIT.",
+    "flow": {
+      "intro": {
+        "title": "Uptime Kuma, en tu bolsillo",
+        "body": "Estado de un vistazo, historial rápido y un toque para abrir cada monitor en su panel completo de Kuma."
+      },
+      "privacy": {
+        "title": "Tus datos se quedan en tu teléfono",
+        "body": "Las credenciales viven en el Llavero de iOS o el Keystore de Android. Nunca las vemos: sin sync en la nube, sin analíticas, sin cuenta."
+      },
+      "connect": {
+        "title": "Añade tu servidor Kuma",
+        "body": "Necesitarás la URL de tu instancia Kuma autoalojada y un token bearer (Ajustes → Tokens de API en Kuma)."
+      }
+    }
+  },
+  "tabs": {
+    "monitors": "Monitores",
+    "incidents": "Incidencias",
+    "servers": "Servidores",
+    "settings": "Ajustes"
+  },
+  "status": {
+    "up": "En línea",
+    "down": "Caído",
+    "pending": "Pendiente",
+    "maintenance": "Mantenimiento",
+    "paused": "Pausado"
+  },
+  "common": {
+    "loading": "Cargando…",
+    "retry": "Reintentar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "add": "Añadir",
+    "back": "Atrás",
+    "done": "Listo",
+    "yes": "Sí",
+    "no": "No",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "all": "Todos",
+    "none": "Ninguno",
+    "openInKuma": "Abrir en Kuma",
+    "continue": "Continuar",
+    "skip": "Saltar"
+  },
+  "monitors": {
+    "empty": {
+      "title": "Aún no hay monitores",
+      "body": "Añade un servidor Kuma para empezar a monitorizar.",
+      "action": "Añadir servidor",
+      "filtered": "No hay monitores en este estado.",
+      "connecting": "Esperando monitores…"
+    },
+    "connectingBanner": "Conectando a tu servidor Kuma…",
+    "errorBanner": "Error de conexión: {error}",
+    "list": {
+      "title": "Monitores",
+      "filterAll": "Todos",
+      "filterDown": "Caídos",
+      "filterUp": "En línea",
+      "searchPlaceholder": "Buscar monitores…"
+    },
+    "detail": {
+      "title": "Monitor n.º {id}",
+      "notFound": {
+        "title": "Monitor no encontrado",
+        "body": "Este monitor puede haber sido eliminado o se perdió la conexión."
+      },
+      "responseTime": "Tiempo de respuesta",
+      "uptime": "Disponibilidad",
+      "incidents": "Incidencias recientes",
+      "actions": {
+        "recheck": "Reverificar",
+        "pause": "Pausar",
+        "resume": "Reanudar",
+        "openInKuma": "Abrir en Kuma"
+      },
+      "ranges": {
+        "24h": "24 h",
+        "7d": "7 d",
+        "30d": "30 d"
+      },
+      "chartRange": "{count} latidos · el más antiguo de {span}"
+    }
+  },
+  "servers": {
+    "list": {
+      "title": "Servidores",
+      "addServer": "Añadir servidor",
+      "longPressHint": "Mantén pulsado un servidor para hacerlo activo."
+    },
+    "edit": {
+      "title": "Editar servidor",
+      "secretsHint": "Deja un secreto en blanco para conservar el actual."
+    },
+    "detail": {
+      "notFound": {
+        "title": "Servidor no encontrado",
+        "body": "Este servidor puede haber sido eliminado."
+      },
+      "status": {
+        "idle": "Sin conexión",
+        "connecting": "Conectando…",
+        "connected": "Conectado",
+        "reconnecting": "Reconectando…",
+        "error": "Error de conexión"
+      },
+      "outdated": {
+        "title": "Versión de Kuma obsoleta",
+        "body": "Detectada {version}. Recomendamos Kuma {min} o posterior para la mejor experiencia."
+      },
+      "connection": {
+        "title": "Conexión",
+        "url": "URL",
+        "auth": "Método de autenticación",
+        "bearerToken": "Token bearer",
+        "password": "Usuario y contraseña",
+        "version": "Versión de Kuma",
+        "unknown": "Desconocida",
+        "lastConnected": "Última conexión",
+        "added": "Añadido"
+      },
+      "notifications": {
+        "title": "Notificaciones",
+        "mode": "Modo",
+        "none": "Apagado",
+        "direct": "Directo",
+        "relay": "Relé"
+      },
+      "monitors": {
+        "title": "Monitores",
+        "total": "Total",
+        "totalCount": "{count}",
+        "up": "En línea",
+        "down": "Caídos"
+      },
+      "deleteConfirm": {
+        "title": "¿Eliminar servidor?",
+        "body": "¿Eliminar «{name}» y sus credenciales guardadas? No se puede deshacer."
+      },
+      "openInKuma": "Abrir en Kuma"
+    },
+    "add": {
+      "title": "Añadir servidor Kuma",
+      "name": "Nombre",
+      "namePlaceholder": "Mi Kuma",
+      "url": "URL del servidor",
+      "urlPlaceholder": "https://kuma.example.com",
+      "authMethod": "Autenticación",
+      "bearer": "Token bearer (recomendado)",
+      "bearerHint": "Kuma 2.0+ admite tokens de API. Crea uno en Ajustes → Claves de API del panel de Kuma.",
+      "bearerToken": "Token de API",
+      "password": "Usuario y contraseña",
+      "username": "Usuario",
+      "password": "Contraseña",
+      "test": "Probar conexión",
+      "save": "Guardar servidor",
+      "error": {
+        "invalidUrl": "Introduce una URL válida",
+        "unreachable": "No se puede alcanzar el servidor",
+        "authFailed": "Autenticación fallida",
+        "missingToken": "Introduce un token",
+        "outdatedKuma": "La versión de Kuma {version} está por debajo del mínimo (2.0.0). Algunas funciones pueden no estar disponibles."
+      }
+    }
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "mode": {
+      "title": "Modo de notificación",
+      "none": "Apagado",
+      "noneHint": "Sin notificaciones, la app es solo de visualización",
+      "direct": "Directo",
+      "directHint": "La app mantiene la conexión con Kuma, solo notificaciones locales",
+      "relay": "Relé",
+      "relayHint": "Notificaciones push completas, requiere el relé opcional"
+    },
+    "relay": {
+      "url": "URL del relé",
+      "token": "Token del relé",
+      "testConnection": "Probar relé"
+    },
+    "quiet": {
+      "title": "Horas silenciosas",
+      "description": "Silenciar notificaciones durante este intervalo"
+    },
+    "permission": {
+      "title": "Mantente al día",
+      "body": "Uptime Pocket puede avisarte al instante cuando un monitor cae o se recupera. Recibirás una notificación del sistema — sin servidores, sin registros.",
+      "allow": "Permitir notificaciones",
+      "skip": "Ahora no",
+      "laterHint": "Puedes cambiar esto en cualquier momento en Ajustes."
+    },
+    "copy": {
+      "downTitle": "{monitor} está caído",
+      "downBody": "{monitor} en {server} no responde.",
+      "recoveredTitle": "{monitor} se ha recuperado",
+      "recoveredBody": "{monitor} en {server} vuelve a responder.",
+      "criticalTitle": "{count} monitores caídos",
+      "criticalBody": "Varios monitores están caídos a la vez: revisa tu infraestructura."
+    }
+  },
+  "settings": {
+    "title": "Ajustes",
+    "appearance": "Apariencia",
+    "notifications": "Notificaciones",
+    "security": "Seguridad",
+    "about": "Acerca de",
+    "developer": "Desarrollador",
+    "designSystem": "Sistema de diseño",
+    "language": {
+      "title": "Idioma",
+      "description": "Elige el idioma de la interfaz. Por defecto se usa el idioma del sistema.",
+      "system": "Idioma del sistema",
+      "en": "English",
+      "de": "Deutsch",
+      "fr": "Français",
+      "ja": "日本語",
+      "es": "Español"
+    },
+    "theme": {
+      "title": "Tema",
+      "system": "Sistema",
+      "light": "Claro",
+      "dark": "Oscuro",
+      "descriptionSystem": "Sigue el ajuste del sistema en iOS o Android.",
+      "descriptionLight": "Usa siempre la paleta clara.",
+      "descriptionDark": "Usa siempre la paleta oscura."
+    },
+    "accent": "Color de acento",
+    "accentSwatch": {
+      "title": "Acento",
+      "description": "Se usa para botones, enlaces y el indicador «en línea» de los monitores."
+    },
+    "biometric": {
+      "title": "Bloquear con biometría",
+      "description": "Requerir Face ID, Touch ID o huella para abrir la app"
+    },
+    "quietHours": {
+      "title": "Horas silenciosas",
+      "description": "Silencia las notificaciones en un intervalo definido. Útil por la noche.",
+      "start": "Inicio",
+      "end": "Fin",
+      "format": "{h}:{m}",
+      "overnightHint": "Cruza la medianoche (p. ej., 22:00 a 07:00).",
+      "allDayHint": "Cubre todo el día (inicio == fin).",
+      "invalidRangeHint": "El fin debe ser distinto del inicio."
+    }
+  },
+  "lock": {
+    "title": "Uptime Pocket está bloqueado",
+    "body": "Desbloquéalo para ver tus monitores y notificaciones.",
+    "bodyWithBiometry": "Autentícate con {biometry} para ver tus monitores y notificaciones.",
+    "unlock": "Desbloquear",
+    "unavailableTitle": "Bloqueo biométrico activado, pero no disponible",
+    "unavailableBody": "Este dispositivo no tiene biometría ni credenciales del dispositivo configuradas. Abre Ajustes para desactivar el bloqueo.",
+    "openSettings": "Abrir ajustes"
+  },
+  "designSystem": {
+    "title": "Sistema de diseño",
+    "subtitle": "v0.2.0"
+  },
+  "monitorDetail": {
+    "recheck": "Reverificar",
+    "pause": "Pausar",
+    "resume": "Reanudar",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "deleteConfirm": {
+      "title": "¿Eliminar monitor?",
+      "body": "¿Eliminar «{name}» de {server}? Esto detendrá todas las comprobaciones de este monitor y no se puede deshacer."
+    },
+    "responseTime": "Tiempo de respuesta",
+    "uptime": "Disponibilidad",
+    "incidents": "Incidencias recientes",
+    "noIncidents": "Sin incidencias en las últimas 24 horas.",
+    "ranges": {
+      "24h": "24 horas",
+      "7d": "7 días",
+      "30d": "30 días"
+    },
+    "stats": {
+      "uptime24h": "Disp. 24 h",
+      "uptime7d": "Disp. 7 d",
+      "uptime30d": "Disp. 30 d",
+      "response": "Respuesta"
+    }
+  },
+  "monitorForm": {
+    "addTitle": "Añadir monitor",
+    "editTitle": "Editar monitor",
+    "fields": {
+      "name": "Nombre",
+      "namePlaceholder": "Mi servicio",
+      "type": "Tipo",
+      "url": "URL",
+      "urlPlaceholder": "https://example.com",
+      "hostname": "Nombre de host",
+      "hostnamePlaceholder": "example.com",
+      "port": "Puerto",
+      "method": "Método HTTP",
+      "interval": "Intervalo de comprobación (segundos)",
+      "retryInterval": "Intervalo de reintento (segundos)",
+      "maxretries": "Máx. reintentos",
+      "upsideDown": "Invertir estado (tratar DOWN como UP)",
+      "active": "Activo",
+      "description": "Descripción (opcional)",
+      "tags": "Etiquetas (separadas por comas)",
+      "basicAuth": "Auth básica (usuario:contraseña)",
+      "ignoreTls": "Ignorar errores TLS",
+      "maxredirects": "Máx. redirecciones"
+    },
+    "types": {
+      "http": "HTTP(s)",
+      "ping": "Ping",
+      "port": "Puerto TCP",
+      "dns": "DNS",
+      "keyword": "Palabra clave",
+      "json-query": "Consulta JSON",
+      "grpc-keyword": "Palabra clave gRPC",
+      "push": "Push",
+      "docker": "Docker",
+      "mqtt": "MQTT",
+      "sqlserver": "SQL Server",
+      "postgres": "Postgres",
+      "mysql": "MySQL",
+      "mongodb": "MongoDB",
+      "redis": "Redis",
+      "snmp": "SNMP",
+      "smtp": "SMTP",
+      "sip": "SIP",
+      "steam": "Steam",
+      "gamedig": "Juego",
+      "websocket": "WebSocket",
+      "tailscale-ping": "Ping Tailscale",
+      "radius": "RADIUS"
+    },
+    "validation": {
+      "nameRequired": "El nombre es obligatorio",
+      "urlRequired": "La URL es obligatoria",
+      "hostnameRequired": "El nombre de host es obligatorio",
+      "portRequired": "El puerto es obligatorio",
+      "portInvalid": "El puerto debe estar entre 1 y 65535",
+      "intervalMin": "El intervalo debe ser de al menos 20 segundos"
+    },
+    "actions": {
+      "save": "Guardar",
+      "saving": "Guardando…",
+      "cancel": "Cancelar",
+      "delete": "Eliminar",
+      "deleting": "Eliminando…"
+    },
+    "error": {
+      "loadFailed": "No se pudo cargar el monitor: {msg}",
+      "saveFailed": "No se pudo guardar el monitor: {msg}",
+      "deleteFailed": "No se pudo eliminar el monitor: {msg}",
+      "notConnected": "El servidor no está conectado. Reconecta y vuelve a intentarlo."
+    },
+    "success": {
+      "added": "Monitor añadido",
+      "edited": "Monitor guardado",
+      "deleted": "Monitor eliminado"
+    }
+  },
+  "serverSwitcher": {
+    "title": "Cambiar servidor",
+    "active": "Activo",
+    "addNew": "Añadir nuevo servidor"
+  }
+}

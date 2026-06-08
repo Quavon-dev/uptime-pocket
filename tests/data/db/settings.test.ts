@@ -100,6 +100,7 @@ describe('settingsRepo', () => {
           quiet_hours_end: 420,
           has_onboarded: 1,
           accent_swatch_id: 'magenta',
+          locale: 'fr',
           updated_at: '2026-06-01T00:00:00.000Z',
         },
       ];
@@ -113,6 +114,7 @@ describe('settingsRepo', () => {
         quietHoursStartMinute: 1380,
         quietHoursEndMinute: 420,
         hasOnboarded: true,
+        locale: 'fr',
       });
     });
 
@@ -172,6 +174,7 @@ describe('settingsRepo', () => {
         DEFAULT_SETTINGS.quietHoursEndMinute,
         1, // hasOnboarded
         null, // accentSwatchId
+        'system', // locale (default)
         expect.any(String) // updated_at
       );
     });

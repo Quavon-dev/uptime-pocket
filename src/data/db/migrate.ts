@@ -58,6 +58,16 @@ export const MIGRATIONS: Record<number, string> = {
       updated_at          TEXT NOT NULL
     );
   `,
+
+  3: /* sql */ `
+    -- Add locale preference to settings. We use the literal 'system' as
+    -- the default (follow the device) and the IETF codes for the rest
+    -- (en, de, fr, ja, es). The CHECK constraint enforces both the
+    -- sentinel and the supported set; the i18n module is the source of
+    -- truth for which codes are supported (see SUPPORTED_LOCALES).
+    ALTER TABLE settings ADD COLUMN locale TEXT NOT NULL DEFAULT 'system'
+      CHECK (locale IN ('system', 'en', 'de', 'fr', 'ja', 'es'));
+  `,
 };
 
 const DB_NAME = 'uptime-pocket.db';

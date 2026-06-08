@@ -27,6 +27,7 @@ import {
   DEFAULT_SETTINGS,
   type PersistedSettings,
 } from '@/data/db/settings';
+import { setLocale as i18nSetLocale, type LocalePreference } from '@/i18n';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -49,6 +50,7 @@ interface SettingsState extends PersistedSettings {
   setBiometricLock: (enabled: boolean) => void;
   setQuietHours: (q: QuietHours) => void;
   setOnboarded: (v: boolean) => void;
+  setLocale: (l: LocalePreference) => void;
 
   /** Hard reset back to defaults (and clear on disk). */
   resetAll: () => Promise<void>;
@@ -125,11 +127,21 @@ export const useSettings = create<SettingsState>((set, get) => ({
     void persist({ hasOnboarded });
   },
 
+  setLocale: (locale) => {
+    set({ locale });
+    // Update the i18n module synchronously so any subsequent t()/tn() call
+    // (including the render that follows this set) reflects the change.
+    i18nSetLocale(locale);
+    void persist({ locale });
+  },
+
   resetAll: async () => {
     await settingsRepo.clear().catch((err) => {
       console.warn('[settings] clear failed:', err);
     });
     set({ ...DEFAULT_SETTINGS, hydrated: true });
+    // Reset i18n back to the device default.
+    i18nSetLocale(DEFAULT_SETTINGS.locale);
   },
 }));
 
@@ -145,5 +157,6 @@ export function getCurrentSettings(): PersistedSettings {
     quietHoursStartMinute: s.quietHoursStartMinute,
     quietHoursEndMinute: s.quietHoursEndMinute,
     hasOnboarded: s.hasOnboarded,
+    locale: s.locale,
   };
 }

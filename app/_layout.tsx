@@ -27,6 +27,7 @@ import { useBiometricLock, LockScreen } from '@/features/security';
 import { useNotificationBridge } from '@/features/notifications';
 import { useKumaConnection } from '@/data/connection/manager';
 import { colors, useAppTheme } from '@/theme';
+import { setLocale as i18nSetLocale } from '@/i18n';
 
 // Prevent splash from auto-hiding until we're ready
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -40,6 +41,7 @@ export default function RootLayout() {
   const { hydrated: serversHydrated } = useServersHydrated();
   const hydratedSettings = useSettings((s) => s.hydrated);
   const hydrateSettings = useSettings((s) => s.hydrate);
+  const locale = useSettings((s) => s.locale);
   // Start the connection manager (no-op until activeServerId is set).
   useKumaConnection();
   // Bridge: when a monitor changes status, post a local notification.
@@ -55,6 +57,16 @@ export default function RootLayout() {
       void hydrateSettings();
     }
   }, [hydratedSettings, hydrateSettings]);
+
+  // Sync the i18n module with the persisted locale preference. We do
+  // this in an effect (rather than on every store write) so the i18n
+  // module doesn't carry a hidden reference to the store — it stays
+  // a leaf module that the store and the layout both push into.
+  useEffect(() => {
+    if (hydratedSettings) {
+      i18nSetLocale(locale);
+    }
+  }, [hydratedSettings, locale]);
 
   useEffect(() => {
     if (error) throw error;
