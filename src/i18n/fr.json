@@ -272,6 +272,16 @@
       "overnightHint": "Traverse minuit (p. ex. 22:00 à 07:00).",
       "allDayHint": "Couvre toute la journée (début == fin).",
       "invalidRangeHint": "La fin doit différer du début."
+    },
+    "crashReports": {
+      "sectionTitle": "Rapports de plantage",
+      "title": "Envoyer des rapports de plantage anonymes",
+      "description": "Aidez à améliorer Uptime Pocket en envoyant des rapports de plantage et d'erreur anonymes. Aucune URL de serveur, nom de moniteur ou information de compte n'est envoyée — consultez l'avis de confidentialité pour la liste complète.",
+      "privacyNoticeTitle": "Ce qui est envoyé",
+      "privacyNoticeBody": "Lorsque cette option est activée, l'application envoie des rapports de plantage et des traces d'erreur à notre service de signalement d'erreurs. Nous n'incluons pas les URL de serveurs, les noms de moniteurs, les jetons d'authentification ni toute donnée permettant d'identifier votre infrastructure. Vous pouvez désactiver cette option à tout moment.",
+      "requiresRebuildNotice": "Les rapports de plantage nécessitent un DSN configuré au moment du build. Si ce bouton est sans effet, le build que vous utilisez n'a pas été configuré pour les rapports de plantage.",
+      "dsnNotConfiguredTitle": "Non configuré",
+      "dsnNotConfiguredBody": "Ce build n'a pas été configuré avec un point de terminaison pour les rapports de plantage. Le bouton enregistre votre préférence pour la prochaine fois que vous installerez un build configuré."
     }
   },
   "lock": {

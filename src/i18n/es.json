@@ -272,6 +272,16 @@
       "overnightHint": "Cruza la medianoche (p. ej., 22:00 a 07:00).",
       "allDayHint": "Cubre todo el día (inicio == fin).",
       "invalidRangeHint": "El fin debe ser distinto del inicio."
+    },
+    "crashReports": {
+      "sectionTitle": "Informes de fallos",
+      "title": "Enviar informes anónimos de fallos",
+      "description": "Ayuda a mejorar Uptime Pocket enviando informes anónimos de fallos y errores. No se envían URL de servidores, nombres de monitores ni datos de la cuenta; consulta el aviso de privacidad para ver la lista completa.",
+      "privacyNoticeTitle": "Qué se envía",
+      "privacyNoticeBody": "Cuando esta opción está activada, la aplicación envía informes de fallos y trazas de errores a nuestro servicio de reporte de errores. No incluimos URL de servidores, nombres de monitores, tokens de autenticación ni ningún dato que pueda identificar tu infraestructura. Puedes desactivarlo en cualquier momento.",
+      "requiresRebuildNotice": "Los informes de fallos requieren un DSN configurado en el momento de compilar. Si este interruptor no tiene efecto, la compilación que estás usando no fue configurada para informes de fallos.",
+      "dsnNotConfiguredTitle": "Sin configurar",
+      "dsnNotConfiguredBody": "Esta compilación no se configuró con un punto de envío de informes de fallos. El interruptor guarda tu preferencia para la próxima vez que instales una compilación configurada."
     }
   },
   "lock": {
