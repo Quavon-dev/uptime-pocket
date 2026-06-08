@@ -199,7 +199,8 @@
         "avg": "Mittel",
         "max": "Max"
       },
-      "chartRange": "{count} Heartbeats · ältester aus {span}"
+      "chartRange": "{count} Heartbeats · ältester aus {span}",
+      "chartRangeServer": "{count} Buckets vom Server · ältester aus {span}"
     }
   },
   "servers": {

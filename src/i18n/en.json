@@ -199,7 +199,8 @@
         "avg": "Avg",
         "max": "Max"
       },
-      "chartRange": "{count} heartbeats · oldest from {span}"
+      "chartRange": "{count} heartbeats · oldest from {span}",
+      "chartRangeServer": "{count} buckets from server · oldest from {span}"
     }
   },
   "servers": {

@@ -24,6 +24,8 @@ import {
   normalizeHeartbeatRow,
   normalizeHeartbeatHistory,
   normalizeUptime,
+  normalizeChartDatapoint,
+  normalizeChartDataResponse,
 } from '@/data/socket/normalize';
 
 // --- Captured live payloads (uptime.quavon.de, Kuma 2.3.2, 2026-06-07) ---
@@ -460,5 +462,158 @@ describe('normalizeUptime', () => {
     const out = normalizeUptime({ '24': 'oops', '168': null });
     expect(out.uptime24h).toBeNull();
     expect(out.uptime7d).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Chart data normalizers (Kuma 2.3+ getMonitorChartData response)
+// ---------------------------------------------------------------------------
+//
+// The response shape is documented in `references/kuma-server-internal-chart-api.md`
+// in the uptime-kuma-integration skill, and verified against the Kuma
+// 2.3.2 source (`server/socket-handlers/chart-socket-handler.js` +
+// `server/uptime-calculator.js:getDataArray`).
+//
+// Captured sample (constructed to match the verified shape — Kuma does
+// not push getMonitorChartData over the wire, it only returns it from
+// the request handler, so we have to build a representative payload).
+//
+//   { ok: true, data: [
+//     { timestamp: 1717776000, up: 60, down: 0, avgPing: 87, minPing: 42, maxPing: 312 },
+//     { timestamp: 1717776060, up: 58, down: 2, avgPing: 110, minPing: 50, maxPing: 480, maintenance: 0 },
+//     { timestamp: 1717776120, up: 0, down: 60, avgPing: 0, minPing: Infinity, maxPing: 0 },
+//   ]}
+
+describe('normalizeChartDatapoint', () => {
+  it('normalizes a healthy bucket', () => {
+    const out = normalizeChartDatapoint({
+      timestamp: 1717776000,
+      up: 60,
+      down: 0,
+      avgPing: 87,
+      minPing: 42,
+      maxPing: 312,
+    });
+    expect(out).toEqual({
+      timestamp: 1717776000,
+      up: 60,
+      down: 0,
+      maintenance: 0,
+      avgPing: 87,
+      minPing: 42,
+      maxPing: 312,
+    });
+  });
+
+  it('handles missing maintenance field (Kuma omits it when 0)', () => {
+    const out = normalizeChartDatapoint({
+      timestamp: 1717776060,
+      up: 58,
+      down: 2,
+      avgPing: 110,
+      minPing: 50,
+      maxPing: 480,
+    });
+    expect(out?.maintenance).toBe(0); // defaulted
+  });
+
+  it('handles an all-down bucket (avgPing=0, minPing=Infinity)', () => {
+    const out = normalizeChartDatapoint({
+      timestamp: 1717776120,
+      up: 0,
+      down: 60,
+      avgPing: 0,
+      minPing: Infinity,
+      maxPing: 0,
+    });
+    expect(out).toEqual({
+      timestamp: 1717776120,
+      up: 0,
+      down: 60,
+      maintenance: 0,
+      avgPing: 0,
+      minPing: Infinity,
+      maxPing: 0,
+    });
+  });
+
+  it('returns null for non-object input', () => {
+    expect(normalizeChartDatapoint(null)).toBeNull();
+    expect(normalizeChartDatapoint('x')).toBeNull();
+    expect(normalizeChartDatapoint(42)).toBeNull();
+  });
+
+  it('returns null for missing/invalid timestamp', () => {
+    expect(normalizeChartDatapoint({ up: 1 })).toBeNull();
+    expect(normalizeChartDatapoint({ timestamp: 'oops' })).toBeNull();
+    expect(normalizeChartDatapoint({ timestamp: NaN })).toBeNull();
+  });
+
+  it('defaults missing numeric fields to safe sentinels', () => {
+    const out = normalizeChartDatapoint({ timestamp: 1 });
+    expect(out).toEqual({
+      timestamp: 1,
+      up: 0,
+      down: 0,
+      maintenance: 0,
+      avgPing: 0,
+      minPing: Infinity,
+      maxPing: 0,
+    });
+  });
+});
+
+describe('normalizeChartDataResponse', () => {
+  it('normalizes a multi-bucket success response, oldest-first', () => {
+    // Input is intentionally out of order; we should sort.
+    const res = {
+      ok: true,
+      data: [
+        { timestamp: 200, up: 1, down: 0, avgPing: 50, minPing: 50, maxPing: 50 },
+        { timestamp: 100, up: 1, down: 0, avgPing: 80, minPing: 80, maxPing: 80 },
+        { timestamp: 150, up: 0, down: 1, avgPing: 0, minPing: Infinity, maxPing: 0 },
+      ],
+    };
+    const out = normalizeChartDataResponse(res);
+    expect(out.error).toBeUndefined();
+    expect(out.points).toHaveLength(3);
+    expect(out.points.map((p) => p.timestamp)).toEqual([100, 150, 200]);
+  });
+
+  it('skips malformed entries silently', () => {
+    const out = normalizeChartDataResponse({
+      ok: true,
+      data: [
+        { timestamp: 100, up: 1, down: 0, avgPing: 80, minPing: 80, maxPing: 80 },
+        null,
+        'oops',
+        { timestamp: 50, up: 1, down: 0, avgPing: 60, minPing: 60, maxPing: 60 },
+      ],
+    });
+    expect(out.points.map((p) => p.timestamp)).toEqual([50, 100]);
+  });
+
+  it('returns an error and empty array for ok:false', () => {
+    const out = normalizeChartDataResponse({ ok: false, msg: 'Invalid period' });
+    expect(out.points).toEqual([]);
+    expect(out.error).toBe('Invalid period');
+  });
+
+  it('returns an error and empty array for non-objects', () => {
+    const out = normalizeChartDataResponse(null);
+    expect(out.points).toEqual([]);
+    expect(out.error).toBeDefined();
+  });
+
+  it('returns an error and empty array when data is not an array', () => {
+    const out = normalizeChartDataResponse({ ok: true, data: 'nope' });
+    expect(out.points).toEqual([]);
+    expect(out.error).toBeDefined();
+  });
+
+  it('returns an empty array (no error) for a successful but empty data', () => {
+    const out = normalizeChartDataResponse({ ok: true, data: [] });
+    expect(out.points).toEqual([]);
+    expect(out.error).toBeUndefined();
   });
 });

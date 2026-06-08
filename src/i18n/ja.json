@@ -199,7 +199,8 @@
         "avg": "平均",
         "max": "最大"
       },
-      "chartRange": "{count} 件のハートビート · 最古は {span}"
+      "chartRange": "{count} 件のハートビート · 最古は {span}",
+      "chartRangeServer": "{count} サーバーからのバケット · 最古は {span}"
     }
   },
   "servers": {

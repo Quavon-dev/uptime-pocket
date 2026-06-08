@@ -199,7 +199,8 @@
         "avg": "Med",
         "max": "Máx"
       },
-      "chartRange": "{count} latidos · el más antiguo de {span}"
+      "chartRange": "{count} latidos · el más antiguo de {span}",
+      "chartRangeServer": "{count} intervalos del servidor · el más antiguo de {span}"
     }
   },
   "servers": {

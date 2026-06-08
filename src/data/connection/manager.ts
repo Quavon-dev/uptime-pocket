@@ -236,6 +236,50 @@ export class KumaConnectionManager {
   }
 
   /**
+   * Fetch server-aggregated chart data for a monitor over a given
+   * time window. Delegates to the live socket's `getMonitorChartData`
+   * (a public request/response event in Kuma 2.3+).
+   *
+   * The current implementation only supports the **active** server —
+   * the app is single-active-server for v1.0. If you switch servers
+   * mid-call, the call rejects with a "not connected" error.
+   *
+   * Resolves with the chart points (oldest-first), or rejects on
+   * socket error / timeout. Callers should treat rejection as
+   * "no data" and let the chart render its empty state.
+   */
+  async getMonitorChartData(
+    serverId: string,
+    monitorId: number,
+    periodHours: number
+  ): Promise<import('../socket/normalize').NormalizedChartDatapoint[]> {
+    if (this.current?.serverId !== serverId) {
+      throw new Error('Server is not connected');
+    }
+    return this.current.socket.getMonitorChartData(monitorId, periodHours);
+  }
+
+  /**
+   * Fetch raw heartbeat rows for a monitor over a given time window
+   * (in hours) from the Kuma `heartbeat` SQLite table. Default
+   * retention is 180 days (`DB_HEARTBEAT_TABLE_TIMESPAN_MS`).
+   *
+   * Use `getMonitorChartData` for the min/avg/max chart — it's
+   * cheaper (server pre-aggregates). Use this when you need
+   * per-heartbeat granularity.
+   */
+  async getMonitorBeats(
+    serverId: string,
+    monitorId: number,
+    periodHours: number
+  ): Promise<import('../socket/normalize').NormalizedHeartbeatRow[]> {
+    if (this.current?.serverId !== serverId) {
+      throw new Error('Server is not connected');
+    }
+    return this.current.socket.getMonitorBeats(monitorId, periodHours);
+  }
+
+  /**
    * Create a new monitor on the given server.
    *
    * Returns the new monitor id on success, or an error message on

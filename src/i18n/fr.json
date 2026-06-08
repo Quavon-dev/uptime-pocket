@@ -199,7 +199,8 @@
         "avg": "Moy",
         "max": "Max"
       },
-      "chartRange": "{count} battements · le plus ancien sur {span}"
+      "chartRange": "{count} battements · le plus ancien sur {span}",
+      "chartRangeServer": "{count} intervalles du serveur · le plus ancien sur {span}"
     }
   },
   "servers": {

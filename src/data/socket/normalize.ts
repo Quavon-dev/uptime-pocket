@@ -358,3 +358,97 @@ export function normalizeUptimeEvent(
   else return null;
   return { monitorId: id, hours: h, ratio };
 }
+
+// ---- Kuma 2.3+ chart data (request/response) --------------------------
+
+/**
+ * One aggregated datapoint from the `getMonitorChartData` server event.
+ *
+ * The Kuma server (`server/socket-handlers/chart-socket-handler.js`)
+ * calls `UptimeCalculator.getDataArray(period, unit)` and returns one
+ * entry per non-empty time bucket (empty buckets are skipped). The
+ * unit is chosen by the server: `minute` for period<=24h, `hour` for
+ * 24h<period<=720h, `day` for period>720h.
+ *
+ *   - `timestamp` is Unix **seconds** (not ms!) of the bucket's midpoint
+ *   - `up` / `down` are counts of heartbeats in this bucket
+ *   - `maintenance` is optional (omitted by the server when zero)
+ *   - `avgPing` is **weighted by up-count**: Σ(ping × up) / Σ(up).
+ *     When the bucket is fully down, the server reports `avgPing=0`
+ *     (Kuma suppresses the line during outages — we should too).
+ *   - `minPing` is the minimum response time; `Infinity` if all-down
+ *   - `maxPing` is the maximum response time
+ */
+export interface NormalizedChartDatapoint {
+  /** Unix seconds (NOT ms) of the bucket's midpoint. */
+  timestamp: number;
+  up: number;
+  down: number;
+  maintenance: number;
+  /**
+   * Weighted avg: Σ(ping × up) / Σ(up). 0 when the bucket is fully down
+   * — the server suppresses the value to avoid a fake "0ms" during outages.
+   */
+  avgPing: number;
+  minPing: number;
+  maxPing: number;
+}
+
+/**
+ * Normalize a single datapoint from the `data` array returned by
+ * `getMonitorChartData`. Skips entries that aren't shaped like the
+ * expected object (extra safety for future Kuma versions).
+ */
+export function normalizeChartDatapoint(
+  data: unknown
+): NormalizedChartDatapoint | null {
+  if (!data || typeof data !== 'object') return null;
+  const d = data as Record<string, unknown>;
+  if (typeof d.timestamp !== 'number' || !isFinite(d.timestamp)) return null;
+  return {
+    timestamp: d.timestamp,
+    up: typeof d.up === 'number' ? d.up : 0,
+    down: typeof d.down === 'number' ? d.down : 0,
+    maintenance: typeof d.maintenance === 'number' ? d.maintenance : 0,
+    avgPing: typeof d.avgPing === 'number' ? d.avgPing : 0,
+    minPing: typeof d.minPing === 'number' ? d.minPing : Infinity,
+    maxPing: typeof d.maxPing === 'number' ? d.maxPing : 0,
+  };
+}
+
+/**
+ * Normalize the full response payload of `getMonitorChartData`:
+ *   { ok: true, data: [...] }
+ * or:
+ *   { ok: false, msg: '...' }
+ *
+ * Returns the chart points (oldest-first) on success, or an empty
+ * array with an `error` field on failure. The empty-array shape lets
+ * the chart render its "no data" empty state uniformly.
+ */
+export function normalizeChartDataResponse(data: unknown): {
+  points: NormalizedChartDatapoint[];
+  error?: string;
+} {
+  if (!data || typeof data !== 'object') {
+    return { points: [], error: 'Empty response' };
+  }
+  const r = data as Record<string, unknown>;
+  if (r.ok === false) {
+    return {
+      points: [],
+      error: typeof r.msg === 'string' ? r.msg : 'Unknown error',
+    };
+  }
+  if (!Array.isArray(r.data)) {
+    return { points: [], error: 'Response missing data array' };
+  }
+  const out: NormalizedChartDatapoint[] = [];
+  for (const row of r.data) {
+    const n = normalizeChartDatapoint(row);
+    if (n) out.push(n);
+  }
+  // Server returns oldest-first already, but be defensive.
+  out.sort((a, b) => a.timestamp - b.timestamp);
+  return { points: out };
+}

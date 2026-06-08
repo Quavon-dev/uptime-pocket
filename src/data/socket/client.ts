@@ -44,8 +44,12 @@ import {
   normalizeMonitorStatus,
   normalizeIncident,
   normalizeHeartbeatListEvent,
+  normalizeHeartbeatListRow,
   normalizeUptimeEvent,
+  normalizeChartDatapoint,
+  normalizeChartDataResponse,
   type NormalizedHeartbeatRow,
+  type NormalizedChartDatapoint,
 } from './normalize';
 
 export type KumaEvent =
@@ -274,6 +278,122 @@ export class KumaSocket {
    */
   forceHeartbeat(monitorId: number): void {
     this.socket?.emit('forceHeartbeat', monitorId);
+  }
+
+  /**
+   * Fetch server-aggregated chart data for a monitor over a given
+   * time window. This is the public request/response socket event
+   * that the Kuma web SPA uses to render its min/avg/max ping chart.
+   *
+   * Server-side (`server/socket-handlers/chart-socket-handler.js`):
+   *   - Auth: `checkLogin(socket)` (any logged-in user).
+   *   - Period: hours. Server picks the bucket unit: minute (≤24h),
+   *     hour (24-720h), day (>720h).
+   *   - Returns one entry per non-empty time bucket with `timestamp`
+   *     (Unix seconds), `up`, `down`, `maintenance?`, `avgPing`
+   *     (weighted by up-count), `minPing`, `maxPing`.
+   *
+   * Resolves with the chart points (oldest-first). Rejects on socket
+   * error, timeout, or `ok: false` from the server. A rejection
+   * should be treated as "no data" in the UI, not a fatal error —
+   * the chart's empty state is appropriate.
+   */
+  getMonitorChartData(
+    monitorId: number,
+    periodHours: number
+  ): Promise<NormalizedChartDatapoint[]> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Socket not connected'));
+        return;
+      }
+      const timeout = setTimeout(
+        () => reject(new Error('getMonitorChartData timed out after 10s')),
+        10_000
+      );
+      this.socket.emit(
+        'getMonitorChartData',
+        monitorId,
+        periodHours,
+        (res: unknown) => {
+          clearTimeout(timeout);
+          const norm = normalizeChartDataResponse(res);
+          if (norm.error && norm.points.length === 0) {
+            reject(new Error(`getMonitorChartData: ${norm.error}`));
+            return;
+          }
+          resolve(norm.points);
+        }
+      );
+    });
+  }
+
+  /**
+   * Fetch raw heartbeat rows for a monitor over a given time window
+   * (in hours) from the Kuma `heartbeat` SQLite table. Default
+   * retention is 180 days, configurable via `DB_HEARTBEAT_TABLE_TIMESPAN_MS`.
+   *
+   * This is an alternative to the in-memory 100-row `heartbeatList`
+   * burst for fetching older history on demand. For the min/avg/max
+   * chart specifically, `getMonitorChartData` is cheaper.
+   */
+  getMonitorBeats(
+    monitorId: number,
+    periodHours: number
+  ): Promise<NormalizedHeartbeatRow[]> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Socket not connected'));
+        return;
+      }
+      const timeout = setTimeout(
+        () => reject(new Error('getMonitorBeats timed out after 10s')),
+        10_000
+      );
+      this.socket.emit(
+        'getMonitorBeats',
+        monitorId,
+        periodHours,
+        (res: unknown) => {
+          clearTimeout(timeout);
+          if (!res || typeof res !== 'object') {
+            reject(new Error('getMonitorBeats: empty response'));
+            return;
+          }
+          const r = res as Record<string, unknown>;
+          if (r.ok === false) {
+            reject(
+              new Error(
+                `getMonitorBeats: ${typeof r.msg === 'string' ? r.msg : 'unknown error'}`
+              )
+            );
+            return;
+          }
+          if (!Array.isArray(r.data)) {
+            reject(new Error('getMonitorBeats: response missing data array'));
+            return;
+          }
+          const out: NormalizedHeartbeatRow[] = [];
+          for (const row of r.data) {
+            // getMonitorBeats returns rows in the same shape as the
+            // heartbeatList rows (snake_case monitor_id, etc.). Reuse
+            // the existing normalizer by re-shaping if needed.
+            if (row && typeof row === 'object') {
+              const norm = normalizeHeartbeatListRow(row);
+              if (norm) out.push(norm);
+            }
+            // (also handle the REST-style rows just in case)
+            if (row && typeof row === 'object' && 'status' in row) {
+              const norm = normalizeChartDatapoint(row);
+              // skip — different shape
+              void norm;
+            }
+          }
+          out.sort((a, b) => a.timestamp - b.timestamp);
+          resolve(out);
+        }
+      );
+    });
   }
 
   private emit(event: KumaEvent): void {

@@ -111,6 +111,16 @@ export default function MonitorDetailScreen() {
 
   const [range, setRange] = useState<Range>('recent');
   const [heartbeats, setHeartbeats] = useState<NormalizedHeartbeatRow[]>([]);
+  // Server-aggregated chart data for the currently selected range.
+  // Populated by `getMonitorChartData(monitorId, periodHours)`. `null`
+  // = not yet fetched, `[]` = fetched but empty, `Array` = real data.
+  // For the 'recent' range, this stays null and we fall back to the
+  // local-cached heartbeat list (Path A in the protocol skill).
+  const [chartData, setChartData] = useState<
+    import('@/data/socket/normalize').NormalizedChartDatapoint[] | null
+  >(null);
+  const [chartLoading, setChartLoading] = useState(false);
+  const [chartError, setChartError] = useState<string | null>(null);
   // All four Kuma-pushed uptime windows. Kuma 2.3+ sends 24, 168 (7d),
   // 720 (30d), and "1y" — all real data, no fudging required.
   const [uptime, setUptime] = useState<{
@@ -173,13 +183,45 @@ export default function MonitorDetailScreen() {
     [slicedHeartbeats]
   );
 
-  // For Kuma's "min/avg/max" lines we aggregate the (already sliced)
-  // response time points into fixed-width buckets, then take the
-  // min/avg/max of each bucket. This is the same approach the Kuma
-  // web dashboard uses internally for windows > 6h.
+  // For Kuma's "min/avg/max" lines:
+  //   - If we have server-aggregated chart data (the non-Recent ranges
+  //     fetched from `getMonitorChartData`), use that directly. The
+  //     server already returns per-bucket min/avg/max — no need to
+  //     re-bucket client-side.
+  //   - For 'recent' (or as a fallback if the server call failed),
+  //     we bucket the local-cached heartbeat list ourselves, like
+  //     before.
   const aggregatedSeries: Series[] = useMemo(() => {
-    if (responseSeries.length === 0) return [];
     const palette = kumaPingColors(brand);
+
+    if (chartData && chartData.length > 0) {
+      // Server data path. Skip all-down buckets (avgPing=0 from server
+      // means suppressed-during-outage; we don't want a "0ms" point).
+      const minPts: TimePoint[] = [];
+      const avgPts: TimePoint[] = [];
+      const maxPts: TimePoint[] = [];
+      for (const d of chartData) {
+        if (d.up === 0) continue;
+        const ts = new Date(d.timestamp * 1000); // server sends Unix seconds
+        if (isFinite(d.minPing)) {
+          minPts.push({ timestamp: ts, value: d.minPing });
+        }
+        if (d.avgPing > 0) {
+          avgPts.push({ timestamp: ts, value: d.avgPing });
+        }
+        if (d.maxPing > 0) {
+          maxPts.push({ timestamp: ts, value: d.maxPing });
+        }
+      }
+      return [
+        { kind: 'min', data: minPts, color: palette.min, label: t('monitors.detail.responseTimeStats.min') },
+        { kind: 'avg', data: avgPts, color: palette.avg, label: t('monitors.detail.responseTimeStats.avg') },
+        { kind: 'max', data: maxPts, color: palette.max, label: t('monitors.detail.responseTimeStats.max') },
+      ];
+    }
+
+    // Fallback: local-cached heartbeats (Recent view, or server call failed).
+    if (responseSeries.length === 0) return [];
     // Bucket size: 1 point for "recent", ~12 buckets for the long
     // windows, scale linearly in between.
     const targetBuckets =
@@ -215,10 +257,29 @@ export default function MonitorDetailScreen() {
     // We intentionally depend only on the values that matter; `brand`
     // and the i18n labels are stable across re-renders.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [responseSeries, rangeHours]);
+  }, [responseSeries, rangeHours, chartData, brand, t]);
 
-  // Status overlay (Kuma-style) — one segment per visible heartbeat.
+  // Status overlay (Kuma-style) — prefer server data when available
+  // (one segment per server bucket), fall back to one segment per
+  // local heartbeat otherwise.
   const statusOverlay: StatusPoint[] | undefined = useMemo(() => {
+    if (chartData && chartData.length > 0) {
+      // Server data. Empty buckets (up=0 && down=0 && maintenance=0)
+      // become gaps (no segment) — matches Kuma's web chart.
+      return chartData
+        .filter(
+          (d) => d.up > 0 || d.down > 0 || d.maintenance > 0
+        )
+        .map((d, _i, arr) => ({
+          x: arr.length === 1 ? 0 : chartData.indexOf(d) / (arr.length - 1),
+          color:
+            d.down > 0
+              ? colors.status.down
+              : d.maintenance > 0
+                ? colors.status.maintenance
+                : colors.status.up,
+        }));
+    }
     if (slicedHeartbeats.length === 0) return undefined;
     return slicedHeartbeats.map((h, i) => ({
       x: slicedHeartbeats.length === 1 ? 0 : i / (slicedHeartbeats.length - 1),
@@ -231,10 +292,31 @@ export default function MonitorDetailScreen() {
               ? colors.status.pending
               : colors.status.up,
     }));
-  }, [slicedHeartbeats]);
+  }, [slicedHeartbeats, chartData]);
 
   // Header min/avg/max readout (Kuma-style: "Min 42 · Avg 87 · Max 312 ms").
+  // When server chart data is available, use the global min/avg/max
+  // across all server buckets (more accurate than client-side recompute
+  // of the cached heartbeats). Otherwise fall back to the local data.
   const headerPingStats = useMemo(() => {
+    if (chartData && chartData.length > 0) {
+      // Build min/avg/max from non-empty (up>0) buckets only.
+      const minVals: number[] = [];
+      const avgVals: number[] = [];
+      const maxVals: number[] = [];
+      for (const d of chartData) {
+        if (d.up === 0) continue;
+        if (isFinite(d.minPing)) minVals.push(d.minPing);
+        if (d.avgPing > 0) avgVals.push(d.avgPing);
+        if (d.maxPing > 0) maxVals.push(d.maxPing);
+      }
+      if (avgVals.length === 0) return null;
+      return {
+        min: Math.min(...minVals),
+        avg: avgVals.reduce((a, b) => a + b, 0) / avgVals.length,
+        max: Math.max(...maxVals),
+      };
+    }
     if (responseSeries.length === 0) return null;
     const values = responseSeries.map((p) => p.value).filter((v) => v > 0);
     if (values.length === 0) return null;
@@ -243,7 +325,7 @@ export default function MonitorDetailScreen() {
       avg: values.reduce((a, b) => a + b, 0) / values.length,
       max: Math.max(...values),
     };
-  }, [responseSeries]);
+  }, [responseSeries, chartData]);
 
   // --- Effects + action handlers -----------------------------------------
   //
@@ -268,6 +350,51 @@ export default function MonitorDetailScreen() {
     });
     setLoading(false);
   }, [cachedHeartbeats, cachedUptime]);
+
+  // Fetch server-aggregated chart data when the user picks a
+  // non-Recent range. The 'recent' range uses the local-cached
+  // heartbeat list (Path A in the protocol skill), so we skip the
+  // server call for it. For 3h/6h/24h/1w we call the public
+  // `getMonitorChartData` event and use the server's pre-aggregated
+  // min/avg/max buckets — same path the Kuma web SPA uses for its
+  // chart, so a fresh install gets real 1w data on first open.
+  useEffect(() => {
+    if (rangeHours === 'recent') {
+      // Clear the server data so the chart falls back to local
+      // heartbeats immediately.
+      setChartData(null);
+      setChartError(null);
+      setChartLoading(false);
+      return;
+    }
+    if (!found) return;
+    let cancelled = false;
+    setChartLoading(true);
+    setChartError(null);
+    setChartData(null);
+    manager
+      .getMonitorChartData(found.serverId, monitorId, rangeHours)
+      .then((points) => {
+        if (cancelled) return;
+        setChartData(points);
+        setChartLoading(false);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setChartError(
+          err instanceof Error ? err.message : 'Failed to load chart data'
+        );
+        setChartData([]);
+        setChartLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // We intentionally only re-fetch when the range changes (or the
+    // monitor/server changes). The 5-min auto-refresh from Kuma's
+    // PingChart.vue pattern is not yet wired — easy to add later.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rangeHours, found?.serverId, monitorId]);
 
   const handleRecheck = useCallback(() => {
     if (!found) return;
@@ -505,9 +632,19 @@ export default function MonitorDetailScreen() {
         {/* Response time chart — Kuma-style with min/avg/max lines + status bar. */}
         <View style={styles.section}>
           <SectionLabel>{t('monitors.detail.responseTime')}</SectionLabel>
-          {loading && slicedHeartbeats.length === 0 ? (
+          {/* Show the spinner when EITHER the initial burst is loading
+              OR a server chart call is in flight. The server call only
+              happens for non-Recent ranges; Recent just uses the cache. */}
+          {chartLoading ||
+          (loading && slicedHeartbeats.length === 0 && rangeHours === 'recent') ? (
             <View style={[styles.chartPlaceholder, { backgroundColor: surface.sunken }]}>
               <ActivityIndicator size="small" color={brand} />
+            </View>
+          ) : chartError ? (
+            <View style={[styles.chartPlaceholder, { backgroundColor: statusTints.down.bg }]}>
+              <Text style={[typography.caption, { color: colors.status.down, textAlign: 'center' }]}>
+                {chartError}
+              </Text>
             </View>
           ) : (
             <>
@@ -515,9 +652,29 @@ export default function MonitorDetailScreen() {
                 series={aggregatedSeries}
                 statusOverlay={statusOverlay}
                 height={140}
-                emptyMessage="No heartbeats in this range"
+                emptyMessage="No data in this range"
               />
-              {slicedHeartbeats.length > 0 && (
+              {/* Range-data caption: distinguishes "X server buckets"
+                  (non-Recent, fetched from Kuma) from "X heartbeats"
+                  (Recent, from the local cache). */}
+              {chartData && chartData.length > 0 ? (
+                <Text
+                  style={[
+                    typography.micro,
+                    {
+                      color: surface.textMuted,
+                      paddingHorizontal: spacing[2],
+                      paddingTop: spacing[1],
+                    },
+                  ]}>
+                  {tn('monitors.detail.chartRangeServer', {
+                    count: chartData.length,
+                    span: formatRelativeTime(
+                      new Date(chartData[0].timestamp * 1000)
+                    ),
+                  })}
+                </Text>
+              ) : slicedHeartbeats.length > 0 ? (
                 <Text
                   style={[
                     typography.micro,
@@ -534,7 +691,7 @@ export default function MonitorDetailScreen() {
                     ),
                   })}
                 </Text>
-              )}
+              ) : null}
               {/* Mini legend for the three lines + status colors. */}
               {aggregatedSeries.length > 1 && (
                 <View style={styles.chartLegend}>
