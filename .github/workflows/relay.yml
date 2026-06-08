@@ -1,0 +1,221 @@
+name: relay
+
+# The relay is a separate Go binary in ./relay/. We build it
+# on every push to main, and we publish a multi-arch Docker
+# image to GitHub Container Registry (ghcr.io) on tags.
+#
+# Images are free for public repos. Tag a release and anyone
+# can `docker pull ghcr.io/$(owner)/uptime-pocket:relay-v1.0.0`
+# — no account or payment needed on the consumer side.
+#
+# To cut a release: git tag relay-v1.0.0 && git push --tags
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'relay/**'
+      - '.github/workflows/relay.yml'
+    tags:
+      - 'relay-v*'
+  pull_request:
+    paths:
+      - 'relay/**'
+      - '.github/workflows/relay.yml'
+  workflow_dispatch:
+
+# Don't run a fresh build if a more recent commit is already
+# being tested for the same ref. The relay changes rarely
+# enough that the cache hit is usually fine.
+concurrency:
+  group: relay-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+  packages: write   # needed to push to ghcr.io on tag
+
+jobs:
+  test:
+    name: test (linux/amd64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.5'
+          cache-dependency-path: 'relay/go.sum'
+
+      - name: Test
+        working-directory: relay
+        run: go test -race -count=1 -timeout 2m ./...
+
+      - name: Vet
+        working-directory: relay
+        run: go vet ./...
+
+      - name: Build (verify the binary builds)
+        working-directory: relay
+        run: go build -trimpath -o /tmp/relay-test ./cmd/relay
+
+  build:
+    name: build image (${{ matrix.platform }})
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+          - platform: linux/arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build (no push — just verify the image builds for each arch)
+        uses: docker/build-push-action@v6
+        with:
+          context: relay
+          platforms: ${{ matrix.platform }}
+          tags: uptime-pocket-relay:ci-${{ matrix.platform }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          load: true
+
+      - name: Smoke test the built image
+        run: |
+          # Start the container with a real-looking API key; the
+          # relay only checks length, not the value.
+          KEY=$(openssl rand -hex 32)
+          docker run --rm -d --name relay-smoke \
+            -e "RELAY_API_KEY=${KEY}" \
+            -e "RELAY_HTTP_ADDR=:18080" \
+            uptime-pocket-relay:ci-${{ matrix.platform }}
+          sleep 2
+          # The container should be running. Hit /v1/health.
+          docker exec relay-smoke wget -qO- http://127.0.0.1:18080/v1/health | tee /tmp/health.json
+          cat /tmp/health.json | grep -q '"ok":true'
+          docker stop relay-smoke
+
+  publish:
+    name: publish to ghcr.io
+    needs: build
+    # Only publish on tags. Branch builds and PRs only verify;
+    # they don't push.
+    if: startsWith(github.ref, 'refs/tags/relay-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          # Tag shape: relay-v1.2.3
+          TAG=${GITHUB_REF#refs/tags/relay-}
+          echo "version=${TAG}" >> $GITHUB_OUTPUT
+          echo "short=$(echo ${TAG} | sed 's/^v//')" >> $GITHUB_OUTPUT
+
+      - name: Build and push (multi-arch)
+        uses: docker/build-push-action@v6
+        with:
+          context: relay
+          platforms: linux/amd64,linux/arm64
+          # ghcr.io/<owner>/<repo>:<tag>. We push three tags:
+          #   - the full version (e.g. v1.2.3)
+          #   - the major.minor (e.g. 1.2) so users can pin loosely
+          #   - latest so `docker run ghcr.io/.../uptime-pocket:relay-latest` works
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/uptime-pocket:relay-${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/uptime-pocket:relay-${{ steps.version.outputs.short }}
+            ghcr.io/${{ github.repository_owner }}/uptime-pocket:relay-latest
+          labels: |
+            org.opencontainers.image.title=Uptime Pocket Relay
+            org.opencontainers.image.description=Self-hosted push relay for Uptime Pocket
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=relay-${{ steps.version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate SBOM (provenance for the build)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ghcr.io/${{ github.repository_owner }}/uptime-pocket:relay-${{ steps.version.outputs.version }}
+          format: cyclonedx-json
+          artifact-name: relay-sbom.cdx.json
+
+  # When the publish job succeeds, draft a GitHub release so
+  # the user has a single page linking the image, the SBOM,
+  # and the changelog. Pure convenience, not load-bearing.
+  release:
+    name: create release
+    needs: publish
+    if: startsWith(github.ref, 'refs/tags/relay-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          # Tag shape: relay-v1.2.3
+          TAG=${GITHUB_REF#refs/tags/relay-}
+          echo "version=${TAG}" >> $GITHUB_OUTPUT
+          echo "short=$(echo ${TAG} | sed 's/^v//')" >> $GITHUB_OUTPUT
+
+      - name: Collect changelog
+        id: changelog
+        run: |
+          # Walk back from the previous relay-* tag to the current one.
+          PREV=$(git tag --sort=-v:refname | grep -E '^relay-v' | sed -n '2p' || true)
+          if [ -n "$PREV" ]; then
+            RANGE="$PREV..$GITHUB_REF_NAME"
+          else
+            RANGE="$GITHUB_REF_NAME"
+          fi
+          {
+            echo "## What's in this image"
+            echo
+            echo "Multi-arch (linux/amd64 + linux/arm64) Docker image of the Uptime Pocket relay."
+            echo
+            echo "## Pull it"
+            echo
+            echo '```'
+            echo "docker pull ghcr.io/${{ github.repository_owner }}/uptime-pocket:relay-${{ steps.version.outputs.version }}"
+            echo '```'
+            echo
+            echo "## Commits since last relay tag"
+            echo
+            git log --pretty=format:'- %s (%h)' $RANGE
+          } > /tmp/release-body.md
+          cat /tmp/release-body.md
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Relay ${{ steps.version.outputs.short }}
+          body_path: /tmp/release-body.md
+          fail_on_unmatched_files: false

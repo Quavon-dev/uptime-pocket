@@ -18,7 +18,9 @@ Kuma protocol, MINOR is a new feature, PATCH is a bugfix.
   that watches one or more Uptime Kuma instances via
   Prometheus metrics scraping, diffs the state, and forwards
   transitions to APNs (iOS) and FCM (Android). Self-hostable
-  on Fly.io, Render, DigitalOcean, or a home server.
+  on any host that runs Docker — GitHub Container Registry
+  image, plus guides for Render, DigitalOcean, and a home
+  server.
   - HTTP API: `POST /v1/devices`, `DELETE /v1/devices`,
     `GET /v1/health`, `GET /v1/version`.
   - Bearer-token auth (single key for v1.0; per-device
@@ -31,8 +33,9 @@ Kuma protocol, MINOR is a new feature, PATCH is a bugfix.
   - App-side client: `src/data/relay/client.ts` (HTTP) +
     `src/features/notifications/useRelayRegistration.ts`
     (lifecycle hook).
-  - Deploy guides for Fly.io, Render, DigitalOcean, and
-    docker-compose.
+  - Deploy guides for Render, DigitalOcean, and docker-compose,
+    plus a CI workflow that publishes a multi-arch image to
+    GitHub Container Registry on every `relay-v*` tag.
 
 ### Changed
 - App-side notification flow now has a 3rd mode (`'relay'`)

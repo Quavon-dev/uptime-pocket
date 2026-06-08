@@ -45,8 +45,7 @@ Starter plan is fine.
 4. **For the APNs .p8 and FCM service account JSON:** these
    are files, not env vars. The easiest path on Render is
    to base64-encode them and decode at startup via a custom
-   `render.yaml`. Or — same as the Fly.io doc — bake them
-   into a private Docker image.
+   `render.yaml`. Or bake them into a private Docker image.
 
    The cleanest pattern (in `render.yaml`):
 

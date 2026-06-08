@@ -3,49 +3,46 @@
 App Platform is a managed PaaS like Heroku. The relay's
 small footprint fits in the $5/mo Basic tier.
 
-## Steps
+**Before you start:** if you don't have a specific reason
+to use App Platform, see [`deploy/README.md`](./README.md)
+for the recommended path. App Platform has two limitations
+that make it awkward for the relay:
+
+- **No mounted volumes.** BoltDB needs a real filesystem.
+- **The "Web Service" model doesn't quite fit** — the relay
+  serves an HTTP API but the real work is the background
+  push loop.
+
+If you can pick your host, the
+[home-server docker-compose guide](./home-server.md) (run on
+a $4/mo Droplet) is the simplest way to get the relay up
+on DigitalOcean infrastructure.
+
+## If you must use App Platform
 
 1. **Create the app:**
    - Source: your fork of the uptime-pocket repo
    - **Source directory:** `relay`
    - **Autodeploy:** main branch
-   - **Type:** Worker Service (not Web Service — the relay
-     doesn't serve public HTTP, it only accepts device
-     registrations)
-
-   Wait, that's wrong. The relay DOES serve HTTP. Use a Web
-   Service. (The push logic runs in the background but the
-   HTTP API is part of the same binary.)
+   - **Type:** Web Service (the relay serves HTTP even though
+     the push loop is in the background)
 
 2. **Build command:** leave blank (Dockerfile does it).
    **Dockerfile path:** `relay/Dockerfile`.
 
-3. **Environment variables:** add the same set as the Fly.io
-   / Render guides. The App Platform UI handles "secret"
-   type env vars with an extra lock icon.
+3. **Environment variables:** add the same set as the Render
+   guide. The App Platform UI handles "secret" type env vars
+   with an extra lock icon.
 
-4. **Persistent storage:** App Platform doesn't have
-   mounted volumes the way Fly does. Instead, use a
-   **DigitalOcean Space** (S3-compatible object storage) or
-   accept that the relay is **stateless on DO** and pair it
-   with a managed Postgres for the device store.
+4. **Persistent storage:** the only path on App Platform is
+   to accept that the relay is **stateless on DO** and pair
+   it with a managed Postgres for the device store. That's
+   a v1.1 feature; in v1.0 the relay uses BoltDB and so App
+   Platform isn't a great fit.
 
-   For v1.0 of the relay (BoltDB), DO App Platform isn't
-   the ideal target. **Use Fly.io or Render instead** unless
-   you specifically want to run on DO.
+## Better: use a Droplet
 
-   If you must use DO: deploy as a Droplet (a plain VM)
-   following the [home server guide](./home-server.md) and
-   use DO's block storage. A $4/mo basic Droplet is enough.
-
-## Why we don't recommend App Platform for the relay
-
-- No mounted volumes (BoltDB needs a real filesystem)
-- The relay's HTTP listener doesn't fit cleanly into App
-  Platform's "Web Service" model (it's an API, not a
-  user-facing site)
-- The free allowance is tighter than Fly or Render
-
-For a fuller evaluation of "where should I run the relay?",
-see the top-level [`README.md`](./README.md) — Fly is the
-default recommendation.
+A $4/mo basic Droplet running the
+[home-server docker-compose guide](./home-server.md) gives
+you a proper filesystem for BoltDB, no vendor lock-in, and
+full control over the network. Recommended.

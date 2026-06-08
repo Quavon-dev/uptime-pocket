@@ -89,8 +89,9 @@ curl http://localhost:8080/v1/health
 ```
 
 For a real deployment, see [`deploy/README.md`](./deploy/README.md).
-The recommended target is Fly.io (easiest) or a home server
-with docker-compose (most control).
+The recommended path is `docker run` against the GitHub
+Container Registry image (free, works anywhere Docker
+runs), or a home server with docker-compose.
 
 ## Testing
 
@@ -152,7 +153,7 @@ relay/
     coalesce/                    # "many down at once" rule
     server/                      # HTTP API
     transport/                   # APNs + FCM senders, multiplexer
-  deploy/                        # Fly.io / Render / DO / home-server
+  deploy/                        # Render / DO / home-server
   Dockerfile
   go.mod
   .env.example

@@ -1,8 +1,10 @@
 # Deploying the Uptime Pocket push relay
 
 The relay is a small Go service. It runs anywhere that runs Docker:
-Fly.io, Render, DigitalOcean App Platform, a home server with
-docker-compose, or a $4/mo VPS.
+a $2/mo VPS, a Raspberry Pi, your laptop, the same machine as
+your Kuma instance. There's no vendor lock-in because the image
+is published to GitHub Container Registry (free for public repos)
+and you pull + run it yourself with plain `docker`.
 
 What you'll need:
 
@@ -19,15 +21,142 @@ What you'll need:
    event log here. ~1KB per device, so a 1GB volume is more
    than enough.
 
-Pick your platform:
+Pick your platform — all of these are `docker run` under the hood:
 
-- [Fly.io](./fly.md) — easiest, ~$2/mo for the smallest VM
-- [Render](./render.md) — simplest deploy UX
-- [DigitalOcean App Platform](./digitalocean.md) — good if you
-  already use DO
-- [Home server / docker-compose](./home-server.md) — for
+- **[GHCR + Docker (recommended)](#quick-start-docker)** — pull the
+  prebuilt image, run it with one command. No build step, no
+  account needed on the consumer side.
+- **[Home server / docker-compose](./home-server.md)** — for
   self-hosters; lets you put the relay on the same machine as
-  your Kuma instance
+  your Kuma instance, or run it on a Raspberry Pi.
+- **[Render](./render.md)** — simplest managed deploy
+- **[DigitalOcean App Platform](./digitalocean.md)** — good if
+  you already use DO
+
+## Quick start: Docker
+
+The relay image is published to GitHub Container Registry on every
+release. You don't need a GitHub account, a Docker Hub account, or
+to install Go. Just pull and run.
+
+```sh
+# 1. Pull the latest image (multi-arch: linux/amd64 + linux/arm64)
+docker pull ghcr.io/quavon-dev/uptime-pocket:relay-latest
+
+# 2. Generate an API key for the relay's HTTP API
+export RELAY_API_KEY=$(openssl rand -hex 32)
+
+# 3. Create a directory for the BoltDB file
+mkdir -p ~/.relay-data
+
+# 4. Run it
+docker run -d \
+  --name uptime-pocket-relay \
+  --restart unless-stopped \
+  -p 8080:8080 \
+  -e "RELAY_API_KEY=${RELAY_API_KEY}" \
+  -e "RELAY_PUBLIC_URL=https://relay.example.com" \
+  -v ~/.relay-data:/data \
+  ghcr.io/quavon-dev/uptime-pocket:relay-latest
+
+# 5. Verify it's up
+curl http://localhost:8080/v1/health
+```
+
+That's it. The relay is now running, watching no Kuma instances
+yet (you'll add them in the Uptime Pocket app). To update to a
+newer version later:
+
+```sh
+docker pull ghcr.io/quavon-dev/uptime-pocket:relay-latest
+docker stop uptime-pocket-relay
+docker rm uptime-pocket-relay
+# ... then re-run the same `docker run` command above
+```
+
+The `-v ~/.relay-data:/data` mount is the important part — that
+keeps your device registrations and last-known monitor states
+across restarts. Without it, every restart wipes the database and
+the app has to re-register.
+
+### Pinning a specific version
+
+The `:relay-latest` tag is convenient for development. For
+production, pin to a specific release so a relay update doesn't
+break your notifications without warning:
+
+```sh
+docker pull ghcr.io/quavon-dev/uptime-pocket:relay-v1.0.0
+```
+
+The full version (`:relay-v1.0.0`) is immutable — once published,
+it never changes. There's also a `relay-1.0` (no patch version)
+tag that floats to the latest 1.0.x.
+
+### Adding APNs (iOS) credentials
+
+If you want to push to iPhones, generate an APNs auth key in
+[Apple Developer → Certificates, Identifiers & Profiles →
+Keys](https://developer.apple.com/account/resources/authkeys/list).
+
+```sh
+docker stop uptime-pocket-relay
+docker rm uptime-pocket-relay
+
+# Save the .p8 file somewhere on the host
+mkdir -p ~/.relay-data/apns
+cp ~/Downloads/AuthKey_ABC123XYZ.p8 ~/.relay-data/apns/
+
+docker run -d \
+  --name uptime-pocket-relay \
+  --restart unless-stopped \
+  -p 8080:8080 \
+  -e "RELAY_API_KEY=${RELAY_API_KEY}" \
+  -e "RELAY_PUBLIC_URL=https://relay.example.com" \
+  -e "RELAY_APNS_ENABLED=true" \
+  -e "RELAY_APNS_KEY_ID=ABC123XYZ" \
+  -e "RELAY_APNS_TEAM_ID=DEF456UVW" \
+  -e "RELAY_APNS_BUNDLE_ID=com.quavon.uptimepocket" \
+  -e "RELAY_APNS_ENVIRONMENT=production" \
+  -e "RELAY_APNS_KEY_PATH=/run/secrets/apns.p8" \
+  -v ~/.relay-data:/data \
+  -v ~/.relay-data/apns:/run/secrets:ro \
+  ghcr.io/quavon-dev/uptime-pocket:relay-latest
+```
+
+### Adding FCM (Android) credentials
+
+In [Firebase Console → Project Settings → Service Accounts →
+Generate New Private Key](https://console.firebase.google.com/project/_/settings/serviceaccounts/adminsdk),
+download the JSON file:
+
+```sh
+mkdir -p ~/.relay-data/fcm
+cp ~/Downloads/uptime-pocket-firebase-adminsdk.json ~/.relay-data/fcm/service-account.json
+
+# Update the docker run:
+#   -e "RELAY_FCM_ENABLED=true" \
+#   -e "RELAY_FCM_CREDENTIALS_PATH=/run/secrets/fcm.json" \
+#   -v ~/.relay-data/fcm:/run/secrets:ro \
+```
+
+### Behind a reverse proxy (nginx, Caddy, Cloudflare Tunnel)
+
+The relay speaks plain HTTP. You need HTTPS in front of it
+because the iOS and Android apps POST the push token over the
+wire. The easiest options:
+
+- **Caddy** — automatic HTTPS via Let's Encrypt, one config block.
+- **Cloudflare Tunnel** — no port forwarding, free tier covers it.
+- **nginx** with `certbot --nginx` — more setup, more control.
+
+Example Caddyfile:
+
+```
+relay.example.com {
+  reverse_proxy 127.0.0.1:8080
+}
+```
 
 ## Architecture in one diagram
 
@@ -83,9 +212,9 @@ Example health response:
 
 ## Logs
 
-The relay logs to stdout in JSON (slog). On Fly / Render / DO,
-platform-level log drain picks them up automatically. Each log
-line is one event:
+The relay logs to stdout in JSON (slog). `docker logs uptime-pocket-relay`
+or your platform's log drain picks them up. Each log line is one
+event:
 
 ```json
 {"time":"2026-06-08T10:00:00Z","level":"INFO","msg":"alert sent","server":"k1","monitor":"API","sent":1,"total":1}
@@ -105,7 +234,7 @@ go run ./cmd/relay
 
 # In another terminal, register a fake device
 curl -X POST http://localhost:8080/v1/devices \
-  -H "Authorization: Bearer $RELAY_API_KEY" \
+  -H "Authorization: Bearer ${RELAY_API_KEY}" \
   -H "Content-Type: application/json" \
   -d '{
     "deviceId": "dev-1",
@@ -129,7 +258,7 @@ fire.
   re-register devices.
 - BoltDB is stored unencrypted on disk. If you want encryption
   at rest, mount the volume on a LUKS-encrypted filesystem or
-  use a platform that encrypts volumes by default (Fly, Render,
+  use a platform that encrypts volumes by default (Render,
   DO all do this).
 - Push tokens never leave the relay. They're not exposed via any
   API endpoint, and we don't log them.
