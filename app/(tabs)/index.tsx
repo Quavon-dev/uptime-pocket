@@ -18,8 +18,8 @@
  * brand tints. Banner uses status-tinted bg/border.
  */
 
-import { useState, useMemo } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, TextInput } from 'react-native';
+import { useState, useMemo, useCallback } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, TextInput, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronDown, Server, WifiOff, Loader, Plus, Search, X } from 'lucide-react-native';
@@ -39,6 +39,7 @@ import {
 } from '@/features/monitors/tagFilter';
 import { useServers, getActiveServer } from '@/data/store/servers';
 import { useMonitors, selectMonitorsForServer } from '@/data/store/monitors';
+import { useKumaConnection } from '@/data/connection/manager';
 import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { t, tn } from '@/i18n';
 
@@ -57,6 +58,32 @@ export default function MonitorsScreen() {
   // and hostname. Empty string = no search.
   const [search, setSearch] = useState('');
   const { status: notifyStatus, setStatus: setNotifyStatus } = useNotificationOptIn();
+  // The connection manager is the same instance the rest of the app
+  // uses (root layout, background fetch). We use it here for the
+  // pull-to-refresh handler: revalidateActiveServer() disconnects,
+  // re-fetches the monitor list + heartbeats, and re-establishes
+  // the socket. The connection-status banner updates from this same
+  // call, so the user sees the spinner spin.
+  const manager = useKumaConnection();
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      // The promise resolves when revalidateActiveServer() returns.
+      // That happens after the new socket is up; the monitor list
+      // and heartbeats come in over the socket within a few hundred
+      // ms after that. We hold the spinner for a minimum 400 ms so
+      // it doesn't flash too fast to perceive on a fast network.
+      await manager.revalidateActiveServer();
+      await new Promise((r) => setTimeout(r, 400));
+    } catch {
+      // Error is already reflected in the connection-status banner;
+      // nothing to do here.
+    } finally {
+      setRefreshing(false);
+    }
+  }, [manager, refreshing]);
 
   // Live data from the active server.
   const active = getActiveServer(servers, activeId);
@@ -165,7 +192,24 @@ export default function MonitorsScreen() {
 
       <SafeScrollView
         contentContainerStyle={{ paddingHorizontal: spacing[4] }}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        // Pull-to-refresh revalidates the active Kuma connection:
+        // disconnect, reconnect, refetch monitor list + heartbeats.
+        // The spinner is brand-tinted so it matches the nav bar.
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={brand}
+            colors={[brand]}
+            progressViewOffset={0}
+            // iOS shows a small hint label under the spinner. We
+            // surface a localized "Pull to refresh" so the gesture
+            // is discoverable, and "Refreshing…" while in flight.
+            title={refreshing ? t('refresh.refreshing') : t('refresh.title')}
+            titleColor={surface.textMuted}
+          />
+        }>
         {/* Connection status banner */}
         {(status === 'connecting' || status === 'reconnecting' || status === 'error') && (
           <View style={[styles.banner, bannerStyle(status, statusTints)]}>

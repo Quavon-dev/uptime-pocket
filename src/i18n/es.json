@@ -83,6 +83,10 @@
     "down": "Caído",
     "search": "Buscar monitores…"
   },
+  "refresh": {
+    "title": "Tira para actualizar",
+    "refreshing": "Actualizando…"
+  },
   "serverCard": {
     "active": "Activo",
     "monitor": "monitor",

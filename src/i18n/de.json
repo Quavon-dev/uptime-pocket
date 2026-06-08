@@ -83,6 +83,10 @@
     "down": "Offline",
     "search": "Monitore suchen…"
   },
+  "refresh": {
+    "title": "Ziehen zum Aktualisieren",
+    "refreshing": "Wird aktualisiert…"
+  },
   "serverCard": {
     "active": "Aktiv",
     "monitor": "Monitor",

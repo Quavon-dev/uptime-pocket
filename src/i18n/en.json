@@ -83,6 +83,10 @@
     "down": "Down",
     "search": "Search monitors…"
   },
+  "refresh": {
+    "title": "Pull to refresh",
+    "refreshing": "Refreshing…"
+  },
   "serverCard": {
     "active": "Active",
     "monitor": "monitor",

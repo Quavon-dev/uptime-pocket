@@ -83,6 +83,10 @@
     "down": "停止",
     "search": "モニターを検索…"
   },
+  "refresh": {
+    "title": "引いて更新",
+    "refreshing": "更新中…"
+  },
   "serverCard": {
     "active": "アクティブ",
     "monitor": "モニター",
