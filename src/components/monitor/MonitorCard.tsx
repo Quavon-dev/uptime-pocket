@@ -6,18 +6,25 @@
  * - Monitor detail header
  * - Anywhere a single monitor needs a prominent display
  *
- * Layout:
+ * Layout (v0.8.4 — pill as the main thing):
  *   ┌──────────────────────────────────────┐
- *   │  [icon]  Name                  [pill] │
- *   │          type • url                   │
+ *   │  [icon]  Name                         │
+ *   │          url                          │
+ *   │                                       │
+ *   │  [● Up]    ← hero pill, dominant     │
  *   │                                       │
  *   │  ┌──────┐ ┌──────┐ ┌──────┐         │
- *   │  │ Up   │ │ 99.9 │ │ 124  │         │
- *   │  │ time │ │ %    │ │ ms   │         │
+ *   │  │ Up   │ │ 99.9 │ │ http │         │
+ *   │  │ time │ │ %    │ │ type │         │
  *   │  └──────┘ └──────┘ └──────┘         │
  *   │                                       │
  *   │  Last check 2m ago                    │
  *   └──────────────────────────────────────┘
+ *
+ * The status pill is the primary visual signal — bigger than before
+ * (`size="xl"`) and positioned under the URL so the user can scan a
+ * list of cards and read each monitor's state without squinting at
+ * the corner.
  *
  * Theme: card uses surface.elevated/border. Stat tiles use
  * surface.sunken. Stat values use surface.text (or status color for
@@ -98,7 +105,9 @@ export function MonitorCard({
           opacity: pressed ? 0.85 : 1,
         },
       ]}>
-      {/* Header row: icon + name + status pill */}
+      {/* Header: icon + name + URL (no pill here anymore — the pill
+          moved to its own row below the URL so it can be the dominant
+          visual element of the card). */}
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <View
@@ -127,7 +136,15 @@ export function MonitorCard({
             )}
           </View>
         </View>
-        <StatusPill status={monitor.status} size={compact ? 'sm' : 'md'} showLabel={!compact} />
+      </View>
+
+      {/* Hero pill — the primary status signal. Sits right under the
+          URL so the user can scan a list of cards and read each
+          monitor's state without squinting at the corner. xl for
+          the full-size card, lg for the compact variant so the
+          pill scales with the rest of the card. */}
+      <View style={styles.pillRow}>
+        <StatusPill status={monitor.status} size={compact ? 'lg' : 'xl'} />
       </View>
 
       {/* Stats row: uptime, response time */}
@@ -283,6 +300,9 @@ const styles = StyleSheet.create({
   subtitle: {
     ...typography.caption,
     fontSize: 12,
+  },
+  pillRow: {
+    marginTop: spacing[3],
   },
   stats: {
     flexDirection: 'row',

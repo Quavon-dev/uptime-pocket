@@ -16,14 +16,20 @@ import type { MonitorStatus } from '@/domain/models';
 
 interface StatusPillProps {
   status: MonitorStatus;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   showLabel?: boolean;
 }
 
 export function StatusPill({ status, size = 'md', showLabel = true }: StatusPillProps) {
   const color = statusColor(status);
-  const dotSize = size === 'sm' ? 6 : size === 'lg' ? 10 : 8;
-  const fontSize = size === 'sm' ? 11 : size === 'lg' ? 14 : 12;
+  // Slightly larger and more padding for the "hero" size so the pill
+  // reads as the dominant visual on a MonitorCard. xl: 12px dot,
+  // 15px text, comfortable padding.
+  const dotSize = size === 'sm' ? 6 : size === 'lg' ? 10 : size === 'xl' ? 12 : 8;
+  const fontSize = size === 'sm' ? 11 : size === 'lg' ? 14 : size === 'xl' ? 15 : 12;
+  const padX = size === 'sm' ? 8 : size === 'md' ? 10 : 12;
+  const padY = size === 'sm' ? 3 : size === 'md' ? 5 : 7;
+  const gap = size === 'xl' ? 8 : 6;
 
   return (
     <View
@@ -37,11 +43,11 @@ export function StatusPill({ status, size = 'md', showLabel = true }: StatusPill
         flexDirection: 'row',
         alignItems: 'center',
         alignSelf: 'flex-start',
-        paddingHorizontal: size === 'sm' ? 8 : 10,
-        paddingVertical: size === 'sm' ? 3 : 5,
+        paddingHorizontal: padX,
+        paddingVertical: padY,
         borderRadius: semanticRadius.pill,
         backgroundColor: `${color}1A`, // 10% opacity tint
-        gap: 6,
+        gap,
       }}>
       <View
         // a11y: the dot is purely decorative; the text label carries

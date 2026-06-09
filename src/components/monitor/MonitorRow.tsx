@@ -3,12 +3,17 @@
  *
  * Optimized for showing many monitors at once.
  *
- * Layout:
+ * Layout (v0.8.4 — pill under the URL):
  *   ┌──────────────────────────────────────────────────┐
  *   │  [●]  Name                          [pill]       │
- *   │       type • url                                 │
- *   │                              99.9%    124ms      │
+ *   │       url                                         │
+ *   │                                  99.9%    124ms   │
  *   └──────────────────────────────────────────────────┘
+ *
+ * The status pill moved out of the corner and into a row of its
+ * own under the URL, so a user scrolling the list can read each
+ * monitor's state at a glance. The numeric stats stay on the
+ * right; the pill is the primary signal.
  *
  * Theme: row uses surface.elevated/border; text in surface.text
  * and surface.textMuted; icon box uses status-tinted bg.
@@ -16,7 +21,7 @@
 
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
-import { HeartbeatPulse } from '@/components/status';
+import { StatusPill, HeartbeatPulse } from '@/components/status';
 import { monitorTypeIcon } from '@/components/ui/icons';
 import { statusColor } from '@/domain/status';
 import { t } from '@/i18n';
@@ -75,7 +80,7 @@ export function MonitorRow({
         <HeartbeatPulse color={s} size={6} active={isActive} />
       </View>
 
-      {/* Middle: name + url */}
+      {/* Middle: name + url + pill */}
       <View style={styles.middle}>
         <Text style={[styles.name, { color: surface.text }]} numberOfLines={1}>
           {monitor.name}
@@ -85,6 +90,13 @@ export function MonitorRow({
             {monitor.url || monitor.hostname}
           </Text>
         )}
+        {/* Status pill — small/compact for the row, but the
+            primary status signal nonetheless. Positioned under the
+            URL so the user can scan a list and read state at a
+            glance. */}
+        <View style={styles.pillRow}>
+          <StatusPill status={monitor.status} size="sm" />
+        </View>
       </View>
 
       {/* Right: stats */}
@@ -148,6 +160,9 @@ const styles = StyleSheet.create({
   subtitle: {
     ...typography.caption,
     fontSize: 11,
+  },
+  pillRow: {
+    marginTop: 4,
   },
   right: {
     alignItems: 'flex-end',
