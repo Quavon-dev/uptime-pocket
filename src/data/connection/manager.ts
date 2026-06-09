@@ -472,6 +472,16 @@ export class KumaConnectionManager {
  * Mount once near the top of the React tree (after providers). When
  * the active server changes, the manager disconnects the old and connects
  * the new.
+ *
+ * NOTE on lifecycle: the manager is a module-level singleton, so the
+ * `destroy()` cleanup on unmount would permanently brick the singleton
+ * the moment *any* consumer of the hook unmounts (e.g. switching tabs
+ * away from Monitors). The connection lives at the app level — the
+ * background notification scheduler and any future widget use the
+ * same singleton — so destroying it from a React tree is wrong. We
+ * only call `disconnectAll()` on unmount; the manager itself stays
+ * alive for the lifetime of the JS context (i.e. until the OS reaps
+ * the process).
  */
 export function useKumaConnection() {
   const activeId = useServers((s) => s.activeServerId);
@@ -491,10 +501,11 @@ export function useKumaConnection() {
     // `manager.connect` already tears down the previous connection.
   }, [activeId, manager]);
 
-  // Tear down on full unmount.
+  // Disconnect (not destroy) on full unmount. The OS will reclaim
+  // the socket when the process exits.
   useEffect(() => {
     return () => {
-      manager.destroy();
+      manager.disconnectAll();
     };
   }, [manager]);
 

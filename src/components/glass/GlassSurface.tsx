@@ -61,16 +61,25 @@ export function GlassSurface({
   // iOS 26+ with Liquid Glass
   // Note: Liquid Glass only supports 'clear' | 'regular' | 'none'.
   // We map our other variants to BlurView fallback even on iOS 26.
+  //
+  // Layout note: we apply `style` (padding etc.) to the INNER content
+  // view rather than the outer wrapper, because the wrapper hosts the
+  // absolutely-positioned glass effect that needs to fill the entire
+  // bar (including any safe-area padding at the top — that's where the
+  // status bar / dynamic island sit and the glass tint should extend
+  // behind them too). The content sits in front of the glass and
+  // respects the padding so the title doesn't get clipped by the
+  // status bar.
   if (Platform.OS === 'ios' && isLiquidGlassAvailable() && (variant === 'regular' || variant === 'clear')) {
     return (
-      <View style={[style, { borderRadius: radius, overflow: 'hidden' }]} {...rest}>
+      <View style={[{ borderRadius: radius, overflow: 'hidden' }]} {...rest}>
         <GlassView
           style={StyleSheet.absoluteFill}
           glassEffectStyle={variant}
           tintColor={tintColor}
           isInteractive={interactive}
         />
-        <View style={StyleSheet.absoluteFill}>{children}</View>
+        <View style={style}>{children}</View>
       </View>
     );
   }
@@ -84,7 +93,7 @@ export function GlassSurface({
       50;
     // systemUltraThinMaterial auto-adapts to light/dark on iOS.
     return (
-      <View style={[style, { borderRadius: radius, overflow: 'hidden' }]} {...rest}>
+      <View style={[{ borderRadius: radius, overflow: 'hidden' }]} {...rest}>
         <BlurView
           style={StyleSheet.absoluteFill}
           intensity={intensity}
@@ -98,7 +107,7 @@ export function GlassSurface({
             ]}
           />
         )}
-        <View style={StyleSheet.absoluteFill}>{children}</View>
+        <View style={style}>{children}</View>
       </View>
     );
   }
@@ -107,9 +116,9 @@ export function GlassSurface({
   return (
     <View
       style={[
-        style,
+        { borderRadius: radius, overflow: 'hidden' },
+        ...(Array.isArray(style) ? style : [style]),
         {
-          borderRadius: radius,
           backgroundColor:
             tint === 'brand' ? `${colors.brand[500]}1A` : surface.elevated,
           borderWidth: 0.5,

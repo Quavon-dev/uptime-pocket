@@ -18,7 +18,7 @@
  * brand tints. Banner uses status-tinted bg/border.
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, TextInput, RefreshControl } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 import { useRouter } from 'expo-router';
@@ -67,8 +67,14 @@ export default function MonitorsScreen() {
   // call, so the user sees the spinner spin.
   const manager = useKumaConnection();
   const [refreshing, setRefreshing] = useState(false);
+  // Ref-based debounce so rapid double-pulls don't race the in-flight
+  // reconnect. The `refreshing` state alone is a stale closure for
+  // back-to-back pulls because the state setter schedules a re-render
+  // but doesn't synchronously flip the value the callback sees.
+  const refreshingRef = useRef(false);
   const handleRefresh = useCallback(async () => {
-    if (refreshing) return;
+    if (refreshingRef.current) return;
+    refreshingRef.current = true;
     setRefreshing(true);
     try {
       // The promise resolves when revalidateActiveServer() returns.
@@ -82,9 +88,10 @@ export default function MonitorsScreen() {
       // Error is already reflected in the connection-status banner;
       // nothing to do here.
     } finally {
+      refreshingRef.current = false;
       setRefreshing(false);
     }
-  }, [manager, refreshing]);
+  }, [manager]);
 
   // Live data from the active server.
   const active = getActiveServer(servers, activeId);
