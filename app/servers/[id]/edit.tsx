@@ -3,12 +3,14 @@
  *
  * Reuses the shared <ServerForm /> component with the existing
  * server's name + URL pre-filled. Password fields are blank (we
- * never display secrets) and submitting without re-typing a password
- * leaves the existing Keychain entry alone.
+ * never display secrets) and the form runs in "edit" mode: password
+ * is optional, and the Login button decides whether to probe based
+ * on whether the user typed a fresh secret.
  *
  * As of v0.8+ the form is password-only — the bearer/API-key
  * option was removed because Kuma 2.x doesn't accept API keys for
- * socket auth.
+ * socket auth. v0.8+ also collapses the old "Test" + "Save" pair
+ * into a single "Login" CTA that runs the full flow.
  */
 
 import { View } from 'react-native';
@@ -44,50 +46,53 @@ export default function EditServerScreen() {
       }
     : undefined;
 
-  const handleTest = async (values: ServerFormValues): Promise<string | null> => {
-    if (!server) return t('servers.detail.notFound.title');
-    if (!values.url.trim()) return t('servers.add.error.invalidUrl');
-    try {
-      // Use the new credentials if the user typed any, otherwise
-      // fall back to dummy placeholders. The session does the real
-      // `login` round trip on Kuma's `loginRequired` event, so
-      // placeholder creds will be rejected by Kuma as expected
-      // when the user is just probing reachability.
-      const newCreds = deriveForTest(values);
-      const session = new PasswordSession(
-        newCreds?.username ?? 'probe-user',
-        newCreds?.password ?? 'probe-pass',
-      );
-      const probeServer = {
-        id: server.id,
-        name: values.name || server.name,
-        url: values.url,
-        authKind: 'password' as const,
-        connected: false,
-        notificationMode: 'direct' as const,
-        createdAt: server.createdAt,
-      };
-      const result = await createClient(probeServer, session).ping();
-      if (!result.connected) {
-        return result.error ?? t('servers.add.error.unreachable');
-      }
-      const minVersion = '2.0.0';
-      if (result.version && thisIsOlder(result.version, minVersion)) {
-        return tn('servers.add.error.outdatedKuma', { version: result.version });
-      }
-      return null;
-    } catch (err) {
-      return err instanceof Error ? err.message : t('servers.add.error.unreachable');
-    }
-  };
-
+  /**
+   * The form's single onSubmit. Behavior:
+   *   - If the user typed new credentials (username + password both
+   *     non-blank), probe the server with them first. On probe
+   *     failure, return the error so the form can display it.
+   *   - If the user left the credentials blank, skip the probe and
+   *     keep the existing Keychain entry. updateServer(..., undefined)
+   *     preserves it.
+   *   - On success, persist the (possibly updated) metadata and
+   *     dismiss the modal.
+   */
   const handleSubmit = async (submit: {
     values: ServerFormValues;
     credentials: AuthStrategy | undefined;
-  }): Promise<void> => {
-    if (!server) return;
+  }): Promise<string | null> => {
+    if (!server) return t('servers.detail.notFound.title');
     const { values, credentials } = submit;
     const trimmedUrl = values.url.trim().replace(/\/+$/, '');
+
+    if (credentials) {
+      // Probe with the fresh creds — must succeed before we commit.
+      try {
+        const session = new PasswordSession(
+          credentials.username,
+          credentials.password,
+        );
+        const probeServer = {
+          id: server.id,
+          name: values.name || server.name,
+          url: trimmedUrl,
+          authKind: 'password' as const,
+          connected: false,
+          notificationMode: 'direct' as const,
+          createdAt: server.createdAt,
+        };
+        const result = await createClient(probeServer, session).ping();
+        if (!result.connected) {
+          return result.error ?? t('servers.add.error.unreachable');
+        }
+        const minVersion = '2.0.0';
+        if (result.version && thisIsOlder(result.version, minVersion)) {
+          return tn('servers.add.error.outdatedKuma', { version: result.version });
+        }
+      } catch (err) {
+        return err instanceof Error ? err.message : t('servers.add.error.unreachable');
+      }
+    }
 
     await updateServer(
       server.id,
@@ -98,6 +103,7 @@ export default function EditServerScreen() {
       credentials, // may be undefined - updateServer preserves the existing entry
     );
     router.back();
+    return null;
   };
 
   if (!server) {
@@ -116,23 +122,8 @@ export default function EditServerScreen() {
       <ServerForm
         initial={initial}
         onSubmit={handleSubmit}
-        onTest={handleTest}
         onCancel={() => router.back()}
-        submitLabel={t('common.save')}
       />
     </View>
   );
-}
-
-/** Mirror the ServerForm's deriveCredentials logic for the test path. */
-function deriveForTest(
-  values: ServerFormValues
-): { username: string; password: string } | undefined {
-  if (values.username.trim().length === 0 || values.password.length === 0) {
-    return undefined;
-  }
-  return {
-    username: values.username.trim(),
-    password: values.password,
-  };
 }

@@ -274,10 +274,9 @@
       "namePlaceholder": "マイ Kuma",
       "url": "サーバー URL",
       "urlPlaceholder": "https://kuma.example.com",
-      "password": "パスワード",
       "username": "ユーザー名",
-      "test": "接続テスト",
-      "save": "サーバーを保存",
+      "password": "パスワード",
+      "login": "ログイン",
       "error": {
         "invalidUrl": "有効な URL を入力してください",
         "unreachable": "サーバーに到達できません",

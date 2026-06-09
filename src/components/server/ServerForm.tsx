@@ -6,18 +6,19 @@
  * Adding a server and editing a server have nearly identical form
  * semantics: name, URL, username, password. The only differences are:
  *   - Initial values (blank vs. pre-filled from the existing server)
- *   - Submit action (create vs. update)
- *   - Title + button labels
+ *   - Whether the user *must* re-type a password (yes in add, no in edit)
+ *   - Save action (create vs. update)
  *
  * We extract the form into this component so the two screens stay in
  * sync — any change to validation, layout, or copy is automatically
  * applied to both flows.
  *
- * The form is purely presentational + state-management. It receives
- * callbacks for `onSubmit` and `onTest` so the parent screen can
- * decide what to do on success (navigate back, refresh the connection,
- * etc.). It also receives an `onCancel` so we can wire a back button
- * that just dismisses the form.
+ * The form is purely presentational + state-management. It receives a
+ * single `onSubmit` callback that does the full work: probe (real
+ * login round-trip), save, and dismiss. The form renders any error
+ * the callback returns and only dismisses when the callback resolves
+ * with `null`. It also receives an `onCancel` so we can wire a back
+ * button that just dismisses the form.
  *
  * Auth: username + password only
  * ------------------------------
@@ -29,12 +30,19 @@
  * with username+password, gets a JWT, and stores it for future
  * reconnects — so the user only types the password once per install.
  *
- * In edit mode, we pre-fill the name and URL but leave the
- * username and password fields blank. The user must re-enter the
- * password to change it (a security measure — we never display the
- * existing secret). If the user submits without entering a new
- * password, the parent's `onSubmit` receives `undefined` for the
- * credentials and can decide whether to skip the credential update.
+ * In edit mode, the password is OPTIONAL. If the user leaves it
+ * blank, the parent's `onSubmit` receives `undefined` for the
+ * credentials and decides whether to skip the credential update
+ * (we preserve the existing Keychain entry).
+ *
+ * Single CTA: "Login"
+ * -------------------
+ * v0.8+ replaced the old "Test connection" + "Save server" pair with
+ * a single full-width "Login" button — the same look as the welcome
+ * screen's CTA. Tapping it runs the full flow: validate, probe,
+ * save, dismiss. The user shouldn't have to tap two buttons to add
+ * a server, and they shouldn't have to think about the difference
+ * between "test" and "save" — there's only one action.
  */
 
 import { useEffect, useReducer } from 'react';
@@ -44,10 +52,10 @@ import {
   TextInput,
   Pressable,
   StyleSheet,
-  ActivityIndicator,
 } from 'react-native';
 import { z } from 'zod';
-import { SafeScrollView } from '@/components/ui';
+import { ChevronRight } from 'lucide-react-native';
+import { SafeScrollView, Button } from '@/components/ui';
 import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { t } from '@/i18n';
 import type { Server } from '@/domain/models';
@@ -62,17 +70,27 @@ export { deriveCredentials } from './ServerForm.helpers';
 
 export interface ServerFormProps {
   /** Pre-filled values for edit mode (all fields, including secrets,
-   *  should be left empty by the parent — we never display secrets). */
+   *  should be left empty by the parent — we never display secrets).
+   *  Presence also flips the form into "edit" mode: password becomes
+   *  optional, the button label can be overridden, and the submit
+   *  callback can decide to skip the credential rotation. */
   initial?: Pick<Server, 'name' | 'url'>;
-  /** Called with the merged values + (optionally) new credentials. */
-  onSubmit: (submit: ServerFormSubmit) => Promise<void> | void;
-  /** Called when the user taps "Test connection". Should not throw —
-   *  the form renders the error itself. */
-  onTest: (values: ServerFormValues) => Promise<string | null>;
+  /**
+   * Single submit callback. The form validates the inputs first, then
+   * calls this with the typed values + (optionally) new credentials.
+   *
+   * The callback is responsible for:
+   *   1. Probing Kuma (real `login` round-trip) when the user is
+   *      adding or rotating credentials.
+   *   2. Persisting the server metadata + credentials.
+   *   3. Dismissing the form on success (router.back / replace).
+   *
+   * Return a non-null error string to show the user what went wrong;
+   * return `null` on success. The form never navigates by itself.
+   */
+  onSubmit: (submit: ServerFormSubmit) => Promise<string | null> | string | null;
   /** Cancel/back action (close the modal). */
   onCancel: () => void;
-  /** Override the title and primary button label. */
-  submitLabel?: string;
 }
 
 type FormState = ServerFormValues;
@@ -101,28 +119,43 @@ const initialForm: FormState = {
   password: '',
 };
 
-/** Zod schema for form-level validation (used by handleSave). */
-const FormSchema = z
-  .object({
-    name: z.string().trim().min(1, 'name').max(50, 'name'),
-    url: z
-      .string()
-      .trim()
-      .min(1, 'url')
-      .url('url')
-      .refine((u) => /^https?:\/\//i.test(u), 'url'),
-    username: z.string().trim().min(1, 'username'),
-    password: z.string().min(1, 'password'),
+/**
+ * Zod schema for the form, parameterized by mode.
+ *
+ *   - add:   all four fields required. We don't store a server that
+ *            can't be talked to.
+ *   - edit:  name + URL required; username + password optional.
+ *            The user can keep the existing credentials by leaving
+ *            both blank.
+ */
+function makeSchema(mode: 'add' | 'edit') {
+  const nameField = z.string().trim().min(1, 'name').max(50, 'name');
+  const urlField = z
+    .string()
+    .trim()
+    .min(1, 'url')
+    .url('url')
+    .refine((u) => /^https?:\/\//i.test(u), 'url');
+  const userField =
+    mode === 'add'
+      ? z.string().trim().min(1, 'username')
+      : z.string();
+  const passField = mode === 'add' ? z.string().min(1, 'password') : z.string();
+  return z.object({
+    name: nameField,
+    url: urlField,
+    username: userField,
+    password: passField,
   });
+}
 
 export function ServerForm({
   initial,
   onSubmit,
-  onTest,
   onCancel,
-  submitLabel,
 }: ServerFormProps) {
   const { surface, brand, statusTints } = useAppTheme();
+  const mode: 'add' | 'edit' = initial ? 'edit' : 'add';
 
   const startingValues: FormState = initial
     ? { ...initialForm, name: initial.name, url: initial.url }
@@ -146,44 +179,37 @@ export function ServerForm({
     }
   }, [initial?.name, initial?.url]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [testingState, dispatchUI] = useReducer(uiReducer, {
-    testing: false,
-    saving: false,
-    error: null,
-  });
+  const [ui, dispatchUI] = useReducer(
+    (s: { submitting: boolean; error: string | null }, a: { type: 'submit-start' } | { type: 'submit-done'; error: string | null }) => {
+      switch (a.type) {
+        case 'submit-start': return { submitting: true, error: null };
+        case 'submit-done':  return { submitting: false, error: a.error };
+      }
+    },
+    { submitting: false, error: null },
+  );
 
-  const handleTest = async () => {
-    dispatchUI({ type: 'test-start' });
-    try {
-      const err = await onTest(form);
-      dispatchUI({ type: 'test-done', error: err });
-    } catch (e) {
-      dispatchUI({
-        type: 'test-done',
-        error: e instanceof Error ? e.message : String(e),
-      });
-    }
-  };
-
-  const handleSave = async () => {
-    const parsed = FormSchema.safeParse(form);
+  const handleSubmit = async () => {
+    const parsed = makeSchema(mode).safeParse(form);
     if (!parsed.success) {
       const first = parsed.error.issues[0];
       const key = `servers.add.error.${first.message === 'url' ? 'invalidUrl' : 'missingToken'}`;
-      dispatchUI({ type: 'set-error', error: t(key) });
+      dispatchUI({ type: 'submit-done', error: t(key) });
       return;
     }
-    dispatchUI({ type: 'save-start' });
+    dispatchUI({ type: 'submit-start' });
     try {
-      await onSubmit({ values: form, credentials: deriveCredentials(form) });
+      const error = await onSubmit({
+        values: form,
+        credentials: deriveCredentials(form),
+      });
+      dispatchUI({ type: 'submit-done', error: error ?? null });
     } catch (e) {
       dispatchUI({
-        type: 'save-done',
+        type: 'submit-done',
         error: e instanceof Error ? e.message : String(e),
       });
-      return;
     }
-    dispatchUI({ type: 'save-done', error: null });
   };
 
   return (
@@ -243,7 +269,13 @@ export function ServerForm({
             autoCorrect={false}
           />
         </Field>
-        <Field label={t('servers.add.password')} hint={t('servers.add.passwordHint')}>
+        <Field
+          label={t('servers.add.password')}
+          hint={
+            mode === 'edit'
+              ? t('servers.edit.secretsHint')
+              : t('servers.add.passwordHint')
+          }>
           <TextInput
             value={password}
             onChangeText={(v) => dispatch({ type: 'setPassword', value: v })}
@@ -257,46 +289,27 @@ export function ServerForm({
           />
         </Field>
 
-        {testingState.error && (
+        {ui.error && (
           <View style={[styles.errorBox, { backgroundColor: statusTints.down.bg }]}>
             <Text style={[typography.callout, { color: colors.status.down }]}>
-              {testingState.error}
+              {ui.error}
             </Text>
           </View>
         )}
 
-        <View style={{ flexDirection: 'row', gap: spacing[2] }}>
-          <Pressable
-            onPress={handleTest}
-            disabled={testingState.testing || testingState.saving}
-            style={({ pressed }) => [
-              styles.secondaryBtn,
-              { backgroundColor: surface.elevated, borderColor: brand, opacity: pressed || testingState.testing ? 0.85 : 1 },
-            ]}>
-            {testingState.testing ? (
-              <ActivityIndicator size="small" color={brand} />
-            ) : (
-              <Text style={[typography.bodyEmphasized, { color: brand }]}>
-                {t('servers.add.test')}
-              </Text>
-            )}
-          </Pressable>
-
-          <Pressable
-            onPress={handleSave}
-            disabled={testingState.saving || testingState.testing}
-            style={({ pressed }) => [
-              styles.primaryBtn,
-              { backgroundColor: brand, opacity: pressed || testingState.saving ? 0.85 : 1 },
-            ]}>
-            {testingState.saving ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Text style={[typography.bodyEmphasized, { color: 'white' }]}>
-                {submitLabel ?? t('servers.add.save')}
-              </Text>
-            )}
-          </Pressable>
+        {/* Single Login CTA. Same look as the welcome screen's button. */}
+        <View style={styles.cta}>
+          <Button
+            label={t('servers.add.login')}
+            onPress={handleSubmit}
+            disabled={ui.submitting}
+            loading={ui.submitting}
+            variant="primary"
+            size="lg"
+            fullWidth
+            icon={<ChevronRight size={18} color="white" strokeWidth={2.5} />}
+            iconPosition="right"
+          />
         </View>
       </SafeScrollView>
       <Pressable
@@ -336,25 +349,6 @@ function Field({
   );
 }
 
-// Local mini-reducer for the testing/saving/error UI state, since the
-// form's main state is already in useReducer above.
-type UIState = { testing: boolean; saving: boolean; error: string | null };
-type UIAction =
-  | { type: 'test-start' }
-  | { type: 'test-done'; error: string | null }
-  | { type: 'save-start' }
-  | { type: 'save-done'; error: string | null }
-  | { type: 'set-error'; error: string };
-function uiReducer(s: UIState, a: UIAction): UIState {
-  switch (a.type) {
-    case 'test-start': return { ...s, testing: true, error: null };
-    case 'test-done':  return { ...s, testing: false, error: a.error };
-    case 'save-start': return { ...s, saving: true, error: null };
-    case 'save-done':  return { ...s, saving: false, error: a.error };
-    case 'set-error':  return { ...s, error: a.error };
-  }
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   input: {
@@ -368,20 +362,8 @@ const styles = StyleSheet.create({
     padding: spacing[3],
     borderRadius: 12,
   },
-  primaryBtn: {
-    flex: 1,
-    paddingVertical: spacing[3],
-    borderRadius: semanticRadius.button,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryBtn: {
-    flex: 1,
-    paddingVertical: spacing[3],
-    borderRadius: semanticRadius.button,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 0.5,
+  cta: {
+    paddingTop: spacing[2],
   },
   cancelButton: {
     position: 'absolute',

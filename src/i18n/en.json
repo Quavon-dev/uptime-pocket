@@ -276,8 +276,7 @@
       "urlPlaceholder": "https://kuma.example.com",
       "username": "Username",
       "password": "Password",
-      "test": "Test connection",
-      "save": "Save server",
+      "login": "Login",
       "error": {
         "invalidUrl": "Please enter a valid URL",
         "unreachable": "Couldn't reach the server",

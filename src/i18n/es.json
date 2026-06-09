@@ -274,10 +274,9 @@
       "namePlaceholder": "Mi Kuma",
       "url": "URL del servidor",
       "urlPlaceholder": "https://kuma.example.com",
+      "username": "Nombre de usuario",
       "password": "Contraseña",
-      "username": "Usuario",
-      "test": "Probar conexión",
-      "save": "Guardar servidor",
+      "login": "Iniciar sesión",
       "error": {
         "invalidUrl": "Introduce una URL válida",
         "unreachable": "No se puede alcanzar el servidor",
