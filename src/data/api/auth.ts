@@ -49,6 +49,14 @@ export interface AuthSession {
 
   /** Strategy kind for debugging */
   readonly kind: 'bearer' | 'password';
+
+  /**
+   * The current bearer / JWT to use for the Kuma `loginByToken` socket
+   * event. For `BearerSession` this is the long-lived API token. For
+   * `PasswordSession` it's the JWT obtained from socket login. The
+   * socket client reads this in its `loginRequired` handler.
+   */
+  readonly currentToken: string;
 }
 
 export class BearerSession implements AuthSession {
@@ -65,6 +73,10 @@ export class BearerSession implements AuthSession {
 
   isExpired(): boolean {
     return false; // Bearer tokens are valid until revoked
+  }
+
+  get currentToken(): string {
+    return this.token;
   }
 }
 

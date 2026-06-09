@@ -161,31 +161,45 @@ export class KumaClient {
       }, 10_000);
 
       socket.on('connect', () => {
-        // For password auth, do the login handshake. For bearer,
-        // the token was already in the auth payload, so we just
-        // wait for `info`.
-        if (this.session.kind === 'password') {
-          // Reach into the session to get username/password.
-          // The session doesn't expose these publicly (security),
-          // so we only support bearer probes here. Password
-          // probing should go through the live manager's socket.
-          clearTimeout(overallTimeout);
-          finish({
-            version: 'unknown',
-            connected: false,
-            error:
-              'Password-based test connection is not yet supported in ping(). ' +
-              'Save the server first to test with real credentials.',
+        // Respond to Kuma's auth handshake. Kuma always sends
+        // `loginRequired` after `info` when auth is enabled; we must
+        // emit `loginByToken` to get the version-rich second `info`.
+        // We do this for both bearer and password sessions — for
+        // password, the session already has a JWT.
+        socket.once('loginRequired', () => {
+          const token = this.session.currentToken;
+          if (!token) {
+            clearTimeout(overallTimeout);
+            finish({
+              version: 'unknown',
+              connected: false,
+              error: 'No token available for loginByToken',
+            });
+            return;
+          }
+          socket.emit('loginByToken', token, (res: unknown) => {
+            const ok = res && typeof res === 'object' && (res as { ok?: boolean }).ok;
+            if (!ok) {
+              clearTimeout(overallTimeout);
+              const msg =
+                res && typeof res === 'object' && 'msg' in res
+                  ? String((res as { msg?: unknown }).msg)
+                  : 'unknown error';
+              finish({
+                version: 'unknown',
+                connected: false,
+                error: 'Kuma rejected token: ' + msg,
+              });
+            }
+            // On ok, we keep waiting for the second `info` event below.
           });
-          return;
-        }
+        });
 
-        // Bearer: wait for `info` event.
-        //
         // Kuma 2.3+ fires `info` **twice**:
         //   1. Immediately on connect: `{ primaryBaseURL, serverTimezone, serverTimezoneOffset }`
-        //      — no `version` field.
-        //   2. Shortly after: the same payload PLUS `{ version, latestVersion, dbType, runtime }`.
+        //      — no `version` field (sent before loginRequired).
+        //   2. After successful loginByToken: same payload PLUS
+        //      `{ version, latestVersion, dbType, runtime }`.
         //
         // We need the second one for the version check, so we use
         // `socket.on` (not `once`) and only resolve when we see a

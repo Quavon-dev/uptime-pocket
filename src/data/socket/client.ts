@@ -188,32 +188,13 @@ export class KumaSocket {
       timeout: 10_000,
     });
 
-    this.socket.on('connect', async () => {
+    this.socket.on('connect', () => {
       this.reconnectAttempts = 0;
-      try {
-        if (this.session.kind === 'password' && !this.loggedIn) {
-          // The session's `loginFn` knows how to log in. The manager
-          // wired that up — see the applySocketAuth call above.
-          const token = (authPayload as any).auth?.token;
-          if (!token) {
-            // No token yet — need to do the login handshake.
-            // (Belt-and-braces; manager normally does this first.)
-            this.emit({
-              type: 'error',
-              error: new Error('No JWT available for password session'),
-            });
-            return;
-          }
-          this.loggedIn = true;
-        }
-        this.emit({ type: 'connected' });
-      } catch (err) {
-        this.emit({
-          type: 'error',
-          error: err instanceof Error ? err : new Error(String(err)),
-        });
-        this.scheduleReconnect();
-      }
+      // Don't emit 'connected' yet — we still need to authenticate.
+      // Kuma sends 'info' + 'loginRequired' on every connect when auth
+      // is enabled, and we have to reply with `loginByToken` (bearer) or
+      // `login` (password) before any domain events are valid. The
+      // 'connected' event is emitted from `loginByTokenAck` below.
     });
 
     this.socket.on('disconnect', (reason) => {
@@ -224,6 +205,23 @@ export class KumaSocket {
     this.socket.on('connect_error', (error) => {
       this.emit({ type: 'error', error });
       this.scheduleReconnect();
+    });
+
+    // ---- Kuma auth handshake ----
+    //
+    // Kuma 2.x always sends 'loginRequired' after the initial 'info' if
+    // auth is enabled in the server's settings. The client MUST respond
+    // with the right event for the session kind:
+    //   - bearer:  socket.emit('loginByToken', token, cb)
+    //   - password: socket.emit('login', {username, password}, cb)
+    //
+    // The token in `socket.handshake.auth.token` is IGNORED by Kuma —
+    // it's only used by socket.io's middleware, which Kuma doesn't
+    // install. Putting the token there (as we used to) means Kuma
+    // never sees it, so it sits there sending pings while we wait for
+    // a 'version' field in 'info' that never comes.
+    this.socket.on('loginRequired', () => {
+      this.handleLoginRequired();
     });
 
     // ---- Domain events ----
@@ -321,6 +319,64 @@ export class KumaSocket {
       const norm = normalizeUptimeEvent(mid, hours, ratio);
       if (!norm) return;
       this.emit({ type: 'uptime', ...norm });
+    });
+  }
+
+  /**
+   * Handle Kuma's `loginRequired` event by emitting the right auth
+   * event for our session kind. Kuma sends this on every connect
+   * (after `info`) when auth is enabled — we MUST respond, otherwise
+   * no domain events are emitted and the connection effectively
+   * hangs.
+   *
+   * For both bearer and password sessions we use `loginByToken`:
+   *   - Bearer: the long-lived API token works directly.
+   *   - Password: the session already holds a JWT obtained by the
+   *     manager's earlier login handshake (see
+   *     KumaConnectionManager.connect), so we just re-use it. This
+   *     also means the KumaSocket doesn't need to know about the
+   *     raw username/password.
+   */
+  private handleLoginRequired(): void {
+    if (!this.socket) return;
+    const token = this.session.currentToken;
+    if (!token) {
+      this.emit({
+        type: 'error',
+        error: new Error(
+          'Kuma asked for login (loginRequired) but session has no token. ' +
+            'For bearer auth, the API token is empty. For password auth, ' +
+            'the JWT was never issued — the manager may have skipped the ' +
+            'login handshake.',
+        ),
+      });
+      return;
+    }
+
+    const ackTimeout = setTimeout(() => {
+      this.emit({
+        type: 'error',
+        error: new Error(
+          'loginByToken timed out after 10s — Kuma did not acknowledge our token',
+        ),
+      });
+    }, 10_000);
+
+    this.socket.emit('loginByToken', token, (res: unknown) => {
+      clearTimeout(ackTimeout);
+      if (res && typeof res === 'object' && (res as { ok?: boolean }).ok) {
+        this.loggedIn = true;
+        this.emit({ type: 'connected' });
+      } else {
+        const msg =
+          res && typeof res === 'object' && 'msg' in res
+            ? String((res as { msg?: unknown }).msg)
+            : 'unknown error';
+        this.emit({
+          type: 'error',
+          error: new Error(`Kuma rejected token: ${msg}`),
+        });
+      }
     });
   }
 
