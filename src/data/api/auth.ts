@@ -1,9 +1,24 @@
 /**
  * Auth session for Kuma.
  *
- * One strategy is supported: password (username + password). On the
- * first connect the app does a socket.io `login` to get a JWT, then
- * stores it in the session for subsequent reconnects.
+ * One strategy is supported: password (username + password). The
+ * session is the **owner of the JWT lifecycle** — it knows how to
+ * authenticate against a socket (doing `login` on first call,
+ * `loginByToken` on subsequent calls) and exposes the cached JWT to
+ * REST callers for the `Authorization: Bearer *** header.
+ *
+ * ## Flow
+ *
+ * 1. Caller builds a `PasswordSession(username, password)`.
+ * 2. Caller calls `await session.authenticate(socket)`. On the first
+ *    call this emits `login` over the socket and caches the JWT
+ *    Kuma returns. On subsequent calls it tries `loginByToken` with
+ *    the cached JWT first; if Kuma says `authInvalidToken` (password
+ *    changed, etc.) it falls back to `login` and re-caches.
+ * 3. After authenticate succeeds, REST callers can use
+ *    `session.applyHeaders(headers)` to add the JWT to outgoing
+ *    requests, and the KumaSocket can call `authenticate()` again on
+ *    any reconnect.
  *
  * ## Why no API-key / "bearer" mode?
  *
@@ -15,90 +30,182 @@
  *     `loginByToken` on a subsequent reconnect). Format
  *     `eyJ.eyJ.signature`. Works for both socket.io and REST.
  *
- * The socket.io `loginByToken` event Kuma 2.x uses for socket
- * auth **only accepts JWTs**, not API keys. So if the user pastes
- * an API key into a "bearer token" field, the app's `loginByToken`
- * gets rejected with `authInvalidToken` and the connection hangs.
- *
- * To keep the UX simple, we removed the bearer form option: the
- * user always signs in with username+password, the app stores the
- * resulting JWT in the session, and reconnects via `loginByToken`
- * with that JWT. The JWT is long-lived (Kuma's default is 1 year
- * unless `jwt: maxExpiresIn` is set shorter), so the user only
- * has to type their password once per install.
+ * The socket.io `loginByToken` event Kuma 2.x uses for socket auth
+ * **only accepts JWTs**, not API keys. So if the user pastes an API
+ * key into a "bearer token" field, the app's `loginByToken` gets
+ * rejected with `authInvalidToken` and the connection hangs. To keep
+ * the UX simple, we removed the bearer form option: the user always
+ * signs in with username+password.
  *
  * If you ever need to support API keys in the future, the right
  * path is to do HTTP Basic auth on a REST endpoint (Kuma exposes
  * a few) to validate the key, then surface a "this key works for
- * REST but you also need a password for real-time" message. For
- * v1 we keep the form simple.
- *
- * Each session knows how to:
- *   - add auth headers to a fetch request
- *   - detect (and optionally refresh) JWT expiry
- *   - expose its current JWT so the socket can `loginByToken` it
+ * REST but you also need a password for real-time" message. For v1
+ * we keep the form simple.
  */
 
 import type { AuthStrategy } from '@/domain/models';
 
+/**
+ * The minimum socket shape `authenticate()` needs from socket.io.
+ * We type it as a structural interface so we can mock it in tests
+ * with a plain object (no need to drag in the real `socket.io-client`
+ * `Socket` type which has dozens of methods we don't use).
+ */
+export interface AuthenticatableSocket {
+  emit(event: string, ...args: unknown[]): unknown;
+}
+
 export interface AuthSession {
-  /** Apply auth headers to a fetch request */
-  applyHeaders(headers: Headers): void;
-
-  /** Whether the session has expired and needs refresh */
-  isExpired(): boolean;
-
-  /**
-   * Re-issue the JWT via the supplied login function. Invoked by
-   * `KumaConnectionManager` when the JWT's `exp` claim gets close
-   * (or on the first connection when the session was built with a
-   * placeholder token).
-   */
-  refresh(): Promise<void>;
-
   /** Strategy kind for debugging */
   readonly kind: 'password';
 
   /**
-   * The current JWT to send in Kuma's `loginByToken` socket event.
-   * The socket client reads this in its `loginRequired` handler.
-   * May be an empty string before the first successful login.
+   * Authenticate against the given socket.io connection. Must be
+   * called AFTER the socket has emitted `connect` and `loginRequired`
+   * (or proactively, before any request, on a fresh socket). The
+   * session handles `loginByToken` → `login` fallback internally and
+   * caches the resulting JWT for subsequent calls.
+   *
+   * Throws if authentication ultimately fails.
    */
-  readonly currentToken: string;
+  authenticate(socket: AuthenticatableSocket): Promise<void>;
+
+  /**
+   * Apply the cached JWT as `Authorization: Bearer *** to a fetch
+   * Headers object. No-op if no JWT is cached yet. Used by the REST
+   * client to authenticate HTTP calls between socket reconnects.
+   */
+  applyHeaders(headers: Headers): void;
+
+  /**
+   * Whether the cached JWT is past its `exp` claim (with a 30s
+   * grace window so we re-login before Kuma actually rejects us).
+   * Returns true if no JWT is cached yet.
+   */
+  isExpired(): boolean;
 }
 
-export type SocketLoginFn = (username: string, password: string) => Promise<string>;
+/**
+ * Ack callback shape Kuma uses: `{ ok: true, token?: string }` on
+ * success, `{ ok: false, msg: 'authInvalidToken', msgi18n: true }`
+ * on failure.
+ */
+interface KumaAuthAck {
+  ok: boolean;
+  token?: string;
+  msg?: string;
+}
 
 /**
  * Password-based session.
  *
- * Holds a JWT obtained from socket login. The `refresh()` method uses
- * the supplied `loginFn` to re-issue the JWT — this is invoked by
- * `KumaConnectionManager` whenever the JWT's `exp` claim gets close.
- *
- * The JWT decode is done once on construction (or refresh) and the
- * expiry is cached. We don't re-decode on every `isExpired()` call.
+ * Holds the username + password, plus an optional cached JWT
+ * obtained from a previous `authenticate()` call. The session is the
+ * only place that knows the password — the socket and REST layers
+ * just see a JWT once auth has succeeded.
  */
 export class PasswordSession implements AuthSession {
   readonly kind = 'password' as const;
-  private token: string;
-  private tokenExpiresAt: number | null;
+  private token: string | null = null;
+  private tokenExpiresAt: number | null = null;
+  private inflightAuth: Promise<void> | null = null;
 
   constructor(
-    private username: string,
-    private password: string,
-    initialToken: string,
-    private loginFn: SocketLoginFn
-  ) {
-    this.token = initialToken;
-    this.tokenExpiresAt = decodeJwtExpiry(initialToken);
+    private readonly username: string,
+    private readonly password: string
+  ) {}
+
+  /**
+   * Authenticate against `socket`:
+   *   1. If we have a non-expired cached JWT, try `loginByToken`
+   *      first. Kuma responds with `{ ok: true }` on success.
+   *   2. If that fails (no token cached, or Kuma returns
+   *      `authInvalidToken` because the password changed), emit
+   *      `login` with the username + password. Kuma responds with
+   *      `{ ok: true, token: '<jwt>' }`. Cache the new JWT.
+   *
+   * Concurrent calls are de-duplicated: if two callers race
+   * authenticate() they share the same underlying `login` round
+   * trip rather than each firing one.
+   *
+   * Throws on auth failure (so the caller can surface the error to
+   * the user with the original Kuma error message).
+   */
+  authenticate(socket: AuthenticatableSocket): Promise<void> {
+    if (this.inflightAuth) {
+      return this.inflightAuth;
+    }
+    this.inflightAuth = this.doAuthenticate(socket).finally(() => {
+      this.inflightAuth = null;
+    });
+    return this.inflightAuth;
   }
 
-  async refresh(): Promise<void> {
-    const newToken = await this.loginFn(this.username, this.password);
-    if (!newToken) throw new Error('Login returned no token');
-    this.token = newToken;
-    this.tokenExpiresAt = decodeJwtExpiry(newToken);
+  private async doAuthenticate(socket: AuthenticatableSocket): Promise<void> {
+    // Try loginByToken first if we have a cached token and it's not
+    // past its expiry. Kuma's verify call also re-checks against
+    // the user's current password hash, so a token issued before a
+    // password change will be rejected with authInvalidToken.
+    if (this.token && !this.isExpired()) {
+      try {
+        const ack = await this.emitWithAck<KumaAuthAck>(
+          socket,
+          'loginByToken',
+          this.token
+        );
+        if (ack?.ok) {
+          return;
+        }
+        // Ack said no — clear the cached token and fall through to
+        // the password login below.
+        this.token = null;
+        this.tokenExpiresAt = null;
+      } catch {
+        // The socket itself errored (timeout, disconnect, etc.).
+        // Surface that error to the caller rather than silently
+        // retrying with a password that may also fail.
+        throw new Error('Kuma rejected the cached JWT and the socket errored during loginByToken');
+      }
+    }
+
+    // No cached token, or the cached one was rejected. Do the full
+    // username + password login. Kuma returns `{ ok: true, token }`
+    // on success or `{ ok: false, msg }` on failure.
+    const ack = await this.emitWithAck<KumaAuthAck>(socket, 'login', {
+      username: this.username,
+      password: this.password,
+    });
+    if (!ack?.ok || typeof ack.token !== 'string') {
+      throw new Error(
+        'Kuma login failed: ' +
+          (ack?.msg ? `${ack.msg}` : 'no token in response')
+      );
+    }
+    this.token = ack.token;
+    this.tokenExpiresAt = decodeJwtExpiry(ack.token);
+  }
+
+  /**
+   * Wrap socket.io's callback-ack pattern in a Promise. The last
+   * argument to `emit` is the ack callback; everything before it is
+   * the event payload.
+   */
+  private emitWithAck<T>(
+    socket: AuthenticatableSocket,
+    event: string,
+    ...args: unknown[]
+  ): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`${event} timed out after 10s — Kuma did not acknowledge`));
+      }, 10_000);
+      const cb = (res: T) => {
+        clearTimeout(timer);
+        resolve(res);
+      };
+      socket.emit(event, ...args, cb);
+    });
   }
 
   applyHeaders(headers: Headers): void {
@@ -109,12 +216,20 @@ export class PasswordSession implements AuthSession {
 
   isExpired(): boolean {
     if (!this.tokenExpiresAt) return true;
-    return Date.now() > this.tokenExpiresAt - 30_000; // refresh 30s early
+    // Refresh 30s early so we re-login before Kuma actually rejects
+    // a request with the stale token.
+    return Date.now() > this.tokenExpiresAt - 30_000;
   }
 
-  /** Current JWT — for tests and debugging. */
-  get currentToken(): string {
-    return this.token;
+  /**
+   * Clear the cached JWT. Called by the connection manager on
+   * `authInvalidToken` so the next authenticate() will fall back to
+   * the full password login. Mostly useful for tests and explicit
+   * "force re-login" UI affordances.
+   */
+  reset(): void {
+    this.token = null;
+    this.tokenExpiresAt = null;
   }
 }
 
@@ -154,46 +269,10 @@ function base64UrlDecode(s: string): string {
 /**
  * Factory: build a session for the given strategy.
  *
- * For `password`, this is a **deferred login**: the returned session
- * has an empty `currentToken` until `refresh()` succeeds. We do
- * this so the manager can build the socket first, then log in
- * through it (Kuma 2.3+ has no REST login endpoint).
- *
- * For convenience, real callers should use `createSessionAsync`
- * which awaits the login before returning.
+ * For `password`, this is a fresh `PasswordSession` with no cached
+ * JWT — the first `authenticate()` call will do the full
+ * username + password login against Kuma.
  */
-export function createSession(
-  strategy: AuthStrategy,
-  _baseUrl: string,
-  loginFn: SocketLoginFn
-): AuthSession {
-  return createPasswordSessionSync(strategy.username, strategy.password, loginFn);
-}
-
-/**
- * Synchronous session builder — returns a session that has not yet
- * logged in. `applyHeaders` will be a no-op until `refresh()` runs.
- * The refresh will fail loudly if the caller hasn't provided a
- * working loginFn.
- */
-function createPasswordSessionSync(
-  username: string,
-  password: string,
-  loginFn: SocketLoginFn
-): PasswordSession {
-  // Start with a sentinel empty token; the first refresh() will replace it.
-  return new PasswordSession(username, password, '', loginFn);
-}
-
-/**
- * Async factory — preferred. Logs in via the supplied function first,
- * then returns a fully-armed PasswordSession.
- */
-export async function createSessionAsync(
-  strategy: AuthStrategy,
-  _baseUrl: string,
-  loginFn: SocketLoginFn
-): Promise<AuthSession> {
-  const token = await loginFn(strategy.username, strategy.password);
-  return new PasswordSession(strategy.username, strategy.password, token, loginFn);
+export function createSession(strategy: AuthStrategy): AuthSession {
+  return new PasswordSession(strategy.username, strategy.password);
 }

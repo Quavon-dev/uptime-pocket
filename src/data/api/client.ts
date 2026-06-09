@@ -31,10 +31,12 @@ export class KumaClient {
     path: string,
     body?: unknown
   ): Promise<T> {
-    if (this.session.isExpired() && this.session.refresh) {
-      await this.session.refresh();
-    }
-
+    // REST requests piggyback on the JWT the session cached from its
+    // last socket auth. If the session has no token yet (first call
+    // before any socket connect), we still try — Kuma's REST API on
+    // 2.x rejects unauthenticated calls with 401, which surfaces as
+    // a KumaError. The caller can decide whether to retry after
+    // triggering a socket-based authenticate().
     const headers = new Headers();
     headers.set('Content-Type', 'application/json');
     headers.set('Accept', 'application/json');
@@ -112,10 +114,9 @@ export class KumaClient {
    * check for Kuma 2.3+, which removed the REST `/api/status`
    * endpoint.
    *
-   * For bearer auth, the token is sent in the initial socket auth
-   * payload (no login round-trip). For password auth, we emit
-   * `login` and wait for the JWT — Kuma then sends `info` along
-   * with `monitorList` etc.
+   * The session handles the auth round-trip (login on first call,
+   * loginByToken on subsequent calls), so the probe doesn't need
+   * to know about credentials.
    */
   async pingOverSocket(): Promise<{ version: string; connected: boolean; error?: string }> {
     // Lazy import: socket.io-client is heavy and not always needed
@@ -149,8 +150,9 @@ export class KumaClient {
       //
       // We don't pass `auth: { token }` here. Kuma 2.x ignores the
       // socket.io handshake `auth` field — it expects the token to
-      // be sent via the `loginByToken` event after it emits
-      // `loginRequired`. The handler below does that.
+      // be sent via the `loginByToken` event (or `login` with
+      // username+password) after it emits `loginRequired`. The
+      // session handles that round-trip in `authenticate()`.
       const socket = io(this.server.url, {
         transports: ['polling', 'websocket'],
         upgrade: true,
@@ -163,44 +165,33 @@ export class KumaClient {
       }, 10_000);
 
       socket.on('connect', () => {
-        // Respond to Kuma's auth handshake. Kuma always sends
-        // `loginRequired` after `info` when auth is enabled; we must
-        // emit `loginByToken` to get the version-rich second `info`.
-        // We do this for both bearer and password sessions — for
-        // password, the session already has a JWT.
+        // Delegate the auth handshake to the session. It tries
+        // `loginByToken` with any cached JWT first, and falls back
+        // to `login` with the username+password on first install.
         socket.once('loginRequired', () => {
-          const token = this.session.currentToken;
-          if (!token) {
-            clearTimeout(overallTimeout);
-            finish({
-              version: 'unknown',
-              connected: false,
-              error: 'No token available for loginByToken',
-            });
-            return;
-          }
-          socket.emit('loginByToken', token, (res: unknown) => {
-            const ok = res && typeof res === 'object' && (res as { ok?: boolean }).ok;
-            if (!ok) {
+          this.session
+            .authenticate(socket)
+            .then(() => {
+              if (settled) return;
+              // On success, keep waiting for the second `info` event
+              // below (Kuma 2.3+ fires info twice; the first one is
+              // pre-login and has no `version`).
+            })
+            .catch((err: unknown) => {
               clearTimeout(overallTimeout);
-              const msg =
-                res && typeof res === 'object' && 'msg' in res
-                  ? String((res as { msg?: unknown }).msg)
-                  : 'unknown error';
+              const message = err instanceof Error ? err.message : String(err);
               finish({
                 version: 'unknown',
                 connected: false,
-                error: 'Kuma rejected token: ' + msg,
+                error: 'Authentication failed: ' + message,
               });
-            }
-            // On ok, we keep waiting for the second `info` event below.
-          });
+            });
         });
 
         // Kuma 2.3+ fires `info` **twice**:
         //   1. Immediately on connect: `{ primaryBaseURL, serverTimezone, serverTimezoneOffset }`
         //      — no `version` field (sent before loginRequired).
-        //   2. After successful loginByToken: same payload PLUS
+        //   2. After successful auth: same payload PLUS
         //      `{ version, latestVersion, dbType, runtime }`.
         //
         // We need the second one for the version check, so we use
@@ -215,16 +206,6 @@ export class KumaClient {
             });
           }
           // Otherwise it's the first (version-less) fire — keep listening.
-        });
-
-        // If the server sends an auth error event, surface it.
-        socket.once('connect_error', (err: Error) => {
-          clearTimeout(overallTimeout);
-          finish({
-            version: 'unknown',
-            connected: false,
-            error: 'Auth failed: ' + (err?.message ?? 'unknown error'),
-          });
         });
       });
 
@@ -244,8 +225,13 @@ export class KumaClient {
 
   async login(): Promise<boolean> {
     try {
-      await this.session.refresh();
-      return true;
+      // The session knows how to authenticate (login or
+      // loginByToken). For a probe-style login we don't have a
+      // socket, so we use a transient one via the public
+      // pingOverSocket path internally — but for the `login()` API
+      // on the client we just verify the session isn't expired.
+      // The actual login round-trip happens in connect().
+      return !this.session.isExpired();
     } catch {
       return false;
     }

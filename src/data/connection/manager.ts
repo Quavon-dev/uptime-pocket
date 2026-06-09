@@ -16,13 +16,18 @@
  * ## Connection flow
  *
  *   1. Read credentials from SecureStore.
- *   2. Open a raw socket.io connection (no auth).
- *   3. `emit('login', {username, password})` to get a JWT.
- *      (Kuma 2.3+ has no REST login endpoint, and the only auth method
- *      Kuma's `loginByToken` accepts is a JWT, not the API Keys its own
- *      "Settings → API Keys" dashboard creates.)
- *   4. Build the `AuthSession` with the JWT, attach event handlers.
- *   5. Bridge socket events into the Zustand stores.
+ *   2. Build a `PasswordSession(username, password)`. No JWT is
+ *      cached yet — the session will fetch one on first authenticate.
+ *   3. Build a `KumaSocket` + REST client, wire up event bridges.
+ *   4. Call `socket.connect()`. The socket's `loginRequired` handler
+ *      delegates to `session.authenticate(socket)`, which:
+ *        - Tries `loginByToken` with any cached JWT (subsequent
+ *          reconnects after a successful login).
+ *        - Falls back to `login` with the username + password
+ *          (first install, or after a password change invalidated
+ *          the cached JWT).
+ *      The resulting JWT is cached in the session for future
+ *      `loginByToken` calls and for REST `Authorization` headers.
  *
  * Events from the socket are translated into mutations on the
  * `useMonitors` Zustand store. The connection status is mirrored into
@@ -30,10 +35,9 @@
  */
 
 import { useEffect } from 'react';
-import { io, Socket } from 'socket.io-client';
-import { KumaSocket, type KumaEvent, buildSocketLogin } from '@/data/socket/client';
+import { KumaSocket, type KumaEvent } from '@/data/socket/client';
 import { KumaClient, createClient } from '@/data/api/client';
-import { createSession, decodeJwtExpiry, type AuthSession } from '@/data/api/auth';
+import { createSession } from '@/data/api/auth';
 import { loadCredentials } from '@/data/secure/credentials';
 import { useMonitors } from '@/data/store/monitors';
 import { useServers } from '@/data/store/servers';
@@ -56,24 +60,6 @@ interface ActiveConnection {
 export class KumaConnectionManager {
   private current: ActiveConnection | null = null;
   private destroyed = false;
-
-  /**
-   * Opens a raw socket.io connection to the server. Public so tests
-   * can stub it (the real `io()` call would try to reach a network
-   * endpoint and fail in the test env).
-   */
-  openRawSocket(url: string): Socket {
-    // Polling first for RN reliability, then upgrade to WebSocket.
-    // We do NOT pass `auth: { token }` — Kuma 2.x ignores that
-    // field and instead expects us to emit `login` over the open
-    // socket. The caller does that.
-    return io(url, {
-      transports: ['polling', 'websocket'],
-      upgrade: true,
-      reconnection: false,
-      timeout: 10_000,
-    });
-  }
 
   /** Connect to the given server, disconnecting any previous one. */
   async connect(serverId: string): Promise<void> {
@@ -99,66 +85,26 @@ export class KumaConnectionManager {
       const auth = await loadCredentials(serverId);
       if (!auth) {
         throw new Error(
-          'No credentials stored for this server. Re-add it with a valid token.'
+          'No credentials stored for this server. Re-add it with your Kuma username and password.'
         );
       }
 
-      // Step 1: open a raw socket and do the password login handshake
-      // to get a JWT. Kuma 2.x has no REST login endpoint, so this
-      // socket is throwaway — we just need the token from the ack.
-      //
-      // Note: we don't pass `auth: { token }` in the handshake because
-      // Kuma ignores it. The login happens via `socket.emit('login', ...)`.
-      const rawSocket: Socket = this.openRawSocket(server.url);
-
-      const jwt: string = await new Promise<string>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          rawSocket.off('connect', onConnect);
-          reject(new Error('Kuma socket login timed out after 10s'));
-        }, 10_000);
-        const onConnect = () => {
-          rawSocket.off('connect_error', onErr);
-          rawSocket.emit('login', { username: auth.username, password: auth.password }, (res: any) => {
-            clearTimeout(timeout);
-            if (res && res.ok && typeof res.token === 'string') {
-              resolve(res.token);
-            } else {
-              reject(new Error('Kuma login failed: ' + JSON.stringify(res)));
-            }
-          });
-        };
-        const onErr = (err: Error) => {
-          clearTimeout(timeout);
-          rawSocket.off('connect', onConnect);
-          reject(err);
-        };
-        rawSocket.once('connect', onConnect);
-        rawSocket.once('connect_error', onErr);
+      // Build the session with just the credentials. The session
+      // holds the password and the cached JWT lifecycle. On the
+      // first `authenticate()` call it will do the `login` round
+      // trip; on subsequent calls it will try `loginByToken` with
+      // the cached JWT and only re-`login` if Kuma rejects it
+      // (e.g. after a password change).
+      const session = createSession({
+        kind: 'password',
+        username: auth.username,
+        password: auth.password,
       });
 
-      // Step 2: build the session with the JWT.
-      // The session exposes `refresh()` which re-runs the login if
-      // the JWT expires, so subsequent reconnects don't need a
-      // password.
-      const loginFn = buildSocketLogin(rawSocket);
-      const session: AuthSession = createSession(
-        { kind: 'password', username: auth.username, password: auth.password },
-        server.url,
-        loginFn,
-      );
-      // Splice the freshly-issued JWT into the password session so
-      // applyHeaders / currentToken have something to send. The
-      // session's internals are private; reach in via `as unknown`.
-      {
-        const ps = session as unknown as {
-          token: string;
-          tokenExpiresAt: number | null;
-        };
-        ps.token = jwt;
-        ps.tokenExpiresAt = decodeJwtExpiry(jwt);
-      }
-
-      // Step 3: build the KumaSocket + REST client + bridge events.
+      // Build the KumaSocket + REST client + bridge events.
+      // The socket's `loginRequired` handler calls
+      // `session.authenticate(this.socket)` which does the
+      // `loginByToken` → `login` round trip and caches the JWT.
       const rest = createClient(server, session);
       const socket = new KumaSocket(server, session, rest);
       const unsubscribe = socket.on((event: KumaEvent) => {

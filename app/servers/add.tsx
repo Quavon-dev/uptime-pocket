@@ -40,19 +40,12 @@ export default function AddServerScreen() {
       return t('servers.add.error.invalidUrl');
     }
     try {
-      // We can't fully log in here without opening a real socket (and
-      // potentially storing the JWT somewhere) — that would defeat
-      // the "test before save" purpose. Instead we use a throwaway
-      // loginFn that will fail loudly if the test path tries to
-      // refresh; the actual login happens after the user saves.
-      const throwawayLogin: () => Promise<string> = () =>
-        Promise.reject(new Error('Test connection never refreshes auth'));
-      const session = new PasswordSession(
-        values.username,
-        values.password,
-        '',
-        throwawayLogin,
-      );
+      // The session knows the username + password. The probe path
+      // (KumaClient.pingOverSocket) opens a transient socket, and
+      // on Kuma's `loginRequired` it calls `session.authenticate()`,
+      // which does the real `login` round trip with the credentials
+      // the user typed. No throwaway state, no empty-token hack.
+      const session = new PasswordSession(values.username, values.password);
       const server = {
         id: 'temp',
         name: values.name || 'Test',
@@ -84,23 +77,14 @@ export default function AddServerScreen() {
     const { values, credentials } = submit;
     const trimmedUrl = values.url.trim().replace(/\/+$/, '');
 
-    // Best-effort version probe. The /api/status endpoint doesn't
-    // require auth on Kuma 2.0+, so we can use a no-op placeholder
-    // password session — pingOverSocket will open the socket and
-    // emit loginByToken with an empty token, which Kuma rejects
-    // with authInvalidToken, but we don't care: the *url* is what
-    // we're probing (it's reachable + what version is it). The
-    // version comes back in the first `info` event before auth.
+    // Best-effort version probe. The session does the real `login`
+    // round trip on Kuma's `loginRequired` event, so the probe
+    // actually authenticates (and we get a JWT cached in the session
+    // as a side effect, but we don't use it for the save — the
+    // session we save is the one we build fresh below).
     let detectedVersion: string | null = null;
     try {
-      const probeLogin: () => Promise<string> = () =>
-        Promise.reject(new Error('probe never refreshes'));
-      const probeSession = new PasswordSession(
-        values.username,
-        values.password,
-        '',
-        probeLogin,
-      );
+      const probeSession = new PasswordSession(values.username, values.password);
       const probeServer = {
         id: 'probe',
         name: values.name,

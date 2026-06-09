@@ -49,13 +49,14 @@ export default function EditServerScreen() {
     if (!values.url.trim()) return t('servers.add.error.invalidUrl');
     try {
       // Use the new credentials if the user typed any, otherwise
-      // fall back to a no-op probe session.
+      // fall back to dummy placeholders. The session does the real
+      // `login` round trip on Kuma's `loginRequired` event, so
+      // placeholder creds will be rejected by Kuma as expected
+      // when the user is just probing reachability.
       const newCreds = deriveForTest(values);
       const session = new PasswordSession(
         newCreds?.username ?? 'probe-user',
         newCreds?.password ?? 'probe-pass',
-        '',
-        () => Promise.reject(new Error('test')),
       );
       const probeServer = {
         id: server.id,

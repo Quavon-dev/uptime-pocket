@@ -32,7 +32,7 @@ function makeServer(url = 'https://kuma.example.com'): Server {
 function makeClient(): KumaClient {
   return new KumaClient(
     makeServer(),
-    new PasswordSession('u', 'p', '', () => Promise.reject(new Error('test'))),
+    new PasswordSession('u', 'p'),
   );
 }
 
