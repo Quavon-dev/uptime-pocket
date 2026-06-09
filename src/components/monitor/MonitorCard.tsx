@@ -6,25 +6,25 @@
  * - Monitor detail header
  * - Anywhere a single monitor needs a prominent display
  *
- * Layout (v0.8.4 — pill as the main thing):
+ * Layout (v0.8.5 — pill on the left):
  *   ┌──────────────────────────────────────┐
- *   │  [icon]  Name                         │
- *   │          url                          │
  *   │                                       │
- *   │  [● Up]    ← hero pill, dominant     │
+ *   │  [● Up]   Name                        │
+ *   │            [globe] url                │
+ *   │            2m ago                     │
  *   │                                       │
  *   │  ┌──────┐ ┌──────┐ ┌──────┐         │
- *   │  │ Up   │ │ 99.9 │ │ http │         │
- *   │  │ time │ │ %    │ │ type │         │
+ *   │  │uptime│ │ resp │ │ type │         │
  *   │  └──────┘ └──────┘ └──────┘         │
- *   │                                       │
- *   │  Last check 2m ago                    │
  *   └──────────────────────────────────────┘
  *
- * The status pill is the primary visual signal — bigger than before
- * (`size="xl"`) and positioned under the URL so the user can scan a
- * list of cards and read each monitor's state without squinting at
- * the corner.
+ * The status pill is now the leftmost element of the card, replacing
+ * the type-icon box. It's the primary visual signal — the user sees
+ * the state of every monitor in their peripheral vision when
+ * scrolling a list. The type icon (globe for HTTP, etc.) moves to a
+ * small inline position next to the URL, and the last-check time
+ * sits under the URL on its own line so the user can see how
+ * recent the result is.
  *
  * Theme: card uses surface.elevated/border. Stat tiles use
  * surface.sunken. Stat values use surface.text (or status color for
@@ -33,7 +33,7 @@
 
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
-import { StatusPill, HeartbeatPulse } from '@/components/status';
+import { StatusPill } from '@/components/status';
 import { monitorTypeIcon } from '@/components/ui/icons';
 import { statusColor } from '@/domain/status';
 import { t } from '@/i18n';
@@ -42,7 +42,7 @@ import {
   formatUptime,
   formatRelativeTime,
 } from '@/domain/format';
-import type { Monitor, MonitorStatus } from '@/domain/models';
+import type { Monitor } from '@/domain/models';
 
 interface MonitorCardProps {
   monitor: Monitor;
@@ -69,13 +69,12 @@ export function MonitorCard({
   compact = false,
   avgPing24h = null,
 }: MonitorCardProps) {
-  const { surface, statusTints } = useAppTheme();
+  const { surface } = useAppTheme();
   const TypeIcon = monitorTypeIcon(monitor.type);
   const pad = compact ? spacing[3] : spacing[4];
   const statSize = compact ? 14 : 16;
   const statLabelSize = compact ? 10 : 11;
   const s = statusColor(monitor.status);
-  const iconBg = tintForStatus(monitor.status, statusTints);
 
   return (
     <Pressable
@@ -105,46 +104,43 @@ export function MonitorCard({
           opacity: pressed ? 0.85 : 1,
         },
       ]}>
-      {/* Header: icon + name + URL (no pill here anymore — the pill
-          moved to its own row below the URL so it can be the dominant
-          visual element of the card). */}
+      {/* Top row: hero pill on the left, name + url + last check
+          on the right. The pill is the leftmost element so the
+          status reads at a glance from the edge of the card. */}
       <View style={styles.header}>
-        <View style={styles.titleRow}>
-          <View
-            style={[
-              styles.iconBox,
-              {
-                backgroundColor: iconBg,
-                width: compact ? 32 : 36,
-                height: compact ? 32 : 36,
-              },
-            ]}>
-            <TypeIcon
-              size={compact ? 16 : 18}
-              color={s}
-              strokeWidth={1.75}
-            />
-          </View>
-          <View style={styles.titleCol}>
-            <Text style={[styles.name, compact && { fontSize: 14 }, { color: surface.text }]} numberOfLines={1}>
-              {monitor.name}
-            </Text>
-            {showUrl && (monitor.url || monitor.hostname) && (
-              <Text style={[styles.subtitle, compact && { fontSize: 11 }, { color: surface.textMuted }]} numberOfLines={1}>
+        <View style={styles.pillColumn}>
+          <StatusPill status={monitor.status} size={compact ? 'lg' : 'xl'} />
+        </View>
+        <View style={styles.titleCol}>
+          <Text style={[styles.name, compact && { fontSize: 14 }, { color: surface.text }]} numberOfLines={1}>
+            {monitor.name}
+          </Text>
+          {showUrl && (monitor.url || monitor.hostname) && (
+            <View style={styles.subtitleRow}>
+              <TypeIcon
+                size={compact ? 12 : 13}
+                color={surface.textMuted}
+                strokeWidth={1.75}
+              />
+              <Text
+                style={[styles.subtitle, compact && { fontSize: 11 }, { color: surface.textMuted }]}
+                numberOfLines={1}>
                 {monitor.url || monitor.hostname}
               </Text>
-            )}
-          </View>
+            </View>
+          )}
+          {showLastCheck && (
+            <Text
+              style={[
+                styles.lastCheckInline,
+                compact && { fontSize: 10 },
+                { color: surface.textMuted },
+              ]}
+              numberOfLines={1}>
+              {formatRelativeTime(monitor.lastCheckAt)}
+            </Text>
+          )}
         </View>
-      </View>
-
-      {/* Hero pill — the primary status signal. Sits right under the
-          URL so the user can scan a list of cards and read each
-          monitor's state without squinting at the corner. xl for
-          the full-size card, lg for the compact variant so the
-          pill scales with the rest of the card. */}
-      <View style={styles.pillRow}>
-        <StatusPill status={monitor.status} size={compact ? 'lg' : 'xl'} />
       </View>
 
       {/* Stats row: uptime, response time */}
@@ -185,20 +181,6 @@ export function MonitorCard({
           tileBg={surface.sunken}
         />
       </View>
-
-      {/* Footer: last check + heartbeat pulse */}
-      {showLastCheck && (
-        <View style={styles.footer}>
-          <HeartbeatPulse
-            color={s}
-            size={compact ? 6 : 8}
-            active={monitor.status !== 'paused'}
-          />
-          <Text style={[styles.lastCheck, compact && { fontSize: 11 }, { color: surface.textMuted }]}>
-            {formatRelativeTime(monitor.lastCheckAt)}
-          </Text>
-        </View>
-      )}
     </Pressable>
   );
 }
@@ -254,19 +236,6 @@ function Stat({
   );
 }
 
-function tintForStatus(
-  status: MonitorStatus,
-  tints: ReturnType<typeof useAppTheme>['statusTints']
-): string {
-  switch (status) {
-    case 'up': return tints.up.bg;
-    case 'down': return tints.down.bg;
-    case 'pending': return tints.pending.bg;
-    case 'maintenance': return tints.maintenance.bg;
-    case 'paused': return tints.paused.bg;
-  }
-}
-
 const styles = StyleSheet.create({
   card: {
     borderRadius: semanticRadius.card,
@@ -275,18 +244,13 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing[2],
-  },
-  titleRow: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: spacing[3],
   },
-  iconBox: {
-    borderRadius: semanticRadius.md,
-    alignItems: 'center',
+  // The pill column is sized to its content — the pill is its own
+  // thing and shouldn't stretch. The title column takes the rest
+  // (flex: 1) so the name/URL fill the available width.
+  pillColumn: {
+    alignItems: 'flex-start',
     justifyContent: 'center',
   },
   titleCol: {
@@ -300,9 +264,21 @@ const styles = StyleSheet.create({
   subtitle: {
     ...typography.caption,
     fontSize: 12,
+    flexShrink: 1,
   },
-  pillRow: {
-    marginTop: spacing[3],
+  // Inline row of [icon] [url] for the URL line. The icon prefixes
+  // the URL like a favicon — small, muted, non-distracting.
+  subtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  // Last-check time lives under the URL on its own line so the
+  // user can see how recent the result is without having to look
+  // at a separate footer.
+  lastCheckInline: {
+    ...typography.caption,
+    fontSize: 11,
   },
   stats: {
     flexDirection: 'row',
@@ -312,15 +288,5 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: spacing[3],
     borderRadius: semanticRadius.md,
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    marginTop: spacing[3],
-  },
-  lastCheck: {
-    ...typography.caption,
-    fontSize: 12,
   },
 });

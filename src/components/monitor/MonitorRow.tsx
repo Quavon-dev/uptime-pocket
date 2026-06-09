@@ -3,33 +3,33 @@
  *
  * Optimized for showing many monitors at once.
  *
- * Layout (v0.8.4 — pill under the URL):
+ * Layout (v0.8.5 — pill on the left, type icon next to the URL):
  *   ┌──────────────────────────────────────────────────┐
- *   │  [●]  Name                          [pill]       │
- *   │       url                                         │
- *   │                                  99.9%    124ms   │
+ *   │  [Up pill]   Name                       99.9%    │
+ *   │              [globe] url                124 ms   │
  *   └──────────────────────────────────────────────────┘
  *
- * The status pill moved out of the corner and into a row of its
- * own under the URL, so a user scrolling the list can read each
- * monitor's state at a glance. The numeric stats stay on the
- * right; the pill is the primary signal.
+ * The status pill is now the leftmost element of every row, so a
+ * user scrolling the list sees the state of every monitor in their
+ * peripheral vision without having to read each row. The type icon
+ * (globe for HTTP, etc.) moves to a small inline position next to
+ * the URL — it conveys "what kind of monitor" but isn't the primary
+ * signal. Stats stay on the right.
  *
  * Theme: row uses surface.elevated/border; text in surface.text
- * and surface.textMuted; icon box uses status-tinted bg.
+ * and surface.textMuted.
  */
 
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
-import { StatusPill, HeartbeatPulse } from '@/components/status';
+import { StatusPill } from '@/components/status';
 import { monitorTypeIcon } from '@/components/ui/icons';
-import { statusColor } from '@/domain/status';
 import { t } from '@/i18n';
 import {
   formatResponseTime,
   formatUptime,
 } from '@/domain/format';
-import type { Monitor, MonitorStatus } from '@/domain/models';
+import type { Monitor } from '@/domain/models';
 
 interface MonitorRowProps {
   monitor: Monitor;
@@ -46,11 +46,8 @@ export function MonitorRow({
   showUrl = true,
   showStats = true,
 }: MonitorRowProps) {
-  const { surface, statusTints } = useAppTheme();
+  const { surface } = useAppTheme();
   const TypeIcon = monitorTypeIcon(monitor.type);
-  const s = statusColor(monitor.status);
-  const isActive = monitor.status !== 'paused';
-  const iconBg = tintForStatus(monitor.status, statusTints);
 
   return (
     <Pressable
@@ -68,41 +65,33 @@ export function MonitorRow({
           opacity: pressed ? 0.85 : 1,
         },
       ]}>
-      {/* Left: status dot / icon */}
+      {/* Left: status pill — the primary signal. Replaces the
+          type-icon box that used to live here. */}
       <View style={styles.left}>
-        <View
-          style={[
-            styles.iconBox,
-            { backgroundColor: iconBg },
-          ]}>
-          <TypeIcon size={16} color={s} strokeWidth={1.75} />
-        </View>
-        <HeartbeatPulse color={s} size={6} active={isActive} />
+        <StatusPill status={monitor.status} size="md" />
       </View>
 
-      {/* Middle: name + url + pill */}
+      {/* Middle: name + url (with type icon as a small prefix) */}
       <View style={styles.middle}>
         <Text style={[styles.name, { color: surface.text }]} numberOfLines={1}>
           {monitor.name}
         </Text>
         {showUrl && (monitor.url || monitor.hostname) && (
-          <Text style={[styles.subtitle, { color: surface.textMuted }]} numberOfLines={1}>
-            {monitor.url || monitor.hostname}
-          </Text>
+          <View style={styles.subtitleRow}>
+            <TypeIcon size={12} color={surface.textMuted} strokeWidth={1.75} />
+            <Text
+              style={[styles.subtitle, { color: surface.textMuted }]}
+              numberOfLines={1}>
+              {monitor.url || monitor.hostname}
+            </Text>
+          </View>
         )}
-        {/* Status pill — small/compact for the row, but the
-            primary status signal nonetheless. Positioned under the
-            URL so the user can scan a list and read state at a
-            glance. */}
-        <View style={styles.pillRow}>
-          <StatusPill status={monitor.status} size="sm" />
-        </View>
       </View>
 
       {/* Right: stats */}
       {showStats && (
         <View style={styles.right}>
-          <Text style={[styles.stat, { color: s }]}>
+          <Text style={[styles.stat, { color: surface.text }]}>
             {formatUptime(monitor.uptime24h)}
           </Text>
           <Text style={[styles.statSecondary, { color: surface.textMuted }]}>
@@ -112,19 +101,6 @@ export function MonitorRow({
       )}
     </Pressable>
   );
-}
-
-function tintForStatus(
-  status: MonitorStatus,
-  tints: ReturnType<typeof useAppTheme>['statusTints']
-): string {
-  switch (status) {
-    case 'up': return tints.up.bg;
-    case 'down': return tints.down.bg;
-    case 'pending': return tints.pending.bg;
-    case 'maintenance': return tints.maintenance.bg;
-    case 'paused': return tints.paused.bg;
-  }
 }
 
 const styles = StyleSheet.create({
@@ -138,15 +114,7 @@ const styles = StyleSheet.create({
     gap: spacing[3],
   },
   left: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  iconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: semanticRadius.md,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
   },
   middle: {
@@ -160,9 +128,14 @@ const styles = StyleSheet.create({
   subtitle: {
     ...typography.caption,
     fontSize: 11,
+    flexShrink: 1,
   },
-  pillRow: {
-    marginTop: 4,
+  // Inline row of [icon] [url] for the URL line. The icon prefixes
+  // the URL like a favicon — small, muted, non-distracting.
+  subtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   right: {
     alignItems: 'flex-end',
