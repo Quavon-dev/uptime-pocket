@@ -1,14 +1,16 @@
 /**
  * Tests for the auth strategies.
  *
- * No mocks for the pure logic of BearerSession and PasswordSession
- * (header construction, socket auth payload, isExpired, JWT decode).
- * PasswordSession.refresh() is tested with a scoped `globalThis.fetch`
- * stub (not jest.mock) so we exercise the real decode + refresh path.
+ * No mocks for the pure logic of PasswordSession (header
+ * construction, isExpired, JWT decode). PasswordSession.refresh() is
+ * tested with a scoped `globalThis.fetch` stub (not jest.mock) so
+ * we exercise the real decode + refresh path.
+ *
+ * As of v0.8+ BearerSession is gone (Kuma 2.x's socket.io auth
+ * only accepts JWTs, not API keys).
  */
 
 import {
-  BearerSession,
   PasswordSession,
   createSession,
   decodeJwtExpiry,
@@ -18,46 +20,7 @@ import type { AuthStrategy } from '@/domain/models';
 
 const stubLogin: SocketLoginFn = () => Promise.reject(new Error('not used'));
 
-// ---- BearerSession ----
-
-describe('BearerSession', () => {
-  it('sets the Authorization: Bearer *** header', () => {
-    const s = new BearerSession('tok_abc123');
-    const headers = new Headers();
-    s.applyHeaders(headers);
-    expect(headers.get('Authorization')).toBe('Bearer tok_abc123');
-  });
-
-  it('appends the token to the socket auth payload as { auth: { token } }', () => {
-    const s = new BearerSession('tok_xyz');
-    const payload = s.applySocketAuth({ existing: 'value' });
-    expect(payload).toEqual({ existing: 'value', auth: { token: 'tok_xyz' } });
-  });
-
-  it('does not mutate the original socket-auth payload', () => {
-    const s = new BearerSession('t');
-    const original = { foo: 1 };
-    s.applySocketAuth(original);
-    expect(original).toEqual({ foo: 1 });
-  });
-
-  it('reports kind as "bearer"', () => {
-    expect(new BearerSession('x').kind).toBe('bearer');
-  });
-
-  it('never reports as expired (bearer tokens are valid until revoked)', () => {
-    expect(new BearerSession('x').isExpired()).toBe(false);
-  });
-
-  it('overwrites any pre-existing Authorization header', () => {
-    const s = new BearerSession('new');
-    const headers = new Headers({ Authorization: 'Bearer old' });
-    s.applyHeaders(headers);
-    expect(headers.get('Authorization')).toBe('Bearer new');
-  });
-});
-
-// ---- PasswordSession (pure bits) ----
+// ---- PasswordSession ----
 
 describe('PasswordSession', () => {
   it('reports kind as "password"', () => {
@@ -72,15 +35,14 @@ describe('PasswordSession', () => {
     expect(headers.has('Authorization')).toBe(false);
   });
 
-  it('does not include a token in socket auth until a token is provided', () => {
-    const s = new PasswordSession('quavon', 'pw', '', stubLogin);
-    const payload = s.applySocketAuth({});
-    expect(payload).toEqual({});
-  });
-
   it('reports isExpired() = true before any token is set', () => {
     const s = new PasswordSession('u', 'p', '', stubLogin);
     expect(s.isExpired()).toBe(true);
+  });
+
+  it('exposes currentToken as the empty string before refresh', () => {
+    const s = new PasswordSession('u', 'p', '', stubLogin);
+    expect(s.currentToken).toBe('');
   });
 
   it('uses the JWT exp claim to compute isExpired()', async () => {
@@ -89,12 +51,14 @@ describe('PasswordSession', () => {
     const fakeJwt = makeJwt({ sub: 'quavon', exp: expSec });
     const loginFn: SocketLoginFn = async () => fakeJwt;
     const s = new PasswordSession('quavon', 'pw', '', loginFn);
-    await s.refresh!();
+    await s.refresh();
     const headers = new Headers();
     s.applyHeaders(headers);
     expect(headers.get('Authorization')).toBe(`Bearer ${fakeJwt}`);
     // Not expired (well before the 30s early-refresh window).
     expect(s.isExpired()).toBe(false);
+    // And the getter returns it.
+    expect(s.currentToken).toBe(fakeJwt);
   });
 
   it('reports isExpired() = true after the JWT exp passes', async () => {
@@ -103,7 +67,7 @@ describe('PasswordSession', () => {
     const fakeJwt = makeJwt({ sub: 'quavon', exp: expSec });
     const loginFn: SocketLoginFn = async () => fakeJwt;
     const s = new PasswordSession('quavon', 'pw', '', loginFn);
-    await s.refresh!();
+    await s.refresh();
     // 30s early-refresh window means anything past exp is expired.
     expect(s.isExpired()).toBe(true);
   });
@@ -113,24 +77,19 @@ describe('PasswordSession', () => {
       throw new Error('socket disconnected');
     };
     const s = new PasswordSession('u', 'p', '', loginFn);
-    await expect(s.refresh!()).rejects.toThrow(/socket disconnected/);
+    await expect(s.refresh()).rejects.toThrow(/socket disconnected/);
   });
 
   it('throws when the login function returns no token', async () => {
     const loginFn: SocketLoginFn = async () => '';
     const s = new PasswordSession('u', 'p', '', loginFn);
-    await expect(s.refresh!()).rejects.toThrow(/no token/);
+    await expect(s.refresh()).rejects.toThrow(/no token/);
   });
 });
 
 // ---- createSession factory ----
 
 describe('createSession', () => {
-  it('creates a BearerSession for kind: bearer', () => {
-    const s = createSession({ kind: 'bearer', token: 't' }, 'https://x', stubLogin);
-    expect(s.kind).toBe('bearer');
-  });
-
   it('creates a PasswordSession for kind: password', () => {
     const s = createSession(
       { kind: 'password', username: 'u', password: 'p' },
@@ -140,9 +99,8 @@ describe('createSession', () => {
     expect(s.kind).toBe('password');
   });
 
-  it('respects the discriminated union exhaustively', () => {
+  it('preserves the kind of any password strategy', () => {
     const strategies: AuthStrategy[] = [
-      { kind: 'bearer', token: 'a' },
       { kind: 'password', username: 'u', password: 'p' },
     ];
     for (const strat of strategies) {

@@ -4,15 +4,14 @@
  * Why a shared component?
  * -----------------------
  * Adding a server and editing a server have nearly identical form
- * semantics: name, URL, auth method, token/username/password. The only
- * differences are:
+ * semantics: name, URL, username, password. The only differences are:
  *   - Initial values (blank vs. pre-filled from the existing server)
  *   - Submit action (create vs. update)
  *   - Title + button labels
  *
  * We extract the form into this component so the two screens stay in
- * sync — any change to validation, layout, or auth-method UX is
- * automatically applied to both flows.
+ * sync — any change to validation, layout, or copy is automatically
+ * applied to both flows.
  *
  * The form is purely presentational + state-management. It receives
  * callbacks for `onSubmit` and `onTest` so the parent screen can
@@ -20,19 +19,22 @@
  * etc.). It also receives an `onCancel` so we can wire a back button
  * that just dismisses the form.
  *
- * Auth-method UX
- * --------------
- * The auth method is a SegmentedControl with two options: "bearer" and
- * "password". The bearer option shows a single token field; the
- * password option shows username + password. We never show both at
- * once, which keeps the form short and obvious.
+ * Auth: username + password only
+ * ------------------------------
+ * The form used to offer a "bearer" mode (paste a long-lived API
+ * token) and a "password" mode (username + password). The bearer
+ * mode was removed in v0.8+ because Kuma 2.x's socket.io auth
+ * only accepts JWTs, not the API Keys that the Kuma dashboard's
+ * "Settings → API Tokens" screen creates. The app logs in once
+ * with username+password, gets a JWT, and stores it for future
+ * reconnects — so the user only types the password once per install.
  *
- * In edit mode, we pre-fill the current auth kind but leave the
- * token/username/password fields blank. The user must re-enter the
- * secret to change it (a security measure — we never display the
- * existing secret). If the user submits without entering a new secret,
- * the parent's `onSubmit` receives `undefined` for the credentials
- * and can decide whether to skip the credential update.
+ * In edit mode, we pre-fill the name and URL but leave the
+ * username and password fields blank. The user must re-enter the
+ * password to change it (a security measure — we never display the
+ * existing secret). If the user submits without entering a new
+ * password, the parent's `onSubmit` receives `undefined` for the
+ * credentials and can decide whether to skip the credential update.
  */
 
 import { useEffect, useReducer } from 'react';
@@ -54,7 +56,6 @@ import {
   type ServerFormValues,
   type ServerFormSubmit,
 } from './ServerForm.helpers';
-import type { AuthMethod } from './ServerForm.types';
 
 export type { ServerFormValues, ServerFormSubmit } from './ServerForm.types';
 export { deriveCredentials } from './ServerForm.helpers';
@@ -62,7 +63,7 @@ export { deriveCredentials } from './ServerForm.helpers';
 export interface ServerFormProps {
   /** Pre-filled values for edit mode (all fields, including secrets,
    *  should be left empty by the parent — we never display secrets). */
-  initial?: Pick<Server, 'name' | 'url' | 'authKind'>;
+  initial?: Pick<Server, 'name' | 'url'>;
   /** Called with the merged values + (optionally) new credentials. */
   onSubmit: (submit: ServerFormSubmit) => Promise<void> | void;
   /** Called when the user taps "Test connection". Should not throw —
@@ -79,8 +80,6 @@ type FormState = ServerFormValues;
 type FormAction =
   | { type: 'setName'; value: string }
   | { type: 'setUrl'; value: string }
-  | { type: 'setAuthMethod'; value: AuthMethod }
-  | { type: 'setToken'; value: string }
   | { type: 'setUsername'; value: string }
   | { type: 'setPassword'; value: string }
   | { type: 'reset'; values: FormState };
@@ -89,8 +88,6 @@ function formReducer(state: FormState, action: FormAction): FormState {
   switch (action.type) {
     case 'setName':       return { ...state, name: action.value };
     case 'setUrl':        return { ...state, url: action.value };
-    case 'setAuthMethod': return { ...state, authMethod: action.value };
-    case 'setToken':      return { ...state, token: action.value };
     case 'setUsername':   return { ...state, username: action.value };
     case 'setPassword':   return { ...state, password: action.value };
     case 'reset':         return action.values;
@@ -100,8 +97,6 @@ function formReducer(state: FormState, action: FormAction): FormState {
 const initialForm: FormState = {
   name: '',
   url: '',
-  authMethod: 'bearer',
-  token: '',
   username: '',
   password: '',
 };
@@ -116,23 +111,8 @@ const FormSchema = z
       .min(1, 'url')
       .url('url')
       .refine((u) => /^https?:\/\//i.test(u), 'url'),
-    authMethod: z.enum(['bearer', 'password']),
-    token: z.string(),
-    username: z.string(),
-    password: z.string(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.authMethod === 'bearer' && data.token.trim().length === 0) {
-      ctx.addIssue({ code: 'custom', path: ['token'], message: 'token' });
-    }
-    if (data.authMethod === 'password') {
-      if (data.username.trim().length === 0) {
-        ctx.addIssue({ code: 'custom', path: ['username'], message: 'username' });
-      }
-      if (data.password.length === 0) {
-        ctx.addIssue({ code: 'custom', path: ['password'], message: 'password' });
-      }
-    }
+    username: z.string().trim().min(1, 'username'),
+    password: z.string().min(1, 'password'),
   });
 
 export function ServerForm({
@@ -145,11 +125,11 @@ export function ServerForm({
   const { surface, brand, statusTints } = useAppTheme();
 
   const startingValues: FormState = initial
-    ? { ...initialForm, name: initial.name, url: initial.url, authMethod: initial.authKind }
+    ? { ...initialForm, name: initial.name, url: initial.url }
     : initialForm;
 
   const [form, dispatch] = useReducer(formReducer, startingValues);
-  const { name, url, authMethod, token, username, password } = form;
+  const { name, url, username, password } = form;
 
   // If the parent swaps `initial` (e.g. on remount with a different
   // server id), reset our local form to match.
@@ -161,11 +141,10 @@ export function ServerForm({
           ...initialForm,
           name: initial.name,
           url: initial.url,
-          authMethod: initial.authKind,
         },
       });
     }
-  }, [initial?.name, initial?.url, initial?.authKind]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [initial?.name, initial?.url]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [testingState, dispatchUI] = useReducer(uiReducer, {
     testing: false,
@@ -249,76 +228,34 @@ export function ServerForm({
           />
         </Field>
 
-        {/* Auth method */}
-        <Field label={t('servers.add.authMethod')}>
-          <View style={[styles.segmented, { backgroundColor: surface.sunken }]}>
-            {(['bearer', 'password'] as AuthMethod[]).map((m) => (
-              <Pressable
-                key={m}
-                onPress={() => dispatch({ type: 'setAuthMethod', value: m })}
-                style={[
-                  styles.segment,
-                  authMethod === m && { backgroundColor: brand },
-                ]}>
-                <Text
-                  style={[
-                    typography.captionEmphasized,
-                    { color: authMethod === m ? 'white' : surface.text },
-                  ]}>
-                  {m === 'bearer' ? t('servers.add.bearer') : t('servers.add.password')}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+        {/* Auth: username + password (the only kind we support). */}
+        <Field label={t('servers.add.username')}>
+          <TextInput
+            value={username}
+            onChangeText={(v) => dispatch({ type: 'setUsername', value: v })}
+            placeholder="admin"
+            placeholderTextColor={surface.textSubtle}
+            style={[
+              styles.input,
+              { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text },
+            ]}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
         </Field>
-
-        {authMethod === 'bearer' ? (
-          <Field label={t('servers.add.bearerToken')} hint={t('servers.add.bearerHint')}>
-            <TextInput
-              value={token}
-              onChangeText={(v) => dispatch({ type: 'setToken', value: v })}
-              placeholder="••••••••"
-              placeholderTextColor={surface.textSubtle}
-              style={[
-                styles.input,
-                { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text },
-              ]}
-              autoCapitalize="none"
-              autoCorrect={false}
-              secureTextEntry
-            />
-          </Field>
-        ) : (
-          <>
-            <Field label={t('servers.add.username')}>
-              <TextInput
-                value={username}
-                onChangeText={(v) => dispatch({ type: 'setUsername', value: v })}
-                placeholder="admin"
-                placeholderTextColor={surface.textSubtle}
-                style={[
-                  styles.input,
-                  { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text },
-                ]}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </Field>
-            <Field label={t('servers.add.password')}>
-              <TextInput
-                value={password}
-                onChangeText={(v) => dispatch({ type: 'setPassword', value: v })}
-                placeholder="••••••••"
-                placeholderTextColor={surface.textSubtle}
-                style={[
-                  styles.input,
-                  { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text },
-                ]}
-                secureTextEntry
-              />
-            </Field>
-          </>
-        )}
+        <Field label={t('servers.add.password')} hint={t('servers.add.passwordHint')}>
+          <TextInput
+            value={password}
+            onChangeText={(v) => dispatch({ type: 'setPassword', value: v })}
+            placeholder="••••••••"
+            placeholderTextColor={surface.textSubtle}
+            style={[
+              styles.input,
+              { backgroundColor: surface.elevated, borderColor: surface.border, color: surface.text },
+            ]}
+            secureTextEntry
+          />
+        </Field>
 
         {testingState.error && (
           <View style={[styles.errorBox, { backgroundColor: statusTints.down.bg }]}>
@@ -426,18 +363,6 @@ const styles = StyleSheet.create({
     borderRadius: semanticRadius.button,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
-  },
-  segmented: {
-    flexDirection: 'row',
-    borderRadius: semanticRadius.button,
-    padding: 3,
-    gap: 3,
-  },
-  segment: {
-    flex: 1,
-    paddingVertical: spacing[2],
-    alignItems: 'center',
-    borderRadius: semanticRadius.button - 3,
   },
   errorBox: {
     padding: spacing[3],

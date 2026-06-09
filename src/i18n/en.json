@@ -33,7 +33,7 @@
       },
       "connect": {
         "title": "Add your Kuma server",
-        "body": "You'll need the URL of your self-hosted Kuma instance and a bearer token (Settings → API Tokens in Kuma)."
+        "body": "You'll need the URL of your self-hosted Kuma instance and a username + password (from your Kuma account)."
       }
     }
   },
@@ -242,11 +242,6 @@
       },
       "connection": {
         "title": "Connection",
-        "url": "URL",
-        "auth": "Auth method",
-        "bearerToken": "Bearer token",
-        "password": "Username & password",
-        "version": "Kuma version",
         "unknown": "Unknown",
         "lastConnected": "Last connected",
         "added": "Added",
@@ -279,11 +274,6 @@
       "namePlaceholder": "My Kuma",
       "url": "Server URL",
       "urlPlaceholder": "https://kuma.example.com",
-      "authMethod": "Authentication",
-      "bearer": "Bearer token (recommended)",
-      "bearerHint": "Kuma 2.0+ supports API tokens. Create one in Settings → API Keys in Kuma's dashboard.",
-      "bearerToken": "API token",
-      "password": "Username & password",
       "username": "Username",
       "password": "Password",
       "test": "Test connection",
@@ -294,7 +284,8 @@
         "authFailed": "Authentication failed",
         "missingToken": "Please enter a token",
         "outdatedKuma": "Kuma version {version} is below the minimum (2.0.0). Some features may not work."
-      }
+      },
+      "passwordHint": "Your Kuma account password. We sign in once and keep the session for next time."
     }
   },
   "notifications": {

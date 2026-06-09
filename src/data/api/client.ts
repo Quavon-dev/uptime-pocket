@@ -132,8 +132,6 @@ export class KumaClient {
       };
     }
 
-    const authPayload = this.session.applySocketAuth({});
-
     return new Promise<{ version: string; connected: boolean; error?: string }>((resolve) => {
       let settled = false;
       const finish = (result: { version: string; connected: boolean; error?: string }) => {
@@ -148,10 +146,14 @@ export class KumaClient {
       };
 
       // Polling first for RN reliability, auto-upgrade to WebSocket.
+      //
+      // We don't pass `auth: { token }` here. Kuma 2.x ignores the
+      // socket.io handshake `auth` field — it expects the token to
+      // be sent via the `loginByToken` event after it emits
+      // `loginRequired`. The handler below does that.
       const socket = io(this.server.url, {
         transports: ['polling', 'websocket'],
         upgrade: true,
-        auth: authPayload,
         reconnection: false,
         timeout: 8_000,
       });
@@ -241,16 +243,12 @@ export class KumaClient {
   }
 
   async login(): Promise<boolean> {
-    if (this.session.kind === 'bearer') return true; // no login needed
-    if (this.session.refresh) {
-      try {
-        await this.session.refresh();
-        return true;
-      } catch {
-        return false;
-      }
+    try {
+      await this.session.refresh();
+      return true;
+    } catch {
+      return false;
     }
-    return false;
   }
 
   /** Fetch all monitors for this server */

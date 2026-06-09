@@ -4,6 +4,11 @@
  * We mock expo-secure-store in jest.setup.ts (an in-memory map), so
  * these tests exercise the real wrapper code: serialization, namespacing,
  * deserialization validation.
+ *
+ * As of v0.8+ only the `password` auth strategy exists (the
+ * bearer/API-key mode was removed — Kuma 2.x doesn't accept API
+ * keys for socket auth, only JWTs obtained by logging in with
+ * username+password).
  */
 
 import {
@@ -20,20 +25,6 @@ describe('credentials', () => {
     // Clear any leftover entries from other tests.
     // The mock's __clearStore is invoked per-test via beforeEach.
     jest.clearAllMocks();
-  });
-
-  describe('bearer strategy', () => {
-    it('round-trips a bearer token', async () => {
-      await saveCredentials(SERVER_ID, { kind: 'bearer', token: 'tk_abc123' });
-      const loaded = await loadCredentials(SERVER_ID);
-      expect(loaded).toEqual({ kind: 'bearer', token: 'tk_abc123' });
-    });
-
-    it('rejects an empty bearer token on write', async () => {
-      await expect(
-        saveCredentials(SERVER_ID, { kind: 'bearer', token: '' })
-      ).rejects.toThrow();
-    });
   });
 
   describe('password strategy', () => {
@@ -72,23 +63,37 @@ describe('credentials', () => {
 
   describe('namespacing', () => {
     it('keeps separate credentials per server id', async () => {
-      await saveCredentials('srv_a', { kind: 'bearer', token: 'tk_a' });
-      await saveCredentials('srv_b', { kind: 'bearer', token: 'tk_b' });
+      await saveCredentials('srv_a', {
+        kind: 'password',
+        username: 'a',
+        password: 'pw_a',
+      });
+      await saveCredentials('srv_b', {
+        kind: 'password',
+        username: 'b',
+        password: 'pw_b',
+      });
 
       expect(await loadCredentials('srv_a')).toEqual({
-        kind: 'bearer',
-        token: 'tk_a',
+        kind: 'password',
+        username: 'a',
+        password: 'pw_a',
       });
       expect(await loadCredentials('srv_b')).toEqual({
-        kind: 'bearer',
-        token: 'tk_b',
+        kind: 'password',
+        username: 'b',
+        password: 'pw_b',
       });
     });
   });
 
   describe('deleteCredentials', () => {
     it('removes the entry', async () => {
-      await saveCredentials(SERVER_ID, { kind: 'bearer', token: 'tk_x' });
+      await saveCredentials(SERVER_ID, {
+        kind: 'password',
+        username: 'x',
+        password: 'pw_x',
+      });
       await deleteCredentials(SERVER_ID);
       expect(await loadCredentials(SERVER_ID)).toBeNull();
     });

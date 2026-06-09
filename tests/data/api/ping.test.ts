@@ -14,7 +14,7 @@
  */
 
 import { KumaClient } from '@/data/api/client';
-import { BearerSession } from '@/data/api/auth';
+import { PasswordSession } from '@/data/api/auth';
 import type { Server } from '@/domain/models';
 
 function makeServer(url = 'https://kuma.example.com'): Server {
@@ -22,7 +22,7 @@ function makeServer(url = 'https://kuma.example.com'): Server {
     id: 'test',
     name: 'Test',
     url,
-    authKind: 'bearer',
+    authKind: 'password',
     connected: false,
     notificationMode: 'direct',
     createdAt: new Date(),
@@ -30,7 +30,10 @@ function makeServer(url = 'https://kuma.example.com'): Server {
 }
 
 function makeClient(): KumaClient {
-  return new KumaClient(makeServer(), new BearerSession('tok_test'));
+  return new KumaClient(
+    makeServer(),
+    new PasswordSession('u', 'p', '', () => Promise.reject(new Error('test'))),
+  );
 }
 
 // ---- Path 1: REST happy path (Kuma 2.0–2.2) --------------------------

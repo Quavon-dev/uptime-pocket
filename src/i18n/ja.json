@@ -33,7 +33,7 @@
       },
       "connect": {
         "title": "Kuma サーバーを追加",
-        "body": "セルフホストの Kuma インスタンスの URL とベアラートークン（Kuma の「設定 → API トークン」）が必要です。"
+        "body": "セルフホストの Kuma インスタンスの URL と、Kuma アカウントのユーザー名 + パスワードが必要です。"
       }
     }
   },
@@ -242,11 +242,6 @@
       },
       "connection": {
         "title": "接続",
-        "url": "URL",
-        "auth": "認証方式",
-        "bearerToken": "ベアラートークン",
-        "password": "ユーザー名とパスワード",
-        "version": "Kuma のバージョン",
         "unknown": "不明",
         "lastConnected": "最終接続",
         "added": "追加日",
@@ -279,13 +274,8 @@
       "namePlaceholder": "マイ Kuma",
       "url": "サーバー URL",
       "urlPlaceholder": "https://kuma.example.com",
-      "authMethod": "認証",
-      "bearer": "ベアラートークン(推奨)",
-      "bearerHint": "Kuma 2.0+ は API トークンに対応しています。Kuma ダッシュボードの「設定 → API キー」で作成してください。",
-      "bearerToken": "API トークン",
-      "password": "ユーザー名とパスワード",
-      "username": "ユーザー名",
       "password": "パスワード",
+      "username": "ユーザー名",
       "test": "接続テスト",
       "save": "サーバーを保存",
       "error": {
@@ -294,7 +284,8 @@
         "authFailed": "認証に失敗しました",
         "missingToken": "トークンを入力してください",
         "outdatedKuma": "Kuma バージョン {version} は最小要件 (2.0.0) を下回っています。一部機能が動作しない可能性があります。"
-      }
+      },
+      "passwordHint": "Kuma アカウントのパスワード。一度サインインすれば、次回のためにセッションを保持します。"
     }
   },
   "notifications": {

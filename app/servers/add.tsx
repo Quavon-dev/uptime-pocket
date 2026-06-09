@@ -25,7 +25,7 @@ import { t, tn } from '@/i18n';
 import { useServers } from '@/data/store/servers';
 import { useSettings } from '@/data/store/settings';
 import { createClient } from '@/data/api/client';
-import { BearerSession, PasswordSession } from '@/data/api/auth';
+import { PasswordSession } from '@/data/api/auth';
 import { thisIsOlder } from '@/lib/version';
 import type { AuthStrategy } from '@/domain/models';
 
@@ -40,17 +40,24 @@ export default function AddServerScreen() {
       return t('servers.add.error.invalidUrl');
     }
     try {
+      // We can't fully log in here without opening a real socket (and
+      // potentially storing the JWT somewhere) — that would defeat
+      // the "test before save" purpose. Instead we use a throwaway
+      // loginFn that will fail loudly if the test path tries to
+      // refresh; the actual login happens after the user saves.
       const throwawayLogin: () => Promise<string> = () =>
         Promise.reject(new Error('Test connection never refreshes auth'));
-      const session =
-        values.authMethod === 'bearer'
-          ? new BearerSession(values.token || 'placeholder')
-          : new PasswordSession(values.username, values.password, '', throwawayLogin);
+      const session = new PasswordSession(
+        values.username,
+        values.password,
+        '',
+        throwawayLogin,
+      );
       const server = {
         id: 'temp',
         name: values.name || 'Test',
         url: values.url,
-        authKind: values.authMethod,
+        authKind: 'password' as const,
         connected: false,
         notificationMode: 'direct' as const,
         createdAt: new Date(),
@@ -78,15 +85,27 @@ export default function AddServerScreen() {
     const trimmedUrl = values.url.trim().replace(/\/+$/, '');
 
     // Best-effort version probe. The /api/status endpoint doesn't
-    // require auth on Kuma 2.0+, so a placeholder bearer is enough.
+    // require auth on Kuma 2.0+, so we can use a no-op placeholder
+    // password session — pingOverSocket will open the socket and
+    // emit loginByToken with an empty token, which Kuma rejects
+    // with authInvalidToken, but we don't care: the *url* is what
+    // we're probing (it's reachable + what version is it). The
+    // version comes back in the first `info` event before auth.
     let detectedVersion: string | null = null;
     try {
-      const probeSession = new BearerSession(values.token || 'probe');
+      const probeLogin: () => Promise<string> = () =>
+        Promise.reject(new Error('probe never refreshes'));
+      const probeSession = new PasswordSession(
+        values.username,
+        values.password,
+        '',
+        probeLogin,
+      );
       const probeServer = {
         id: 'probe',
         name: values.name,
         url: trimmedUrl,
-        authKind: 'bearer' as const,
+        authKind: 'password' as const,
         connected: false,
         notificationMode: 'direct' as const,
         createdAt: new Date(),

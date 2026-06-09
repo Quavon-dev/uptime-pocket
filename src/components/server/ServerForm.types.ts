@@ -9,13 +9,9 @@
 
 import type { AuthStrategy } from '@/domain/models';
 
-export type AuthMethod = 'bearer' | 'password';
-
 export interface ServerFormValues {
   name: string;
   url: string;
-  authMethod: AuthMethod;
-  token: string;
   username: string;
   password: string;
 }

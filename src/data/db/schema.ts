@@ -18,7 +18,7 @@
  * - `schema_version` — tracks which migrations have been applied.
  * - `servers` — server metadata (name, url, kind, notification mode,
  *   detected kuma version, last connected at, created at). NOTE: secrets
- *   (bearer tokens, passwords) are NEVER stored here — they live in
+ *   (usernames + passwords) are NEVER stored here — they live in
  *   expo-secure-store (iOS Keychain / Android Keystore), keyed by id.
  *
  * Future tables (Phase 3+)
@@ -47,7 +47,7 @@
  * The actual SQL for each migration lives in `migrate.ts` (MIGRATIONS),
  * NOT here. This file just declares the version number.
  */
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 /**
  * Column name → row field mapping helpers. Centralized so we don't have

@@ -52,8 +52,8 @@ describe('Kuma auth handshake — emits loginByToken on loginRequired', () => {
 
     it('reads the token from session.currentToken', () => {
       // We want the token to come from the session abstraction, not
-      // from a hardcoded constant. This makes both bearer and
-      // password sessions work uniformly.
+      // from a hardcoded constant. This way the password session's
+      // cached JWT is the single source of truth for auth.
       expect(source).toMatch(/this\.session\.currentToken/);
     });
   });
@@ -87,17 +87,23 @@ describe('Kuma auth handshake — emits loginByToken on loginRequired', () => {
   describe('src/data/api/auth.ts (session contract)', () => {
     const source = readSrc('src/data/api/auth.ts');
 
-    it('exposes currentToken on both BearerSession and PasswordSession', () => {
-      // BearerSession needs a getter (token is private).
-      expect(source).toMatch(/class BearerSession[\s\S]*?get currentToken/);
-      // PasswordSession already had it; guard against accidental removal.
+    it('exposes currentToken on PasswordSession', () => {
+      // PasswordSession always had it; guard against accidental removal.
       expect(source).toMatch(/class PasswordSession[\s\S]*?get currentToken/);
     });
 
     it('declares currentToken on the AuthSession interface', () => {
-      // Forces both classes to implement it (TS will fail to compile
-      // if either misses the getter).
+      // Forces PasswordSession (the only remaining class) to
+      // implement it (TS will fail to compile if it misses the
+      // getter).
       expect(source).toMatch(/interface AuthSession[\s\S]*?readonly currentToken: string/);
+    });
+
+    it('does NOT export BearerSession (regression: was removed in v0.8)', () => {
+      // Kuma 2.x's socket.io auth only accepts JWTs, not API keys.
+      // BearerSession was removed so the UI can't offer an option
+      // that just hangs the connection on authInvalidToken.
+      expect(source).not.toMatch(/export class BearerSession/);
     });
   });
 });

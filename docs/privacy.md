@@ -18,7 +18,7 @@ we don't sell anything.**
 
 - The App talks **directly to Uptime Kuma instances you configure**. We do
   not see, proxy, log, or store any of that traffic.
-- Server credentials (bearer tokens, usernames, passwords) are stored **only
+- Server credentials (Kuma username + password) are stored **only**
   on your device**, in the platform's secure storage (iOS Keychain on Apple
   devices, Android Keystore on Android devices). They are never sent to us.
 - If you opt in to push notifications, a registration token is stored by
@@ -39,7 +39,7 @@ uninstall the App.
 | Data | Where | Why |
 | --- | --- | --- |
 | Server list (name, URL, kind, notification mode) | Local SQLite | To render the Servers tab and reconnect automatically. |
-| Server credentials (bearer tokens, passwords) | iOS Keychain / Android Keystore (expo-secure-store) | So the App can authenticate to your Kuma instance without you re-entering the password every time. |
+| Server credentials (Kuma username + password) | iOS Keychain / Android Keystore (expo-secure-store) | So the App can authenticate to your Kuma instance without you re-entering the password every time. |
 | App settings (theme, accent color, quiet hours, language, biometric lock, push notification mode) | Local SQLite | To remember your preferences. |
 | Recent monitor list (last 100 heartbeats per monitor) | Local SQLite | So the home tab still shows data when you are offline. |
 | Push token (APNs or FCM) | Local SQLite + the platform's push service | So the platform can deliver notifications to your device. |

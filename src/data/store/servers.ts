@@ -5,8 +5,8 @@
  * (`src/data/db/`), secrets in expo-secure-store, and the React tree
  * subscribes to a Zustand store that mirrors the SQLite rows.
  *
- * Secrets (bearer tokens, passwords) are NEVER in the in-memory store —
- * the `auth` field on each server only carries `{ kind: 'bearer' | 'password' }`.
+ * Secrets (usernames + passwords) are NEVER in the in-memory store —
+ * the `auth` field on each server only carries `{ kind: 'password' }`.
  * To actually connect to Kuma, callers must `loadCredentials(serverId)`
  * to fetch the real auth from SecureStore.
  *

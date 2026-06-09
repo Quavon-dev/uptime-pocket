@@ -7,6 +7,19 @@ Kuma protocol, MINOR is a new feature, PATCH is a bugfix.
 
 ## [Unreleased]
 
+### Changed
+- **Auth: bearer-token option removed.** The form previously offered
+  "API token" as a sign-in method, but Kuma 2.x's socket.io
+  `loginByToken` only accepts JWTs (not the API Keys its own
+  "Settings → API Keys" dashboard creates), so pasting an API key
+  there caused the connection to hang on `authInvalidToken`. The
+  sign-in form is now username + password only; the app logs in
+  once with the password, gets a JWT from Kuma, and caches it
+  in the platform secure store for subsequent reconnects. The
+  `BearerSession` class and the `authKind: 'bearer'` schema value
+  are gone (DB v7 migration relaxes the old CHECK constraint).
+  Docs: `docs/auth.md`.
+
 ### Added
 - v0.6.0 work-in-progress: D6 privacy policy, D7 store
   metadata, D2 Sentry, C1/C2 widgets. See ROADMAP.md.

@@ -33,7 +33,7 @@
       },
       "connect": {
         "title": "Ajoute ton serveur Kuma",
-        "body": "Tu auras besoin de l'URL de ton instance Kuma auto-hébergée et d'un jeton bearer (Réglages → Jetons API dans Kuma)."
+        "body": "Tu auras besoin de l'URL de ton instance Kuma auto-hébergée et d'un identifiant + mot de passe (depuis ton compte Kuma)."
       }
     }
   },
@@ -242,11 +242,6 @@
       },
       "connection": {
         "title": "Connexion",
-        "url": "URL",
-        "auth": "Méthode d'authentification",
-        "bearerToken": "Jeton bearer",
-        "password": "Identifiant & mot de passe",
-        "version": "Version de Kuma",
         "unknown": "Inconnue",
         "lastConnected": "Dernière connexion",
         "added": "Ajouté",
@@ -279,13 +274,8 @@
       "namePlaceholder": "Mon Kuma",
       "url": "URL du serveur",
       "urlPlaceholder": "https://kuma.example.com",
-      "authMethod": "Authentification",
-      "bearer": "Jeton bearer (recommandé)",
-      "bearerHint": "Kuma 2.0+ prend en charge les jetons API. Crée-en un dans Réglages → Clés API du tableau de bord Kuma.",
-      "bearerToken": "Jeton API",
-      "password": "Identifiant & mot de passe",
-      "username": "Identifiant",
       "password": "Mot de passe",
+      "username": "Identifiant",
       "test": "Tester la connexion",
       "save": "Enregistrer le serveur",
       "error": {
@@ -294,7 +284,8 @@
         "authFailed": "Échec de l'authentification",
         "missingToken": "Veuillez entrer un jeton",
         "outdatedKuma": "La version {version} de Kuma est inférieure au minimum (2.0.0). Certaines fonctionnalités peuvent ne pas fonctionner."
-      }
+      },
+      "passwordHint": "Le mot de passe de ton compte Kuma. On se connecte une fois et on garde la session pour la prochaine fois."
     }
   },
   "notifications": {

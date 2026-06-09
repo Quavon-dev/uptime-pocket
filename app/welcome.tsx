@@ -44,7 +44,8 @@ import {
   Shield,
   Zap,
 } from 'lucide-react-native';
-import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
+import { spacing, typography, useAppTheme } from '@/theme';
+import { Button } from '@/components/ui/Button';
 import { t } from '@/i18n';
 import { useSettings } from '@/data/store/settings';
 
@@ -203,23 +204,19 @@ export default function WelcomeScreen() {
           styles.bottom,
           { paddingBottom: insets.bottom + spacing[4] },
         ]}>
-        <Pressable
-          onPress={goNext}
-          style={({ pressed }) => [
-            styles.primaryBtn,
-            { backgroundColor: brand, opacity: pressed ? 0.85 : 1 },
-          ]}>
-          <Text style={[typography.bodyEmphasized, { color: 'white' }]}>
-            {index >= SCREENS.length - 1
+        <Button
+          label={
+            index >= SCREENS.length - 1
               ? t('onboarding.cta')
-              : t('common.continue')}
-          </Text>
-          {index >= SCREENS.length - 1 ? (
-            <ChevronRight size={18} color="white" strokeWidth={2} />
-          ) : (
-            <ChevronRight size={18} color="white" strokeWidth={2} />
-          )}
-        </Pressable>
+              : t('common.continue')
+          }
+          onPress={goNext}
+          variant="primary"
+          size="lg"
+          fullWidth
+          icon={<ChevronRight size={18} color="white" strokeWidth={2.5} />}
+          iconPosition="right"
+        />
 
         <Text
           style={[
@@ -278,14 +275,6 @@ const styles = StyleSheet.create({
   bottom: {
     paddingHorizontal: spacing[4],
     gap: spacing[2],
-  },
-  primaryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[2],
-    paddingVertical: spacing[4],
-    borderRadius: semanticRadius.button,
   },
   hint: {
     textAlign: 'center',

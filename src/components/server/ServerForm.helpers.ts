@@ -14,22 +14,17 @@ export type { ServerFormValues, ServerFormSubmit } from './ServerForm.types';
 /**
  * Decide whether the form contains a new secret the user wants to save.
  *
- * Returns `undefined` when the secret field(s) for the chosen auth
- * method are blank — this signals to the parent screen that the
- * existing Keychain entry should be preserved.
+ * Returns `undefined` when the username or password is blank — this
+ * signals to the parent screen that the existing Keychain entry
+ * should be preserved.
  *
- * Trims whitespace from bearer tokens and password usernames, but
- * does NOT trim passwords (trailing whitespace is legal in some
- * passwords and we shouldn't be opinionated about it).
+ * Trims whitespace from usernames, but does NOT trim passwords
+ * (trailing whitespace is legal in some passwords and we shouldn't
+ * be opinionated about it).
  */
 export function deriveCredentials(
   values: ServerFormValues
 ): AuthStrategy | undefined {
-  if (values.authMethod === 'bearer') {
-    if (values.token.trim().length === 0) return undefined;
-    return { kind: 'bearer', token: values.token.trim() };
-  }
-  // password
   if (values.username.trim().length === 0 || values.password.length === 0) {
     return undefined;
   }

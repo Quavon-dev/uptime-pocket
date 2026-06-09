@@ -35,7 +35,7 @@ interface ServerRow {
   id: string;
   name: string;
   url: string;
-  auth_kind: 'bearer' | 'password';
+  auth_kind: 'password';
   notification_mode: NotificationMode;
   kuma_version: string | null;
   connected: number; // 0 | 1
@@ -49,7 +49,7 @@ function rowToServer(row: ServerRow): Server {
     id: row.id,
     name: row.name,
     url: row.url,
-    authKind: row.auth_kind,
+    authKind: 'password',
     notificationMode: row.notification_mode,
     kumaVersion: row.kuma_version ?? undefined,
     connected: row.connected === 1,

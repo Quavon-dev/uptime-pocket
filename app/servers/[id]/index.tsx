@@ -194,11 +194,7 @@ export default function ServerDetailScreen() {
           <Row label={t('servers.detail.connection.url')} value={server.url} />
           <Row
             label={t('servers.detail.connection.auth')}
-            value={
-              server.authKind === 'bearer'
-                ? t('servers.detail.connection.bearerToken')
-                : t('servers.detail.connection.password')
-            }
+            value={t('servers.detail.connection.password')}
           />
           <Row
             label={t('servers.detail.connection.version')}

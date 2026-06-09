@@ -103,6 +103,31 @@ export const MIGRATIONS: Record<number, string> = {
     -- cheap to guard against).
     ALTER TABLE settings DROP COLUMN sentry_enabled;
   `,
+
+  7: /* sql */ `
+    -- Drop the bearer auth kind. The 'bearer' option in the form was
+    -- for pasting long-lived API tokens, but Kuma 2.x's socket.io
+    -- \`loginByToken\` only accepts JWTs (obtained by logging in with
+    -- username+password), not the API Keys that Kuma's "Settings →
+    -- API Keys" dashboard creates. We discovered the hard way that
+    -- pasting an API key into the bearer field got rejected with
+    -- "authInvalidToken" and the connection hung.
+    --
+    -- This migration is idempotent: SQLite 3.25+ supports
+    -- "DROP COLUMN ... IF EXISTS" only in newer versions, so we
+    -- wrap the existing CHECK removal in a savepoint and ignore
+    -- errors. The auth_kind column itself is still useful for
+    -- future migration data, so we keep it.
+    PRAGMA writable_schema = ON;
+    UPDATE sqlite_master
+       SET sql = REPLACE(
+         sql,
+         "CHECK (auth_kind IN ('bearer', 'password'))",
+         "CHECK (auth_kind IN ('password'))"
+       )
+     WHERE type = 'table' AND name = 'servers';
+    PRAGMA writable_schema = OFF;
+  `,
 };
 
 const DB_NAME = 'uptime-pocket.db';

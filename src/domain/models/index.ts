@@ -70,11 +70,18 @@ export interface Server {
   url: string; // base URL of Kuma instance
   /**
    * The kind of authentication this server uses.
-   * The actual credentials (token / password) are stored in
+   * The actual credentials (username + password) are stored in
    * expo-secure-store, keyed by server id — see
    * `src/data/secure/credentials.ts`.
+   *
+   * As of v0.8+ the only auth kind is `password` — Kuma 2.x's
+   * socket.io `loginByToken` event only accepts JWTs (which the app
+   * obtains by logging in once with username+password), not the
+   * API Keys that the Kuma dashboard's "Settings → API Tokens"
+   * screen creates. So the form has no choice; you sign in with
+   * username+password and we keep the JWT for future reconnects.
    */
-  authKind: 'bearer' | 'password';
+  authKind: 'password';
   kumaVersion?: string; // detected on connect
   connected: boolean;
   lastConnectedAt?: Date;
@@ -82,9 +89,11 @@ export interface Server {
   createdAt: Date;
 }
 
-export type AuthStrategy =
-  | { kind: 'bearer'; token: string }
-  | { kind: 'password'; username: string; password: string };
+export type AuthStrategy = {
+  kind: 'password';
+  username: string;
+  password: string;
+};
 
 export type NotificationMode = 'none' | 'direct' | 'relay';
 

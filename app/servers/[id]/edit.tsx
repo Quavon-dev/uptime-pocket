@@ -2,26 +2,13 @@
  * Edit Server screen.
  *
  * Reuses the shared <ServerForm /> component with the existing
- * server's metadata pre-filled. The form is identical to Add except
- * the title, button label, and submit behavior differ.
+ * server's name + URL pre-filled. Password fields are blank (we
+ * never display secrets) and submitting without re-typing a password
+ * leaves the existing Keychain entry alone.
  *
- * Security
- * --------
- * The Keychain entry for the server is NOT decrypted and pre-filled
- * into the form. The user must re-enter the secret to change it. If
- * the form is submitted without a new secret, the existing Keychain
- * entry is preserved (updateServer is called with credentials=undefined).
- *
- * This is the safer default for two reasons:
- *   1. A shoulder-surfer can't glance at the form to see the token.
- *   2. We never have to put the secret into React state where it
- *      could be logged or rendered by a screen recorder.
- *
- * Version probe
- * -------------
- * We re-probe /api/status on save so the detected version field
- * stays in sync with the actual server (e.g. if the user pointed us
- * at a different Kuma instance with the same name).
+ * As of v0.8+ the form is password-only — the bearer/API-key
+ * option was removed because Kuma 2.x doesn't accept API keys for
+ * socket auth.
  */
 
 import { View } from 'react-native';
@@ -35,7 +22,7 @@ import { spacing, useAppTheme } from '@/theme';
 import { t, tn } from '@/i18n';
 import { useServers } from '@/data/store/servers';
 import { createClient } from '@/data/api/client';
-import { BearerSession, PasswordSession } from '@/data/api/auth';
+import { PasswordSession } from '@/data/api/auth';
 import { thisIsOlder } from '@/lib/version';
 import type { AuthStrategy } from '@/domain/models';
 
@@ -54,7 +41,6 @@ export default function EditServerScreen() {
     ? {
         name: server.name,
         url: server.url,
-        authKind: server.authKind,
       }
     : undefined;
 
@@ -62,22 +48,20 @@ export default function EditServerScreen() {
     if (!server) return t('servers.detail.notFound.title');
     if (!values.url.trim()) return t('servers.add.error.invalidUrl');
     try {
-      // Use the new token/credentials if the user typed any, otherwise
-      // fall back to a placeholder bearer (probe-only path).
+      // Use the new credentials if the user typed any, otherwise
+      // fall back to a no-op probe session.
       const newCreds = deriveForTest(values);
-      const session =
-        newCreds?.kind === 'password'
-          ? new PasswordSession(newCreds.username, newCreds.password, '', () =>
-              Promise.reject(new Error('test')),
-            )
-          : new BearerSession(
-              newCreds?.kind === 'bearer' ? newCreds.token : 'probe',
-            );
+      const session = new PasswordSession(
+        newCreds?.username ?? 'probe-user',
+        newCreds?.password ?? 'probe-pass',
+        '',
+        () => Promise.reject(new Error('test')),
+      );
       const probeServer = {
         id: server.id,
         name: values.name || server.name,
         url: values.url,
-        authKind: newCreds?.kind ?? server.authKind,
+        authKind: 'password' as const,
         connected: false,
         notificationMode: 'direct' as const,
         createdAt: server.createdAt,
@@ -109,10 +93,6 @@ export default function EditServerScreen() {
       {
         name: values.name.trim(),
         url: trimmedUrl,
-        // If the user changed the auth method but didn't type a new
-        // secret, keep the existing kind. The credentials we pass are
-        // undefined so the Keychain entry is left alone.
-        authKind: credentials?.kind ?? server.authKind,
       },
       credentials, // may be undefined - updateServer preserves the existing entry
     );
@@ -144,16 +124,13 @@ export default function EditServerScreen() {
 }
 
 /** Mirror the ServerForm's deriveCredentials logic for the test path. */
-function deriveForTest(values: ServerFormValues): AuthStrategy | undefined {
-  if (values.authMethod === 'bearer') {
-    if (values.token.trim().length === 0) return undefined;
-    return { kind: 'bearer', token: values.token.trim() };
-  }
+function deriveForTest(
+  values: ServerFormValues
+): { username: string; password: string } | undefined {
   if (values.username.trim().length === 0 || values.password.length === 0) {
     return undefined;
   }
   return {
-    kind: 'password',
     username: values.username.trim(),
     password: values.password,
   };

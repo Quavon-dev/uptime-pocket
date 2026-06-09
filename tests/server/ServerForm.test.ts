@@ -3,9 +3,9 @@
  *
  * The full form is a stack of TextInputs whose behavior is hard to
  * snapshot cleanly without react-native-testing-library. We test the
- * two pure functions that drive its logic: the Zod-derived
- * `deriveCredentials()` (decides whether the form has a fresh secret)
- * and the version compare helper.
+ * pure function that drives its logic: the Zod-derived
+ * `deriveCredentials()` (decides whether the form has a fresh secret).
+ * The version compare helper is also covered.
  */
 
 import {
@@ -17,44 +17,26 @@ import { thisIsOlder, parseVersion } from '@/lib/version';
 const baseValues: ServerFormValues = {
   name: 'My Kuma',
   url: 'https://kuma.example.com',
-  authMethod: 'bearer',
-  token: '',
   username: '',
   password: '',
 };
 
 describe('deriveCredentials()', () => {
-  it('returns undefined for bearer with blank token', () => {
-    expect(deriveCredentials({ ...baseValues, authMethod: 'bearer', token: '' })).toBeUndefined();
-    expect(deriveCredentials({ ...baseValues, authMethod: 'bearer', token: '   ' })).toBeUndefined();
-  });
-
-  it('returns a bearer credential when token is non-empty', () => {
-    const c = deriveCredentials({ ...baseValues, authMethod: 'bearer', token: 'abc' });
-    expect(c).toEqual({ kind: 'bearer', token: 'abc' });
-  });
-
-  it('trims whitespace from bearer token', () => {
-    const c = deriveCredentials({ ...baseValues, authMethod: 'bearer', token: '  abc  ' });
-    expect(c).toEqual({ kind: 'bearer', token: 'abc' });
-  });
-
   it('returns undefined for password with blank username or password', () => {
     expect(
-      deriveCredentials({ ...baseValues, authMethod: 'password', username: '', password: 'pw' })
+      deriveCredentials({ ...baseValues, username: '', password: 'pw' })
     ).toBeUndefined();
     expect(
-      deriveCredentials({ ...baseValues, authMethod: 'password', username: 'admin', password: '' })
+      deriveCredentials({ ...baseValues, username: 'admin', password: '' })
     ).toBeUndefined();
     expect(
-      deriveCredentials({ ...baseValues, authMethod: 'password', username: '   ', password: 'pw' })
+      deriveCredentials({ ...baseValues, username: '   ', password: 'pw' })
     ).toBeUndefined();
   });
 
   it('returns a password credential when both fields are present', () => {
     const c = deriveCredentials({
       ...baseValues,
-      authMethod: 'password',
       username: 'admin',
       password: 'hunter2',
     });
@@ -64,7 +46,6 @@ describe('deriveCredentials()', () => {
   it('trims whitespace from password username but not password', () => {
     const c = deriveCredentials({
       ...baseValues,
-      authMethod: 'password',
       username: '  admin  ',
       password: 'hunter2',
     });

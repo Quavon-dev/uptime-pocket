@@ -1,12 +1,6 @@
 /**
  * Secure credential storage for Kuma servers.
  *
- * Where credentials live
- * ----------------------
- * Server metadata (name, url, kind, mode) is in SQLite
- * (see `src/data/db/`). Secrets (bearer tokens, passwords) are NEVER
- * in SQLite — they live here, in `expo-secure-store`, which uses:
- *
  *   - iOS:     Keychain Services
  *   - Android: AndroidKeyStore (Keystore)
  *   - Web:     localStorage with a clear warning (SecureStore is
@@ -36,14 +30,11 @@ import type { AuthStrategy } from '@/domain/models';
 const KEY_PREFIX = 'uptime-pocket.cred.';
 
 /** Auth strategy as serialized in SecureStore (no functions, no Date). */
-const AuthStrategySchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('bearer'), token: z.string().min(1) }),
-  z.object({
-    kind: z.literal('password'),
-    username: z.string().min(1),
-    password: z.string().min(1),
-  }),
-]);
+const AuthStrategySchema = z.object({
+  kind: z.literal('password'),
+  username: z.string().min(1),
+  password: z.string().min(1),
+});
 
 /**
  * Persist credentials for a server, replacing any previous entry.

@@ -17,11 +17,12 @@
  *
  *   1. Read credentials from SecureStore.
  *   2. Open a raw socket.io connection (no auth).
- *   3. For password auth: `emit('login', {username, password})` to get
- *      a JWT. (Kuma 2.3+ has no REST login endpoint.)
- *   4. For bearer auth: include the token in the socket auth payload.
- *   5. Build the `AuthSession` with the JWT, attach event handlers.
- *   6. Bridge socket events into the Zustand stores.
+ *   3. `emit('login', {username, password})` to get a JWT.
+ *      (Kuma 2.3+ has no REST login endpoint, and the only auth method
+ *      Kuma's `loginByToken` accepts is a JWT, not the API Keys its own
+ *      "Settings → API Keys" dashboard creates.)
+ *   4. Build the `AuthSession` with the JWT, attach event handlers.
+ *   5. Bridge socket events into the Zustand stores.
  *
  * Events from the socket are translated into mutations on the
  * `useMonitors` Zustand store. The connection status is mirrored into
@@ -61,10 +62,14 @@ export class KumaConnectionManager {
    * can stub it (the real `io()` call would try to reach a network
    * endpoint and fail in the test env).
    */
-  openRawSocket(url: string, auth: Record<string, unknown>): Socket {
+  openRawSocket(url: string): Socket {
+    // Polling first for RN reliability, then upgrade to WebSocket.
+    // We do NOT pass `auth: { token }` — Kuma 2.x ignores that
+    // field and instead expects us to emit `login` over the open
+    // socket. The caller does that.
     return io(url, {
-      transports: ['websocket'],
-      auth,
+      transports: ['polling', 'websocket'],
+      upgrade: true,
       reconnection: false,
       timeout: 10_000,
     });
@@ -98,26 +103,21 @@ export class KumaConnectionManager {
         );
       }
 
-      // Step 1: open a raw socket. For password auth we don't know the
-      // JWT yet, so we connect without auth and emit the login later.
-      // For bearer auth we put the token straight in the auth payload.
-      const initialAuthPayload: Record<string, unknown> =
-        auth.kind === 'bearer' ? { auth: { token: auth.token } } : {};
-      const rawSocket: Socket = this.openRawSocket(server.url, initialAuthPayload);
+      // Step 1: open a raw socket and do the password login handshake
+      // to get a JWT. Kuma 2.x has no REST login endpoint, so this
+      // socket is throwaway — we just need the token from the ack.
+      //
+      // Note: we don't pass `auth: { token }` in the handshake because
+      // Kuma ignores it. The login happens via `socket.emit('login', ...)`.
+      const rawSocket: Socket = this.openRawSocket(server.url);
 
-      // Wait for connect, then run the login handshake.
       const jwt: string = await new Promise<string>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          rawSocket.off('connect', onConnect);
+          reject(new Error('Kuma socket login timed out after 10s'));
+        }, 10_000);
         const onConnect = () => {
           rawSocket.off('connect_error', onErr);
-          if (auth.kind === 'bearer') {
-            resolve(auth.token);
-            return;
-          }
-          // Password: do the login handshake over the open socket.
-          const timeout = setTimeout(() => {
-            rawSocket.off('connect', onConnect);
-            reject(new Error('Kuma socket login timed out after 10s'));
-          }, 10_000);
           rawSocket.emit('login', { username: auth.username, password: auth.password }, (res: any) => {
             clearTimeout(timeout);
             if (res && res.ok && typeof res.token === 'string') {
@@ -128,6 +128,7 @@ export class KumaConnectionManager {
           });
         };
         const onErr = (err: Error) => {
+          clearTimeout(timeout);
           rawSocket.off('connect', onConnect);
           reject(err);
         };
@@ -136,20 +137,19 @@ export class KumaConnectionManager {
       });
 
       // Step 2: build the session with the JWT.
-      // For password sessions, the manager provides a `loginFn` so
-      // the session can re-issue the JWT later (rare; only when the
-      // JWT's `exp` claim is past).
+      // The session exposes `refresh()` which re-runs the login if
+      // the JWT expires, so subsequent reconnects don't need a
+      // password.
       const loginFn = buildSocketLogin(rawSocket);
-      const strategy =
-        auth.kind === 'bearer'
-          ? ({ kind: 'bearer' as const, token: auth.token })
-          : ({ kind: 'password' as const, username: auth.username, password: auth.password });
-      const session: AuthSession = createSession(strategy, server.url, loginFn);
-      // Splice the freshly-issued JWT into password sessions so
-      // applyHeaders / applySocketAuth have something to send.
-      if (session.kind === 'password') {
-        // PasswordSession's internals are private. Reach in via `as unknown`
-        // to set the post-login JWT.
+      const session: AuthSession = createSession(
+        { kind: 'password', username: auth.username, password: auth.password },
+        server.url,
+        loginFn,
+      );
+      // Splice the freshly-issued JWT into the password session so
+      // applyHeaders / currentToken have something to send. The
+      // session's internals are private; reach in via `as unknown`.
+      {
         const ps = session as unknown as {
           token: string;
           tokenExpiresAt: number | null;

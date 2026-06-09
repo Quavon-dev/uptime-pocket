@@ -82,7 +82,7 @@ describe('KumaConnectionManager', () => {
           id: 'srv_a',
           name: 'Test',
           url: 'https://kuma.example.com',
-          authKind: 'bearer',
+          authKind: 'password',
           connected: false,
           notificationMode: 'direct',
           createdAt: new Date(),
@@ -91,13 +91,19 @@ describe('KumaConnectionManager', () => {
       activeServerId: null,
       hydrated: true,
     });
-    loadCredentialsMock.mockResolvedValue({ kind: 'bearer', token: 'tk_test' });
+    loadCredentialsMock.mockResolvedValue({
+      kind: 'password',
+      username: 'quavon',
+      password: 'secret',
+    });
 
     const manager = new KumaConnectionManager();
-    // Stub the raw socket: emit 'connect' synchronously, then never
-    // call back. The manager's connect() resolves on the connect
-    // event; the JWT for bearer auth is the static token, so the
-    // promise resolves immediately.
+    // Stub the raw socket: emit 'connect' synchronously, then answer
+    // `emit('login', ...)` with a fake JWT. The manager's connect()
+    // resolves once it has the JWT. The mocked KumaSocket never emits
+    // a 'connected' event (it would normally do so on real socket
+    // connect) — that's fine, the test just verifies the connecting
+    // state was set.
     manager.openRawSocket = () => {
       const handlers: Record<string, Array<(...a: unknown[]) => void>> = {};
       const sock: any = {
@@ -105,7 +111,14 @@ describe('KumaConnectionManager', () => {
           (handlers[evt] ??= []).push(cb);
         },
         off: () => {},
-        emit: () => {},
+        emit: (evt: string, ...args: unknown[]) => {
+          if (evt === 'login') {
+            const cb = args[args.length - 1] as
+              | ((res: { ok: boolean; token?: string }) => void)
+              | undefined;
+            queueMicrotask(() => cb?.({ ok: true, token: 'jwt.fake' }));
+          }
+        },
         disconnect: () => {},
         removeAllListeners: () => {},
         on: () => {},
@@ -131,7 +144,7 @@ describe('KumaConnectionManager', () => {
           id: 'srv_b',
           name: 'Test',
           url: 'https://kuma.example.com',
-          authKind: 'bearer',
+          authKind: 'password',
           connected: false,
           notificationMode: 'direct',
           createdAt: new Date(),
@@ -164,7 +177,7 @@ describe('KumaConnectionManager', () => {
           id: 'srv_c',
           name: 'Test',
           url: 'https://kuma.example.com',
-          authKind: 'bearer',
+          authKind: 'password',
           connected: false,
           notificationMode: 'direct',
           createdAt: new Date(),
@@ -173,10 +186,15 @@ describe('KumaConnectionManager', () => {
       activeServerId: 'srv_c',
       hydrated: true,
     });
-    loadCredentialsMock.mockResolvedValue({ kind: 'bearer', token: 'tk_test' });
+    loadCredentialsMock.mockResolvedValue({
+      kind: 'password',
+      username: 'quavon',
+      password: 'secret',
+    });
 
     const manager = new KumaConnectionManager();
-    // Same stub as the first test — synchronous 'connect' emit.
+    // Same stub as the first test — synchronous 'connect' emit, then
+    // respond to the 'login' emit with a fake JWT.
     manager.openRawSocket = () => {
       const handlers: Record<string, Array<(...a: unknown[]) => void>> = {};
       const sock: any = {
@@ -184,7 +202,14 @@ describe('KumaConnectionManager', () => {
           (handlers[evt] ??= []).push(cb);
         },
         off: () => {},
-        emit: () => {},
+        emit: (evt: string, ...args: unknown[]) => {
+          if (evt === 'login') {
+            const cb = args[args.length - 1] as
+              | ((res: { ok: boolean; token?: string }) => void)
+              | undefined;
+            queueMicrotask(() => cb?.({ ok: true, token: 'jwt.fake' }));
+          }
+        },
         disconnect: () => {},
         removeAllListeners: () => {},
         on: () => {},
