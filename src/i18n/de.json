@@ -159,6 +159,10 @@
     },
     "connectingBanner": "Verbinde mit deinem Kuma-Server…",
     "errorBanner": "Verbindungsfehler: {error}",
+    "bar": {
+      "label": "Verfügbarkeit",
+      "caption": "Verfügbarkeit"
+    },
     "list": {
       "title": "Monitore",
       "filterAll": "Alle",

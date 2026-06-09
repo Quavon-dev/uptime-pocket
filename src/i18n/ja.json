@@ -159,6 +159,10 @@
     },
     "connectingBanner": "Kuma サーバーに接続中…",
     "errorBanner": "接続エラー: {error}",
+    "bar": {
+      "label": "稼働率",
+      "caption": "稼働率"
+    },
     "list": {
       "title": "モニター",
       "filterAll": "すべて",

@@ -95,6 +95,38 @@ describe('a11y static scan', () => {
       expect(src).toMatch(/accessibilityElementsHidden/);
       expect(src).toMatch(/importantForAccessibility/);
     });
+
+    it('UptimeBar segments are hidden from a11y (the bar is a visual encoding of the status pill + percentage)', () => {
+      const file = path.join(ROOT, 'src/components/chart/UptimeBar.tsx');
+      const src = fs.readFileSync(file, 'utf8');
+      // Each segment is a colored stripe — a screen reader reading
+      // "75 of 100 segments" would be useless. The percentage in
+      // the footer + the parent card/row's status pill are what
+      // convey the state.
+      expect(src).toMatch(/importantForAccessibility/);
+    });
+  });
+
+  describe('monitor cards surface their UPTIME bar in a11y', () => {
+    it('MonitorCard includes the cached uptime ratio in its accessibilityLabel', () => {
+      const file = path.join(ROOT, 'src/components/monitor/MonitorCard.tsx');
+      const src = fs.readFileSync(file, 'utf8');
+      // Existing test: this file must contain accessibilityLabel.
+      // New: the label should also reference "uptime24h" so a screen
+      // reader user hears the same number they see in the bar.
+      expect(src).toContain('accessibilityLabel');
+      expect(src).toMatch(/uptime24h/);
+    });
+
+    it('MonitorRow includes the monitor name + status in its accessibilityLabel', () => {
+      // Guard against the regression where adding the bar pushed
+      // the existing a11y label out of the file.
+      const file = path.join(ROOT, 'src/components/monitor/MonitorRow.tsx');
+      const src = fs.readFileSync(file, 'utf8');
+      expect(src).toContain('accessibilityLabel');
+      expect(src).toMatch(/monitor\.name/);
+      expect(src).toMatch(/t\(`status\.\$\{monitor\.status\}`\)/);
+    });
   });
 
   describe('min tap target sizes', () => {

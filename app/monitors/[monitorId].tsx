@@ -779,9 +779,10 @@ export default function MonitorDetailScreen() {
           )}
         </View>
 
-        {/* Uptime bar */}
+        {/* Uptime bar. The bar renders its own "UPTIME" label
+            + percentage footer (variant="full"), so we don't need
+            a separate SectionLabel above it. */}
         <View style={styles.section}>
-          <SectionLabel>{t('monitors.detail.uptime')}</SectionLabel>
           {loading && heartbeats.length === 0 ? (
             <View style={[styles.chartPlaceholder, { backgroundColor: surface.sunken }]}>
               <ActivityIndicator size="small" color={brand} />

@@ -7,6 +7,31 @@ Kuma protocol, MINOR is a new feature, PATCH is a bugfix.
 
 ## [Unreleased]
 
+### Added
+- **UPTIME bar on the monitors list.** Every monitor in the list
+  (both the featured `MonitorCard` and the compact `MonitorRow`)
+  now renders a Kuma-style segmented history strip below the URL,
+  so the user can scan a list of services and see the recent
+  health of each one at a glance — no need to tap into detail.
+  The bar subscribes to the monitor's cached heartbeat history
+  (per-row subscription, so a single check event only re-renders
+  that one row). The bar is only rendered when `serverId` is
+  provided, so the design-system showcase still works.
+  - `UptimeBar` got a `variant: 'full' | 'compact'` prop. `full`
+    is the existing Kuma-style block ("UPTIME" label + bar +
+    "Uptime / XX.XX%" footer), now used in the card and the
+    detail screen. `compact` is the bar only, used in the row.
+  - The bucketing math is now a pure helper
+    (`bucketUptimePoints`) so it can be unit-tested without
+    rendering. The percentage color follows the same threshold
+    as the rest of the app: green ≥99%, amber ≥95%, red below.
+  - Segments are `importantForAccessibility="no-hide-descendants"`
+    — a screen reader reading "75 of 100 segments" would be
+    noise; the percentage in the footer + the parent card/row's
+    status pill convey the state instead.
+  - New i18n keys `monitors.bar.label` / `monitors.bar.caption`
+    in all 5 locales (en / de / es / fr / ja).
+
 ### Changed
 - **Auth: bearer-token option removed.** The form previously offered
   "API token" as a sign-in method, but Kuma 2.x's socket.io

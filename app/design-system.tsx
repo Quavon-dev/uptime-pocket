@@ -296,8 +296,34 @@ export default function DesignSystemScreen() {
         </Section>
 
         <Section title="Uptime bar" themeColors={themeColors}>
-          <View style={[styles.chartCard, { backgroundColor: themeColors.elevated, borderColor: themeColors.border }]}>
+          <Text
+            style={[
+              typography.caption,
+              { color: themeColors.textMuted, marginBottom: spacing[2] },
+            ]}>
+            full variant — used in MonitorCard and the monitor detail
+          </Text>
+          <View
+            style={[
+              styles.chartCard,
+              { backgroundColor: themeColors.elevated, borderColor: themeColors.border },
+            ]}>
             <UptimeBar data={uptimeData} />
+          </View>
+          <Text
+            style={[
+              typography.caption,
+              { color: themeColors.textMuted, marginTop: spacing[3], marginBottom: spacing[2] },
+            ]}>
+            compact variant — used in MonitorRow (note: shown on a
+            surface.elevated background to match the row)
+          </Text>
+          <View
+            style={[
+              styles.chartCard,
+              { backgroundColor: themeColors.elevated, borderColor: themeColors.border },
+            ]}>
+            <UptimeBar data={uptimeData} variant="compact" height={16} />
           </View>
         </Section>
 

@@ -2,47 +2,57 @@
  * MonitorCard - the workhorse card component for displaying a monitor.
  *
  * Used in:
- * - Featured / pinned monitors
+ * - Featured / pinned monitors (on the monitors tab)
  * - Monitor detail header
  * - Anywhere a single monitor needs a prominent display
  *
- * Layout (v0.8.5 — pill on the left):
+ * Layout (v0.9.0 — uptime bar under the URL):
  *   ┌──────────────────────────────────────┐
  *   │                                       │
  *   │  [● Up]   Name                        │
  *   │            [globe] url                │
  *   │            2m ago                     │
  *   │                                       │
+ *   │  UPTIME                               │
+ *   │  ▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮ │
+ *   │  Uptime                       100%    │
+ *   │                                       │
  *   │  ┌──────┐ ┌──────┐ ┌──────┐         │
  *   │  │uptime│ │ resp │ │ type │         │
  *   │  └──────┘ └──────┘ └──────┘         │
  *   └──────────────────────────────────────┘
  *
- * The status pill is now the leftmost element of the card, replacing
- * the type-icon box. It's the primary visual signal — the user sees
- * the state of every monitor in their peripheral vision when
- * scrolling a list. The type icon (globe for HTTP, etc.) moves to a
- * small inline position next to the URL, and the last-check time
- * sits under the URL on its own line so the user can see how
- * recent the result is.
+ * The status pill is the leftmost element of the card (the primary
+ * visual signal). The type icon (globe for HTTP, etc.) is a small
+ * inline prefix next to the URL, and the last-check time sits under
+ * the URL on its own line. The UPTIME bar (Kuma-style segmented
+ * history) is the dominant secondary signal — it gives the user a
+ * glanceable "is this monitor healthy lately" answer without
+ * having to drill into the detail screen.
+ *
+ * The bar is only rendered when `serverId` is provided (so the
+ * design-system showcase, which has no Provider, still works).
  *
  * Theme: card uses surface.elevated/border. Stat tiles use
  * surface.sunken. Stat values use surface.text (or status color for
  * the uptime one).
  */
 
+import { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { StatusPill } from '@/components/status';
+import { UptimeBar } from '@/components/chart';
 import { monitorTypeIcon } from '@/components/ui/icons';
 import { statusColor } from '@/domain/status';
+import { useMonitors, selectHeartbeatHistory } from '@/data/store/monitors';
 import { t } from '@/i18n';
 import {
   formatResponseTime,
   formatUptime,
   formatRelativeTime,
 } from '@/domain/format';
-import type { Monitor } from '@/domain/models';
+import type { Monitor, UptimePoint } from '@/domain/models';
 
 interface MonitorCardProps {
   monitor: Monitor;
@@ -59,6 +69,13 @@ interface MonitorCardProps {
    * stat so the user can tell the live ping from the daily average.
    */
   avgPing24h?: number | null;
+  /**
+   * The server id that owns this monitor. When provided, the card
+   * subscribes to the monitor's cached heartbeat history and renders
+   * the UPTIME bar. When omitted (e.g. the design-system showcase,
+   * which has no Provider), the bar is hidden.
+   */
+  serverId?: string;
 }
 
 export function MonitorCard({
@@ -68,6 +85,7 @@ export function MonitorCard({
   showLastCheck = true,
   compact = false,
   avgPing24h = null,
+  serverId,
 }: MonitorCardProps) {
   const { surface } = useAppTheme();
   const TypeIcon = monitorTypeIcon(monitor.type);
@@ -75,6 +93,27 @@ export function MonitorCard({
   const statSize = compact ? 14 : 16;
   const statLabelSize = compact ? 10 : 11;
   const s = statusColor(monitor.status);
+
+  // Subscribe to this monitor's heartbeat history (per-monitor
+  // subscription so the card re-renders only when its own
+  // heartbeats change). `selectHeartbeatHistory` returns a stable
+  // reference for the empty case, so this is cheap when no data
+  // has arrived yet.
+  const heartbeats = useMonitors((st) =>
+    serverId ? selectHeartbeatHistory(st, serverId, monitor.id) : []
+  );
+  // Translate to the chart-friendly UptimePoint shape. We treat
+  // `maintenance` as "up" for the bar (the monitor is intentionally
+  // offline, not a failure). Pending counts as a partial bucket
+  // (the existing UptimeBar color logic handles that).
+  const uptimePoints: UptimePoint[] = useMemo(
+    () =>
+      heartbeats.map((h) => ({
+        timestamp: new Date(h.timestamp),
+        up: h.status === 'up' || h.status === 'maintenance',
+      })),
+    [heartbeats]
+  );
 
   return (
     <Pressable
@@ -142,6 +181,17 @@ export function MonitorCard({
           )}
         </View>
       </View>
+
+      {/* UPTIME bar. Sits between the URL/last-check block and
+          the stats row, so the user can scan a list of monitors
+          and see the recent history of each one at a glance. The
+          bar only renders when `serverId` is provided (so the
+          design-system showcase still works). */}
+      {serverId && (
+        <View style={{ marginTop: compact ? spacing[3] : spacing[4] }}>
+          <UptimeBar data={uptimePoints} height={compact ? 22 : 32} />
+        </View>
+      )}
 
       {/* Stats row: uptime, response time */}
       <View style={[styles.stats, { marginTop: compact ? spacing[3] : spacing[4] }]}>

@@ -350,27 +350,36 @@ export default function MonitorsScreen() {
           })}
         </ScrollView>
 
-        {/* Featured: the first monitor as a large card */}
-        {filteredMonitors.length > 0 && (
+        {/* Featured: the first monitor as a large card.
+            `serverId` enables the UPTIME bar (subscribes to this
+            monitor's heartbeat history). */}
+        {filteredMonitors.length > 0 && active && (
           <View style={{ marginTop: spacing[3] }}>
             <MonitorCard
               monitor={filteredMonitors[0]}
               onPress={() => router.push(`/monitors/${filteredMonitors[0].id}`)}
               avgPing24h={featuredAvgPing}
+              serverId={active.id}
             />
           </View>
         )}
 
-        {/* The rest as dense rows */}
-        <View style={{ marginTop: spacing[4], gap: spacing[2] }}>
-          {filteredMonitors.slice(1).map((monitor) => (
-            <MonitorRow
-              key={monitor.id}
-              monitor={monitor}
-              onPress={() => router.push(`/monitors/${monitor.id}`)}
-            />
-          ))}
-        </View>
+        {/* The rest as dense rows. Each row subscribes to its own
+            heartbeat history for the UPTIME bar (per-row
+            subscription, so a single monitor's check event only
+            re-renders that one row). */}
+        {active && (
+          <View style={{ marginTop: spacing[4], gap: spacing[2] }}>
+            {filteredMonitors.slice(1).map((monitor) => (
+              <MonitorRow
+                key={monitor.id}
+                monitor={monitor}
+                onPress={() => router.push(`/monitors/${monitor.id}`)}
+                serverId={active.id}
+              />
+            ))}
+          </View>
+        )}
 
         {filteredMonitors.length === 0 && (
           <View style={styles.noResults}>

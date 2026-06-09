@@ -159,6 +159,10 @@
     },
     "connectingBanner": "Connecting to your Kuma server…",
     "errorBanner": "Connection error: {error}",
+    "bar": {
+      "label": "Uptime",
+      "caption": "Uptime"
+    },
     "list": {
       "title": "Monitors",
       "filterAll": "All",
