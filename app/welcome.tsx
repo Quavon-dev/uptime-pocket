@@ -179,7 +179,7 @@ export default function WelcomeScreen() {
           index: i,
         })}
         style={{ flex: 1 }}
-        contentContainerStyle={{ alignItems: 'center' }}
+        contentContainerStyle={{ width: SCREEN_WIDTH * SCREENS.length }}
       />
 
       {/* Dot indicators */}
