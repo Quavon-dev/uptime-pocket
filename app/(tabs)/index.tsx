@@ -6,8 +6,7 @@
  * list, filter chips, and route to a detail screen on tap.
  *
  * Layout:
- * - Glass nav bar with large title
- * - Server switcher chip in the corner
+ * - Glass nav bar: [+ add] | [Monitors] | [server picker], then big "Monitors" display title below
  * - Connection status banner (only when not connected)
  * - Filter chips (All / Up / Down)
  * - Featured monitor card (the first one)
@@ -178,13 +177,14 @@ export default function MonitorsScreen() {
     <View style={[styles.container, { backgroundColor: surface.background }]}>
       <GlassNavBar
         title={t('tabTitle.monitors')}
-        // Standard 3-column row (left | title | right). The server
-        // picker chip sits in the right slot, the add-monitor
-        // button sits in the left slot, and "Monitors" is centered
-        // in the middle. This is the most iOS-native layout and
-        // gives both buttons their natural width without crowding.
-        // `large` is intentionally OFF so the top of the screen is
-        // one tight band (44pt) instead of two stacked rows.
+        // iOS large-title pattern: the top row is a 44pt nav bar
+        // with [+ add] | [title] | [server picker], and below it
+        // sits the big left-aligned "Monitors" display title. The
+        // big title is the visual anchor of the screen; the small
+        // title in the nav bar acts as a status row when the big
+        // title has been scrolled away (handled by expo-router's
+        // native iOS header in future scroll-aware work).
+        large
         left={
           <Pressable
             accessibilityRole="button"
