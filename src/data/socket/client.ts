@@ -175,8 +175,14 @@ export class KumaSocket {
     const url = this.server.url;
     const authPayload = this.session.applySocketAuth({});
 
+    // Polling first: RN's WebSocket polyfill is sometimes flaky on the
+    // simulator + over corporate proxies. Polling works everywhere and
+    // socket.io auto-upgrades to WebSocket after the handshake.
+    // See: https://socket.io/how-to/use-with-react-native
     this.socket = io(url, {
-      transports: ['websocket'],
+      transports: ['polling', 'websocket'],
+      upgrade: true,
+      rememberUpgrade: true,
       auth: authPayload,
       reconnection: false,
       timeout: 10_000,

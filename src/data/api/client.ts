@@ -147,8 +147,10 @@ export class KumaClient {
         resolve(result);
       };
 
+      // Polling first for RN reliability, auto-upgrade to WebSocket.
       const socket = io(this.server.url, {
-        transports: ['websocket'],
+        transports: ['polling', 'websocket'],
+        upgrade: true,
         auth: authPayload,
         reconnection: false,
         timeout: 8_000,
