@@ -54,6 +54,39 @@ Kuma protocol, MINOR is a new feature, PATCH is a bugfix.
   only when at least one monitor has a tag.
 
 ### Fixed
+- **Server picker chip layout.** Earlier revisions rendered the
+  chip's three children (icon, server name, chevron) as a single
+  flex row inside the chip's outer `Pressable`. In some layouts
+  the `Pressable`'s default style caused the row direction to
+  collapse, stacking the children vertically. The chip now
+  separates the outer press surface (padding + border-radius +
+  background) from an inner explicit `View` with
+  `flexDirection: 'row'`, so the children are always horizontal
+  regardless of how the `Pressable` is laid out. The name text
+  also gets `flexShrink: 1` so a long server name truncates with
+  an ellipsis rather than pushing the chevron off-screen.
+- **Server picker modal: inner card is a `View`, not a `Pressable`.**
+  The previous `Pressable onPress={() => {}}` no-op could
+  intercept tap events in subtle ways and added unnecessary
+  perf overhead. A plain `View` is the correct primitive for a
+  non-interactive container; the backdrop `Pressable` still
+  handles dismiss.
+- **GlassNavBar side slots are no longer flex-1.** The left and
+  right slots had `flex: 1`, which on narrow screens constrained
+  the server picker chip to 1/5 of the available width — wide
+  enough to fit the icon but not the name, so the chip's
+  children were squished and stacked. The slots now use
+  `flexShrink: 0` so the `+` button (left) and the server
+  picker (right) take their natural width. The centered title
+  slot gets `flex: 1` + `flexShrink: 1` + horizontal padding, so
+  it fills the remaining space and truncates cleanly with an
+  ellipsis if the two side controls are wider than the row.
+- **Monitors tab: tighter top, no large title.** The `Monitors`
+  title no longer uses the 32pt display variant; the nav bar
+  is now a single 44pt row (left = `+` add monitor, center =
+  "Monitors" title at body-emphasized 15pt, right = server
+  picker chip). The screen header is one tight band instead of
+  two stacked rows.
 - **SegmentedControl indicator no longer overflows the track.**
   Earlier revisions used a hardcoded `height` on the absolutely
   positioned indicator, which on iOS could render taller than
@@ -71,6 +104,14 @@ Kuma protocol, MINOR is a new feature, PATCH is a bugfix.
   the Kuma web SPA's treatment. Status=2 (pending) still falls
   through to `'recovery'` as a best-effort default (Kuma doesn't
   fire `incident` for pending in practice).
+
+### Removed
+- **Server picker `inline` slot is no longer used.** The tab
+  screen previously passed the server picker via the `inline`
+  prop of `GlassNavBar` (paired with the large title on the
+  same row). With the layout switched to the standard row, the
+  `inline` prop is no longer wired up. The prop is still part
+  of the `GlassNavBar` API for screens that want it.
 
 ### Changed
 - **Auth: bearer-token option removed.** The form previously offered

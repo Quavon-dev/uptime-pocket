@@ -178,33 +178,27 @@ export default function MonitorsScreen() {
     <View style={[styles.container, { backgroundColor: surface.background }]}>
       <GlassNavBar
         title={t('tabTitle.monitors')}
-        large
-        // Single trailing cluster: add-monitor button + server
-        // picker chip. They sit on the same row as the large title
-        // so the top of the screen is one tight band, not two
-        // stacked rows. The picker itself opens a centered modal
-        // (see ServerPicker) — it doesn't navigate to a new screen.
-        inline={
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: spacing[2],
-            }}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('common.add')}
-              onPress={() => router.push('/monitors/add')}
-              style={({ pressed }) => [
-                styles.addBtn,
-                { backgroundColor: brand, opacity: pressed ? 0.7 : 1 },
-              ]}
-              hitSlop={6}>
-              <Plus size={18} color="white" strokeWidth={2.5} />
-            </Pressable>
-            <ServerPicker />
-          </View>
+        // Standard 3-column row (left | title | right). The server
+        // picker chip sits in the right slot, the add-monitor
+        // button sits in the left slot, and "Monitors" is centered
+        // in the middle. This is the most iOS-native layout and
+        // gives both buttons their natural width without crowding.
+        // `large` is intentionally OFF so the top of the screen is
+        // one tight band (44pt) instead of two stacked rows.
+        left={
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('common.add')}
+            onPress={() => router.push('/monitors/add')}
+            style={({ pressed }) => [
+              styles.addBtn,
+              { backgroundColor: brand, opacity: pressed ? 0.7 : 1 },
+            ]}
+            hitSlop={6}>
+            <Plus size={18} color="white" strokeWidth={2.5} />
+          </Pressable>
         }
+        right={<ServerPicker />}
       />
 
       <SafeScrollView

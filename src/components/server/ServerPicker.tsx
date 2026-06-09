@@ -66,15 +66,17 @@ export function ServerPicker() {
           styles.chip,
           { backgroundColor: surface.sunken, opacity: 0.5 },
         ]}>
-        <ServerIcon size={14} color={surface.textMuted} strokeWidth={2} />
-        <Text
-          numberOfLines={1}
-          style={[
-            typography.captionEmphasized,
-            { color: surface.textMuted, maxWidth: 100 },
-          ]}>
-          —
-        </Text>
+        <View style={styles.chipRow}>
+          <ServerIcon size={14} color={surface.textMuted} strokeWidth={2} />
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.chipText,
+              { color: surface.textMuted },
+            ]}>
+            —
+          </Text>
+        </View>
       </Pressable>
     );
   }
@@ -90,16 +92,24 @@ export function ServerPicker() {
           styles.chip,
           { backgroundColor: brandFill, opacity: pressed ? 0.7 : 1 },
         ]}>
-        <ServerIcon size={14} color={brand} strokeWidth={2} />
-        <Text
-          numberOfLines={1}
-          style={[
-            typography.captionEmphasized,
-            { color: brand, maxWidth: 120 },
-          ]}>
-          {active.name}
-        </Text>
-        <ChevronDown size={14} color={brand} strokeWidth={2} />
+        {/* Inner row — explicit `View` with `flexDirection: 'row'`
+            so the chip's three children (icon, name, chevron) are
+            laid out horizontally regardless of what the underlying
+            Pressable does to its children's default style. The
+            outer Pressable keeps the chip's padding + border-radius
+            and the press feedback. */}
+        <View style={styles.chipRow}>
+          <ServerIcon size={14} color={brand} strokeWidth={2} />
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.chipText,
+              { color: brand },
+            ]}>
+            {active.name}
+          </Text>
+          <ChevronDown size={14} color={brand} strokeWidth={2} />
+        </View>
       </Pressable>
 
       <Modal
@@ -115,9 +125,13 @@ export function ServerPicker() {
           accessibilityLabel={t('common.cancel')}
           onPress={() => setOpen(false)}
           style={styles.backdrop}>
-          <Pressable
-            // Inner card. No onPress = taps here don't dismiss.
-            onPress={() => {}}
+          <View
+            // Inner card. A plain View (not a Pressable) so taps
+            // here don't get consumed by an onPress handler and
+            // bubble up to the backdrop dismiss; also avoids the
+            // small perf + style quirks that Pressable imposes on
+            // its children. alignSelf + width together with the
+            // backdrop's alignItems: 'center' center the card.
             style={[
               styles.card,
               {
@@ -191,7 +205,7 @@ export function ServerPicker() {
                   <View
                     style={[styles.statusDot, { backgroundColor: dotColor }]}
                   />
-                  <View style={{ flex: 1, minWidth: 0 }}>
+                  <View style={styles.rowText}>
                     <Text
                       numberOfLines={1}
                       style={[
@@ -216,10 +230,11 @@ export function ServerPicker() {
               );
             })}
             {/* No "Cancel" row — the backdrop tap dismisses the
-                modal (the inner card has no onPress, so taps on it
-                don't bubble up). This matches the iOS action-sheet
+                modal (the inner card is a View with no onPress,
+                so taps on it bubble up to the backdrop's
+                dismiss handler). This matches the iOS action-sheet
                 pattern. */}
-          </Pressable>
+          </View>
         </Pressable>
       </Modal>
     </>
@@ -227,13 +242,28 @@ export function ServerPicker() {
 }
 
 const styles = StyleSheet.create({
+  // Outer chip: just padding + border-radius + background. The
+  // children live inside a nested `chipRow` so the press feedback
+  // and the row layout are decoupled (RN's Pressable can otherwise
+  // confuse the row direction in some configurations).
   chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
     borderRadius: semanticRadius.pill,
+  },
+  // The horizontal row of icon + name + chevron inside the chip.
+  chipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  // The name text inside the chip. `flexShrink: 1` so a long name
+  // truncates with an ellipsis rather than pushing the chevron
+  // off-screen.
+  chipText: {
+    ...typography.captionEmphasized,
+    maxWidth: 120,
+    flexShrink: 1,
   },
   backdrop: {
     flex: 1,
@@ -255,6 +285,15 @@ const styles = StyleSheet.create({
     gap: spacing[3],
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
+  },
+  // The text column inside a server row. `flex: 1, minWidth: 0`
+  // lets the texts shrink to a single ellipsized line rather than
+  // pushing the check mark out of the card; without `minWidth: 0`
+  // flex children default to `minWidth: auto` and refuse to
+  // shrink below their content's natural size.
+  rowText: {
+    flex: 1,
+    minWidth: 0,
   },
   statusDot: {
     width: 10,
