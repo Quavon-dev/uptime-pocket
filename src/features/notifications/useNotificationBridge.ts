@@ -22,6 +22,7 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useServers, getActiveServer } from '@/data/store/servers';
 import { useMonitors, selectMonitorsForServer } from '@/data/store/monitors';
 import { useSettings } from '@/data/store/settings';
@@ -50,8 +51,19 @@ function toServerSnapshot(s: ReturnType<typeof getActiveServer>): ServerSnapshot
 export function useNotificationBridge(): void {
   const servers = useServers((s) => s.servers);
   const activeId = useServers((s) => s.activeServerId);
-  const monitors = useMonitors((s) =>
-    activeId ? selectMonitorsForServer(s, activeId) : [],
+  // `selectMonitorsForServer` returns a fresh array on every call
+  // (it sorts the monitor list alphabetically). Without `useShallow`,
+  // React's `useSyncExternalStore` would see a new reference every
+  // snapshot, trip the "result of getSnapshot should be cached"
+  // warning, and — in dev — throw "Maximum update depth exceeded"
+  // because the re-render retriggers the selector. The user hit
+  // exactly this on the home screen first paint after commit c37741e.
+  // `useShallow` deep-equal-compares the new array to the old one,
+  // so the snapshot is stable when the underlying data is unchanged.
+  const monitors = useMonitors(
+    useShallow((s) =>
+      activeId ? selectMonitorsForServer(s, activeId) : []
+    )
   );
   const quietEnabled = useSettings((s) => s.quietHoursEnabled);
   const quietStart = useSettings((s) => s.quietHoursStartMinute);

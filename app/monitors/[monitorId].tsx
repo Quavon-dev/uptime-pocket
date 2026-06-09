@@ -28,6 +28,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import {
   View,
   Text,
@@ -97,18 +98,29 @@ export default function MonitorDetailScreen() {
   const { surface, brand, statusTints } = useAppTheme();
 
   // Find the live monitor across all servers the app knows about.
-  const found = useMonitors((s) =>
-    Number.isFinite(monitorId) ? selectMonitorByIdAnyServer(s, monitorId) : null
+  // `selectMonitorByIdAnyServer` returns a new `{ monitor, serverId }`
+  // object on every call. `useShallow` keeps the snapshot stable
+  // when the underlying data is unchanged, avoiding the
+  // "getSnapshot should be cached" warning that the user hit on the
+  // home screen + notification bridge (commit followup to c37741e).
+  const found = useMonitors(
+    useShallow((s) =>
+      Number.isFinite(monitorId) ? selectMonitorByIdAnyServer(s, monitorId) : null
+    )
   );
   const server = useServers((s) =>
     found ? s.servers.find((srv) => srv.id === found.serverId) : undefined
   );
 
-  // Recent incidents scoped to this monitor + server.
-  const incidents = useMonitors((s) =>
-    found
-      ? selectIncidentsForMonitor(s, found.serverId, monitorId)
-      : ([] as Incident[])
+  // Recent incidents scoped to this monitor + server. Same `useShallow`
+  // rationale: `selectIncidentsForMonitor` returns a fresh `.filter(...)`
+  // array on every call.
+  const incidents = useMonitors(
+    useShallow((s) =>
+      found
+        ? selectIncidentsForMonitor(s, found.serverId, monitorId)
+        : ([] as Incident[])
+    )
   );
 
   const [range, setRange] = useState<Range>('recent');

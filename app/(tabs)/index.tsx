@@ -20,6 +20,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, TextInput, RefreshControl } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronDown, Server, WifiOff, Loader, Plus, Search, X } from 'lucide-react-native';
@@ -91,8 +92,18 @@ export default function MonitorsScreen() {
     active ? s.statusByServer[active.id] ?? 'idle' : 'idle'
   );
   const error = useMonitors((s) => (active ? s.errorByServer[active.id] : null));
-  const monitorsRaw = useMonitors((s) =>
-    active ? selectMonitorsForServer(s, active.id) : []
+  const monitorsRaw = useMonitors(
+    // `selectMonitorsForServer` sorts the list and returns a new
+    // array on every call. `useShallow` (zustand/react/shallow)
+    // deep-equal-compares the new array to the previous one, so
+    // the snapshot is stable when the underlying data is unchanged.
+    // Without this, the home screen would trip the same
+    // "Maximum update depth exceeded" / "getSnapshot should be
+    // cached" warning that the notification bridge hit. See commit
+    // followup to c37741e.
+    useShallow((s) =>
+      active ? selectMonitorsForServer(s, active.id) : []
+    )
   );
 
   // Filter+search the raw list. Derived from `monitorsRaw`, `filter`,

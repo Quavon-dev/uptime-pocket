@@ -145,6 +145,24 @@ interface ServerMonitorsState {
 
 const INCIDENT_LIMIT = 50;
 
+// ---- Stable empty defaults ----
+//
+// Selectors that return arrays / objects have to return the SAME
+// reference across calls when the underlying data is unchanged.
+// Otherwise Zustand v5's `useSyncExternalStore` reports "the result
+// of getSnapshot should be cached" and, in dev, throws
+// "Maximum update depth exceeded" when the new ref re-triggers
+// renders. Sharing module-scope `[]` / `{}` constants for the
+// empty-but-valid cases is the cheapest fix and a documented
+// Zustand v5 pattern. Callers that need a non-empty derived
+// collection (e.g. a sorted list, a filtered slice) should wrap
+// their `useStore(...)` call in `useShallow` — see the call sites
+// in the feature / app layer.
+const EMPTY_MONITORS: readonly never[] = Object.freeze([]);
+const EMPTY_INCIDENTS: readonly never[] = Object.freeze([]);
+const EMPTY_HEARTBEATS: readonly never[] = Object.freeze([]);
+const EMPTY_RATIOS: Readonly<Record<string, never>> = Object.freeze({});
+
 export const useMonitors = create<ServerMonitorsState>()(
   subscribeWithSelector((set) => ({
     monitorsByServer: {},
@@ -365,10 +383,19 @@ export const useMonitors = create<ServerMonitorsState>()(
 
 // ---- Selectors ----
 
-/** Get monitors for a specific server, sorted by name. */
+/** Get monitors for a specific server, sorted by name.
+ *
+ * Returns a NEW array on every call. Callers that subscribe to this
+ * selector from a React component MUST wrap the selector in
+ * `useShallow` (from `zustand/react/shallow`) — otherwise React's
+ * `useSyncExternalStore` sees a new reference every render and
+ * throws the "Maximum update depth exceeded" / "getSnapshot should
+ * be cached" error. The home screen and the notification bridge
+ * both do this — see the call sites.
+ */
 export function selectMonitorsForServer(state: ServerMonitorsState, serverId: string): Monitor[] {
   const list = state.monitorsByServer[serverId];
-  if (!list) return [];
+  if (!list) return EMPTY_MONITORS as unknown as Monitor[];
   return [...list].sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -380,6 +407,10 @@ export function selectMonitorsForServer(state: ServerMonitorsState, serverId: st
  * still have the old detail screen open). We look across every server
  * the user has loaded and return the first match along with its serverId,
  * so the caller can scope further lookups.
+ *
+ * Like `selectMonitorsForServer`, this returns a new object literal
+ * on every call. Callers in React must wrap it in `useShallow` to
+ * avoid the snapshot-cache warning.
  */
 export function selectMonitorByIdAnyServer(
   state: ServerMonitorsState,
@@ -392,40 +423,46 @@ export function selectMonitorByIdAnyServer(
   return null;
 }
 
-/** Get incidents for a specific server. */
+/** Get incidents for a specific server. Stable reference for the
+ *  empty case (shared `EMPTY_INCIDENTS`). */
 export function selectIncidentsForServer(
   state: ServerMonitorsState,
   serverId: string
 ): Incident[] {
-  return state.incidentsByServer[serverId] ?? [];
+  return (state.incidentsByServer[serverId] ?? EMPTY_INCIDENTS) as Incident[];
 }
 
-/** Get incidents for a specific monitor on a specific server. */
+/** Get incidents for a specific monitor on a specific server.
+ *  Filters the per-server list — call sites must wrap in `useShallow`
+ *  if subscribed from React. */
 export function selectIncidentsForMonitor(
   state: ServerMonitorsState,
   serverId: string,
   monitorId: number
 ): Incident[] {
-  const all = state.incidentsByServer[serverId] ?? [];
+  const all = state.incidentsByServer[serverId];
+  if (!all) return EMPTY_INCIDENTS as unknown as Incident[];
   return all.filter((i) => i.monitorId === monitorId);
 }
 
-/** Get cached heartbeat-history rows for a monitor. */
+/** Get cached heartbeat-history rows for a monitor.
+ *  Stable reference for the empty case. */
 export function selectHeartbeatHistory(
   state: ServerMonitorsState,
   serverId: string,
   monitorId: number
 ) {
-  return state.heartbeatHistoryByServer[serverId]?.[monitorId] ?? [];
+  return state.heartbeatHistoryByServer[serverId]?.[monitorId] ?? (EMPTY_HEARTBEATS as unknown as NormalizedHeartbeatRow[]);
 }
 
-/** Get the cached uptime ratios for a monitor. */
+/** Get the cached uptime ratios for a monitor.
+ *  Stable reference for the empty case. */
 export function selectUptimeRatios(
   state: ServerMonitorsState,
   serverId: string,
   monitorId: number
 ): Partial<Record<'24' | '168' | '720' | '1y', number>> {
-  return state.uptimeByServer[serverId]?.[monitorId] ?? {};
+  return state.uptimeByServer[serverId]?.[monitorId] ?? (EMPTY_RATIOS as Partial<Record<'24' | '168' | '720' | '1y', number>>);
 }
 
 /** Get the `info` event payload for a server (version, timezone, etc.). */
