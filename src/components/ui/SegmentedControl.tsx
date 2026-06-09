@@ -5,8 +5,18 @@
  * - Time range (24h / 7d / 30d)
  * - Auth method (Bearer / Password)
  * - Theme (System / Light / Dark)
+ * - Monitor list status filter (All / Up / Down)
  *
  * The indicator slides between options with a spring animation.
+ *
+ * Layout: the track is a fixed-height container (40px md / 32px sm)
+ * with internal padding (3px / 2px). The indicator is absolutely
+ * positioned with `top` / `bottom` set to the padding value, so it
+ * always matches the track's content area regardless of font metrics.
+ * Earlier revisions used a hardcoded indicator height, which on iOS
+ * could render taller than the surrounding track (the label's
+ * ascender / descender pushes the segment taller than the declared
+ * `paddingVertical + lineHeight`).
  *
  * Theme: track uses surface.sunken, indicator uses surface.elevated,
  * text uses surface.text (active) or surface.textMuted (inactive).
@@ -19,7 +29,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
+import { typography, semanticRadius, useAppTheme } from '@/theme';
 import * as Haptics from 'expo-haptics';
 
 export interface SegmentOption<T extends string> {
@@ -42,8 +52,16 @@ export function SegmentedControl<T extends string>({
   size = 'md',
 }: SegmentedControlProps<T>) {
   const { surface, isDark } = useAppTheme();
+  // The track is a fixed-height row: 40px md / 32px sm. This decouples
+  // the visual size of the segments from the height of the label text
+  // (which on iOS can vary with the system font scale).
+  const trackHeight = size === 'sm' ? 32 : 40;
+  const trackPadding = size === 'sm' ? 2 : 3;
   const [width, setWidth] = useState(0);
   const segmentWidth = width / options.length;
+  // Indicator inset = trackPadding on each side, so it lives inside
+  // the track's content area (not on top of the rounded corners).
+  const indicatorInset = trackPadding;
   const activeIndex = options.findIndex((o) => o.value === value);
 
   const indicatorX = useSharedValue(0);
@@ -79,18 +97,25 @@ export function SegmentedControl<T extends string>({
       style={[
         styles.container,
         {
-          padding: size === 'sm' ? 2 : 3,
+          height: trackHeight,
+          padding: trackPadding,
           borderRadius: size === 'sm' ? semanticRadius.md : semanticRadius.button,
           backgroundColor: surface.sunken,
         },
       ]}>
       {width > 0 && (
         <Animated.View
+          // Position with top/bottom = trackPadding (instead of a
+          // hardcoded height) so the indicator always matches the
+          // track's content area, even when the system font scale
+          // changes the segment's natural height.
           style={[
             styles.indicator,
             {
-              width: segmentWidth - (size === 'sm' ? 4 : 6),
-              height: size === 'sm' ? 28 : 32,
+              top: indicatorInset,
+              bottom: indicatorInset,
+              left: indicatorInset,
+              width: segmentWidth - 2 * indicatorInset,
               borderRadius: size === 'sm' ? semanticRadius.md - 2 : semanticRadius.button - 3,
               backgroundColor: surface.elevated,
               // Subtle shadow in light mode (gives the indicator depth
@@ -118,10 +143,7 @@ export function SegmentedControl<T extends string>({
             accessibilityState={{ selected: isActive }}
             // min tap target 44pt: small variants get a hitSlop bump.
             hitSlop={size === 'sm' ? { top: 8, bottom: 8 } : undefined}
-            style={[
-              styles.segment,
-              { paddingVertical: size === 'sm' ? spacing[1] : spacing[2] },
-            ]}>
+            style={styles.segment}>
             <Text
               style={[
                 styles.label,
@@ -148,8 +170,6 @@ const styles = StyleSheet.create({
   },
   indicator: {
     position: 'absolute',
-    top: 3,
-    left: 3,
   },
   segment: {
     flex: 1,

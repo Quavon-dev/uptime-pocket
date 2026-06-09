@@ -183,17 +183,39 @@ export function normalizeMonitorStatus(data: any): NormalizedMonitorStatus | nul
 /**
  * Normalize a Kuma `incident` payload.
  * Returns null if the payload is missing required fields.
+ *
+ * Kuma's `incident` event is fired on `monitorStatus` transitions
+ * (UP ↔ DOWN, etc.). The `status` field is the new status after
+ * the change. We map:
+ *   - 0 (down)           → cause: 'down'
+ *   - 1 (up)             → cause: 'recovery'
+ *   - 3 (maintenance)    → cause: 'maintenance_start' (the user
+ *                          entered maintenance; previously was
+ *                          up or down)
+ *   - 2 (pending)        → cause: 'recovery' (best-effort fallback;
+ *                          Kuma doesn't fire `incident` for pending
+ *                          in practice, but if it ever does we
+ *                          want a non-null cause rather than dropping
+ *                          the event silently)
+ *
+ * Returns null if monitorId or time is missing.
  */
 export function normalizeIncident(data: any): NormalizedIncident | null {
   const monitorId = getMonitorId(data);
   if (monitorId == null) return null;
   const ts = parseKumaTime(data.time);
   if (ts == null) return null;
+  const status = data.status;
+  let cause: NormalizedIncident['cause'];
+  if (status === 0) cause = 'down';
+  else if (status === 1) cause = 'recovery';
+  else if (status === 3) cause = 'maintenance_start';
+  else cause = 'recovery';
   return {
     id: `${monitorId}-${data.time}`,
     monitorId,
     startedAt: new Date(ts),
-    cause: data.status === 0 ? 'down' : 'recovery',
+    cause,
   };
 }
 

@@ -219,6 +219,11 @@
     }
   },
   "servers": {
+    "picker": {
+      "title": "Server wechseln",
+      "label": "Aktiver Server: {name}",
+      "hint": "Öffnet eine Liste deiner Kuma-Server."
+    },
     "list": {
       "title": "Server",
       "addServer": "Server hinzufügen",

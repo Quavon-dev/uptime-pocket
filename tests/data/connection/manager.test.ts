@@ -196,4 +196,98 @@ describe('KumaConnectionManager', () => {
     expect(useMonitors.getState().statusByServer.srv_c).toBe('idle');
     expect(useServers.getState().servers[0].connected).toBe(false);
   });
+
+  describe('event bridge: `incident` event end-to-end', () => {
+    it('an `incident` event from the socket lands in incidentsByServer', async () => {
+      // We capture the bridge callback the manager subscribes to,
+      // so the test can synthesize events the way the real
+      // KumaSocket would deliver them (through the listener the
+      // manager wires up in `connect()`).
+      let bridgeEmit: ((event: any) => void) | null = null;
+      const capturedListenerBridge = (cb: any) => {
+        bridgeEmit = cb;
+        return () => {
+          bridgeEmit = null;
+        };
+      };
+      // Override the default KumaSocket mock for this test so the
+      // `on()` registration captures the bridge.
+      const { KumaSocket } = require('@/data/socket/client');
+      const originalImpl = (KumaSocket as jest.Mock).getMockImplementation();
+      (KumaSocket as jest.Mock).mockImplementation(() => {
+        const listeners: any[] = [];
+        return {
+          connect: jest.fn(() => {
+            queueMicrotask(() => {
+              listeners.forEach((cb) => cb({ type: 'connected' }));
+            });
+          }),
+          disconnect: jest.fn(),
+          pauseMonitor: jest.fn(),
+          resumeMonitor: jest.fn(),
+          forceHeartbeat: jest.fn(),
+          on: jest.fn((cb: any) => capturedListenerBridge(cb) || listeners.push(cb)),
+        };
+      });
+
+      useServers.setState({
+        servers: [
+          {
+            id: 'srv_inc',
+            name: 'Test',
+            url: 'https://kuma.example.com',
+            authKind: 'password',
+            connected: false,
+            notificationMode: 'direct',
+            createdAt: new Date(),
+          },
+        ],
+        activeServerId: 'srv_inc',
+        hydrated: true,
+      });
+      loadCredentialsMock.mockResolvedValue({
+        kind: 'password',
+        username: 'quavon',
+        password: 'secret',
+      });
+
+      const manager = new KumaConnectionManager();
+      await manager.connect('srv_inc');
+
+      // Wait for the mock 'connected' event to flush.
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(bridgeEmit).not.toBeNull();
+      // Synthesize the same shape Kuma emits:
+      //   { monitorID: number, time: 'YYYY-MM-DD HH:MM:SS.mmm', status: 0|1 }
+      // The KumaSocket normalizes it to a `NormalizedIncident` and the
+      // manager re-emits a typed `KumaEvent` with `cause`. We simulate
+      // the post-normalizer shape directly.
+      (bridgeEmit as any)({
+        type: 'incident',
+        incident: {
+          id: '42-2026-06-09 12:00:00.000',
+          monitorId: 42,
+          serverId: 'srv_inc',
+          startedAt: new Date('2026-06-09T12:00:00.000Z'),
+          cause: 'down',
+        },
+      });
+
+      const incidents = useMonitors
+        .getState()
+        .incidentsByServer['srv_inc'] ?? [];
+      expect(incidents).toHaveLength(1);
+      expect(incidents[0]).toMatchObject({
+        monitorId: 42,
+        cause: 'down',
+      });
+
+      // Restore the original mock implementation so the rest of the
+      // suite (and any teardown) is unaffected.
+      if (originalImpl) {
+        (KumaSocket as jest.Mock).mockImplementation(originalImpl);
+      }
+    });
+  });
 });

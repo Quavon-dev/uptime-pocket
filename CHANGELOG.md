@@ -31,6 +31,46 @@ Kuma protocol, MINOR is a new feature, PATCH is a bugfix.
     status pill convey the state instead.
   - New i18n keys `monitors.bar.label` / `monitors.bar.caption`
     in all 5 locales (en / de / es / fr / ja).
+- **Server picker (cooler dropdown) in the nav bar.** The server
+  switcher used to be a small chip floating in the top-right
+  corner of the monitors tab, well above the title. It now sits
+  inline next to the large "Monitors" title (via the new
+  `inline` slot on `GlassNavBar`). Tapping it opens a centered
+  modal listing every configured Kuma server — each row shows a
+  status dot (green = connected, gray = disconnected), the
+  server name + URL, and a check mark for the active one.
+  Picking a server calls `manager.connect(newId)` which tears
+  down the previous socket and connects to the new one.
+  - New `ServerPicker` component (`src/components/server/ServerPicker.tsx`).
+  - New i18n keys `servers.picker.title` / `servers.picker.label`
+    / `servers.picker.hint` in all 5 locales.
+- **SegmentedControl replaces the filter Chip scroller.** The
+  monitors tab used to render `All / Up / Down` as three Chips
+  inside a horizontal ScrollView (mixed with per-tag chips). They
+  are now a `SegmentedControl` (the same sliding indicator the
+  detail screen uses for its time-range selector), giving the
+  filter row the same visual language as the rest of the app.
+  Per-tag chips stay in their own horizontal scroller, rendered
+  only when at least one monitor has a tag.
+
+### Fixed
+- **SegmentedControl indicator no longer overflows the track.**
+  Earlier revisions used a hardcoded `height` on the absolutely
+  positioned indicator, which on iOS could render taller than
+  the surrounding track (the label's ascender/descender pushed
+  the segment taller than the declared `paddingVertical +
+  lineHeight`). The track is now a fixed-height container and
+  the indicator is positioned with `top` / `bottom` set to the
+  track's padding value, so it always matches the content area
+  regardless of font metrics. Same shape on Android and iOS.
+- **Incident normalizer: status=3 (maintenance) is now correctly
+  classified.** `normalizeIncident` used to label anything other
+  than status=0 as `'recovery'`, so a `down → maintenance`
+  transition (status=3) would have shown up as "Recovered" in
+  the Incidents tab. It's now `'maintenance_start'`, matching
+  the Kuma web SPA's treatment. Status=2 (pending) still falls
+  through to `'recovery'` as a best-effort default (Kuma doesn't
+  fire `incident` for pending in practice).
 
 ### Changed
 - **Auth: bearer-token option removed.** The form previously offered

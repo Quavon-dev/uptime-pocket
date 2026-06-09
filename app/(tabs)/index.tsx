@@ -23,11 +23,12 @@ import { View, Text, ScrollView, Pressable, StyleSheet, TextInput, RefreshContro
 import { useShallow } from 'zustand/react/shallow';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronDown, Server, WifiOff, Loader, Plus, Search, X } from 'lucide-react-native';
+import { Server, WifiOff, Loader, Plus, Search, X } from 'lucide-react-native';
 
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
-import { Chip, EmptyState, SafeScrollView } from '@/components/ui';
+import { Chip, EmptyState, SafeScrollView, SegmentedControl } from '@/components/ui';
 import { MonitorRow, MonitorCard } from '@/components/monitor';
+import { ServerPicker } from '@/components/server';
 import {
   OptInCard,
   useNotificationOptIn,
@@ -49,7 +50,7 @@ type FilterMode = 'all' | 'up' | 'down';
 export default function MonitorsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { surface, brand, brandFill, statusTints } = useAppTheme();
+  const { surface, brand, statusTints } = useAppTheme();
   const servers = useServers((s) => s.servers);
   const activeId = useServers((s) => s.activeServerId);
   const [filter, setFilter] = useState<FilterMode>('all');
@@ -178,18 +179,21 @@ export default function MonitorsScreen() {
       <GlassNavBar
         title={t('tabTitle.monitors')}
         large
-        right={
-          // flexShrink:1 on the chip so the + button is always
-          // visible even with a long server name. The chip will
-          // truncate its name rather than push the + off-screen.
+        // Single trailing cluster: add-monitor button + server
+        // picker chip. They sit on the same row as the large title
+        // so the top of the screen is one tight band, not two
+        // stacked rows. The picker itself opens a centered modal
+        // (see ServerPicker) — it doesn't navigate to a new screen.
+        inline={
           <View
             style={{
               flexDirection: 'row',
               alignItems: 'center',
               gap: spacing[2],
-              flexShrink: 1,
             }}>
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('common.add')}
               onPress={() => router.push('/monitors/add')}
               style={({ pressed }) => [
                 styles.addBtn,
@@ -198,24 +202,7 @@ export default function MonitorsScreen() {
               hitSlop={6}>
               <Plus size={18} color="white" strokeWidth={2.5} />
             </Pressable>
-            <Pressable
-              onPress={() => router.push('/servers/switch')}
-              style={({ pressed }) => [
-                styles.serverChip,
-                { backgroundColor: brandFill, opacity: pressed ? 0.7 : 1 },
-              ]}
-              hitSlop={6}>
-              <Server size={14} color={brand} strokeWidth={2} />
-              <Text
-                numberOfLines={1}
-                style={[
-                  typography.captionEmphasized,
-                  { color: brand, maxWidth: 120 },
-                ]}>
-                {active?.name ?? t('tabTitle.servers')}
-              </Text>
-              <ChevronDown size={14} color={brand} strokeWidth={2} />
-            </Pressable>
+            <ServerPicker />
           </View>
         }
       />
@@ -311,44 +298,48 @@ export default function MonitorsScreen() {
           )}
         </View>
 
-        {/* Filter chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: spacing[2], paddingVertical: spacing[2] }}>
-          <Chip
-            label={t('filter.all')}
-            selected={filter === 'all'}
-            onPress={() => setFilter('all')}
+        {/* Status filter — a SegmentedControl (the same sliding
+            indicator the detail screen uses for its time-range
+            selector). Three options: All / Up / Down. The indicator
+            is brand-tinted, like the rest of the controls. */}
+        <View style={{ marginTop: spacing[3] }}>
+          <SegmentedControl<FilterMode>
+            size="sm"
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { value: 'all', label: t('filter.all') },
+              { value: 'up', label: t('filter.up') },
+              { value: 'down', label: t('filter.down') },
+            ]}
           />
-          <Chip
-            label={t('filter.up')}
-            selected={filter === 'up'}
-            onPress={() => setFilter('up')}
-            selectedColor={colors.status.up}
-          />
-          <Chip
-            label={t('filter.down')}
-            selected={filter === 'down'}
-            onPress={() => setFilter('down')}
-            selectedColor={colors.status.down}
-          />
-          {/* Per-tag chips. Tapping a chip toggles it. We use the
-              tag's own color (from Kuma) as the selected-color so
-              the user can tell tags apart at a glance. */}
-          {availableTags.map((tag) => {
-            const selected = tagFilter.selectedTagIds.includes(tag.id);
-            return (
-              <Chip
-                key={tag.id}
-                label={tag.name}
-                selected={selected}
-                onPress={() => setTagFilter((prev) => toggleTag(prev, tag.id))}
-                selectedColor={tag.color}
-              />
-            );
-          })}
-        </ScrollView>
+        </View>
+
+        {/* Per-tag chips. Renders only when at least one monitor
+            has a tag. We keep the scroller so a long tag list can
+            swipe horizontally without breaking the layout. Each
+            chip uses the tag's own color (from Kuma) as the
+            selected-color so the user can tell tags apart at a
+            glance. */}
+        {availableTags.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: spacing[2], paddingVertical: spacing[2] }}>
+            {availableTags.map((tag) => {
+              const selected = tagFilter.selectedTagIds.includes(tag.id);
+              return (
+                <Chip
+                  key={tag.id}
+                  label={tag.name}
+                  selected={selected}
+                  onPress={() => setTagFilter((prev) => toggleTag(prev, tag.id))}
+                  selectedColor={tag.color}
+                />
+              );
+            })}
+          </ScrollView>
+        )}
 
         {/* Featured: the first monitor as a large card.
             `serverId` enables the UPTIME bar (subscribes to this
@@ -410,14 +401,6 @@ function bannerStyle(
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { flex: 1 },
-  serverChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    borderRadius: semanticRadius.pill,
-  },
   addBtn: {
     width: 32,
     height: 32,

@@ -219,6 +219,11 @@
     }
   },
   "servers": {
+    "picker": {
+      "title": "サーバーを切り替え",
+      "label": "アクティブ: {name}",
+      "hint": "Kuma サーバーの一覧を開きます。"
+    },
     "list": {
       "title": "サーバー",
       "addServer": "サーバーを追加",

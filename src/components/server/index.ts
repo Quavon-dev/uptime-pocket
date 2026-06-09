@@ -3,4 +3,5 @@
  */
 
 export { ServerCard } from './ServerCard';
+export { ServerPicker } from './ServerPicker';
 export { ServerSwitcher } from './ServerSwitcher';
