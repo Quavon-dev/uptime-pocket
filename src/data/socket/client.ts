@@ -118,10 +118,11 @@ export function buildSocketLogin(socket: Socket): SocketLoginFn {
       const timeout = setTimeout(() => {
         reject(new Error('Kuma socket login timed out after 10s'));
       }, 10_000);
-      socket.emit('login', { username, password }, (res: any) => {
+      socket.emit('login', { username, password }, (res: unknown) => {
         clearTimeout(timeout);
-        if (res && res.ok && typeof res.token === 'string') {
-          resolve(res.token);
+        const r = res && typeof res === 'object' ? res as Record<string, unknown> : null;
+        if (r?.ok && typeof r.token === 'string') {
+          resolve(r.token);
         } else {
           reject(new Error('Kuma login failed: ' + JSON.stringify(res)));
         }
@@ -188,7 +189,11 @@ export class KumaSocket {
         if (this.session.kind === 'password' && !this.loggedIn) {
           // The session's `loginFn` knows how to log in. The manager
           // wired that up — see the applySocketAuth call above.
-          const token = (authPayload as any).auth?.token;
+          const authEntry = authPayload['auth'];
+          const token =
+            authEntry !== null && typeof authEntry === 'object'
+              ? (authEntry as Record<string, unknown>)['token']
+              : undefined;
           if (!token) {
             // No token yet — need to do the login handshake.
             // (Belt-and-braces; manager normally does this first.)
@@ -246,13 +251,13 @@ export class KumaSocket {
       this.emit({ type: 'monitorDeleted', ...norm });
     });
 
-    this.socket.on('monitorStatus', (data: any) => {
+    this.socket.on('monitorStatus', (data: unknown) => {
       const norm = normalizeMonitorStatus(data);
       if (!norm) return;
       this.emit({ type: 'monitorStatus', ...norm });
     });
 
-    this.socket.on('heartbeat', (data: any) => {
+    this.socket.on('heartbeat', (data: unknown) => {
       const norm = normalizeHeartbeat(data);
       if (!norm) return;
       this.emit({ type: 'heartbeat', ...norm });
@@ -267,8 +272,7 @@ export class KumaSocket {
     this.socket.on('certInfo', (mid: unknown, data: unknown) => {
       const info = normalizeCertInfo(data);
       if (!info) return;
-      const id =
-        typeof mid === 'string' ? Number(mid) : Number(mid);
+      const id = Number(mid);
       if (!Number.isFinite(id)) return;
       this.emit({ type: 'certInfo', monitorId: id, info });
     });
@@ -282,7 +286,7 @@ export class KumaSocket {
       }
     );
 
-    this.socket.on('incident', (data: any) => {
+    this.socket.on('incident', (data: unknown) => {
       const norm = normalizeIncident(data);
       if (!norm) return;
       this.emit({
@@ -454,12 +458,6 @@ export class KumaSocket {
             if (row && typeof row === 'object') {
               const norm = normalizeHeartbeatListRow(row);
               if (norm) out.push(norm);
-            }
-            // (also handle the REST-style rows just in case)
-            if (row && typeof row === 'object' && 'status' in row) {
-              const norm = normalizeChartDatapoint(row);
-              // skip — different shape
-              void norm;
             }
           }
           out.sort((a, b) => a.timestamp - b.timestamp);

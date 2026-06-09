@@ -24,7 +24,7 @@
  * `getMonitorId()` helper accepts both.
  */
 
-import type { Monitor, MonitorStatus, Incident } from '@/domain/models';
+import type { Monitor, MonitorType, MonitorStatus, Incident } from '@/domain/models';
 
 // ---- Status code mapping (Kuma numeric → our string) --------------------
 
@@ -56,7 +56,7 @@ export function normalizeStatus(status: unknown): MonitorStatus {
 // ---- Field extractors ---------------------------------------------------
 
 /** Get the monitor id from a Kuma payload, accepting both `monitorID` and legacy `monitor_id`. */
-export function getMonitorId(data: { monitorID?: number; monitor_id?: number }): number | undefined {
+export function getMonitorId(data: Record<string, unknown>): number | undefined {
   if (typeof data.monitorID === 'number') return data.monitorID;
   if (typeof data.monitor_id === 'number') return data.monitor_id;
   return undefined;
@@ -89,23 +89,23 @@ export function parseKumaTime(value: unknown): number | null {
 /**
  * Normalize a single Kuma monitor record to our internal `Monitor` shape.
  */
-export function normalizeMonitor(m: any): Monitor {
+export function normalizeMonitor(m: Record<string, unknown>): Monitor {
   return {
-    id: m.id,
-    parent: m.parent ?? null,
-    type: m.type,
-    name: m.name,
-    url: m.url,
-    hostname: m.hostname,
-    port: m.port,
+    id: m.id as number,
+    parent: (m.parent as number | null) ?? null,
+    type: m.type as MonitorType,
+    name: m.name as string,
+    url: m.url as string | undefined,
+    hostname: m.hostname as string | undefined,
+    port: m.port as number | undefined,
     status: normalizeStatus(m.status),
-    active: m.active ?? true,
-    interval: m.interval ?? 60,
-    retryInterval: m.retryInterval ?? 60,
-    maxretries: m.maxretries ?? 0,
-    upsideDown: m.upsideDown ?? false,
+    active: m.active !== false,
+    interval: typeof m.interval === 'number' ? m.interval : 60,
+    retryInterval: typeof m.retryInterval === 'number' ? m.retryInterval : 60,
+    maxretries: typeof m.maxretries === 'number' ? m.maxretries : 0,
+    upsideDown: m.upsideDown === true,
     tags: [],
-    notificationIDList: m.notificationIDList ?? {},
+    notificationIDList: (m.notificationIDList as Record<string, boolean> | undefined) ?? {},
   };
 }
 
@@ -119,12 +119,14 @@ export function normalizeMonitor(m: any): Monitor {
  */
 export function normalizeMonitorList(data: unknown): Monitor[] {
   if (Array.isArray(data)) {
-    return data.map((m) => normalizeMonitor(m));
+    return data
+      .filter((m): m is Record<string, unknown> => m !== null && typeof m === 'object')
+      .map(normalizeMonitor);
   }
   if (data && typeof data === 'object') {
-    return Object.values(data as Record<string, unknown>).map((m) =>
-      normalizeMonitor(m as any)
-    );
+    return Object.values(data as Record<string, unknown>)
+      .filter((m): m is Record<string, unknown> => m !== null && typeof m === 'object')
+      .map(normalizeMonitor);
   }
   return [];
 }
@@ -155,14 +157,16 @@ export interface NormalizedIncident {
  * Normalize a Kuma `heartbeat` payload.
  * Returns null if the payload is missing required fields.
  */
-export function normalizeHeartbeat(data: any): NormalizedHeartbeat | null {
-  const monitorId = getMonitorId(data);
+export function normalizeHeartbeat(data: unknown): NormalizedHeartbeat | null {
+  if (!data || typeof data !== 'object') return null;
+  const r = data as Record<string, unknown>;
+  const monitorId = getMonitorId(r);
   if (monitorId == null) return null;
   return {
     monitorId,
-    status: normalizeStatus(data.status),
-    responseTime: typeof data.ping === 'number' ? data.ping : 0,
-    timestamp: parseKumaTime(data.time) ?? Date.now(),
+    status: normalizeStatus(r.status),
+    responseTime: typeof r.ping === 'number' ? r.ping : 0,
+    timestamp: parseKumaTime(r.time) ?? Date.now(),
   };
 }
 
@@ -170,13 +174,15 @@ export function normalizeHeartbeat(data: any): NormalizedHeartbeat | null {
  * Normalize a Kuma `monitorStatus` payload.
  * Returns null if the payload is missing required fields.
  */
-export function normalizeMonitorStatus(data: any): NormalizedMonitorStatus | null {
-  const monitorId = getMonitorId(data);
+export function normalizeMonitorStatus(data: unknown): NormalizedMonitorStatus | null {
+  if (!data || typeof data !== 'object') return null;
+  const r = data as Record<string, unknown>;
+  const monitorId = getMonitorId(r);
   if (monitorId == null) return null;
   return {
     monitorId,
-    status: normalizeStatus(data.status),
-    timestamp: parseKumaTime(data.time) ?? Date.now(),
+    status: normalizeStatus(r.status),
+    timestamp: parseKumaTime(r.time) ?? Date.now(),
   };
 }
 
@@ -184,16 +190,18 @@ export function normalizeMonitorStatus(data: any): NormalizedMonitorStatus | nul
  * Normalize a Kuma `incident` payload.
  * Returns null if the payload is missing required fields.
  */
-export function normalizeIncident(data: any): NormalizedIncident | null {
-  const monitorId = getMonitorId(data);
+export function normalizeIncident(data: unknown): NormalizedIncident | null {
+  if (!data || typeof data !== 'object') return null;
+  const r = data as Record<string, unknown>;
+  const monitorId = getMonitorId(r);
   if (monitorId == null) return null;
-  const ts = parseKumaTime(data.time);
+  const ts = parseKumaTime(r.time);
   if (ts == null) return null;
   return {
-    id: `${monitorId}-${data.time}`,
+    id: `${monitorId}-${r.time}`,
     monitorId,
     startedAt: new Date(ts),
-    cause: data.status === 0 ? 'down' : 'recovery',
+    cause: r.status === 0 ? 'down' : 'recovery',
   };
 }
 
@@ -320,7 +328,7 @@ export function normalizeUptimeEvent(
   hours: unknown,
   ratio: unknown
 ): { monitorId: number; hours: '24' | '168' | '720' | '1y'; ratio: number } | null {
-  const id = typeof monitorId === 'string' ? Number(monitorId) : Number(monitorId);
+  const id = Number(monitorId);
   if (!Number.isFinite(id)) return null;
   if (typeof ratio !== 'number' || !isFinite(ratio)) return null;
   let h: '24' | '168' | '720' | '1y';
@@ -397,7 +405,7 @@ export function normalizeAvgPingEvent(
   monitorId: unknown,
   ping: unknown
 ): { monitorId: number; ping: number | null } | null {
-  const id = typeof monitorId === 'string' ? Number(monitorId) : Number(monitorId);
+  const id = Number(monitorId);
   if (!Number.isFinite(id)) return null;
   if (ping == null) return { monitorId: id, ping: null };
   if (typeof ping !== 'number' || !isFinite(ping)) return null;
@@ -479,7 +487,7 @@ export function normalizeDomainInfoEvent(
   daysRemaining: number | null;
   expiresOn: string | null; // ISO date
 } | null {
-  const id = typeof monitorId === 'string' ? Number(monitorId) : Number(monitorId);
+  const id = Number(monitorId);
   if (!Number.isFinite(id)) return null;
   return {
     monitorId: id,
@@ -530,7 +538,7 @@ export function normalizeUpdateMonitorIntoList(
 export function normalizeDeleteMonitorFromList(
   monitorId: unknown
 ): { monitorId: number } | null {
-  const id = typeof monitorId === 'string' ? Number(monitorId) : Number(monitorId);
+  const id = Number(monitorId);
   if (!Number.isFinite(id)) return null;
   return { monitorId: id };
 }
@@ -562,8 +570,7 @@ export function normalizeHeartbeatListEventV2(
   rows: NormalizedHeartbeatRow[];
   overwrite: boolean;
 } | null {
-  const id =
-    typeof monitorId === 'string' ? Number(monitorId) : Number(monitorId);
+  const id = Number(monitorId);
   if (!Number.isFinite(id)) return null;
   if (!Array.isArray(rows)) return { monitorId: id, rows: [], overwrite: !!overwrite };
   const out: NormalizedHeartbeatRow[] = [];

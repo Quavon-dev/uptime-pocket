@@ -171,36 +171,20 @@ function base64UrlDecode(s: string): string {
 export function createSession(
   strategy: AuthStrategy,
   baseUrl: string,
-  loginFn: SocketLoginFn
+  loginFn: SocketLoginFn,
+  initialToken?: string
 ): AuthSession {
   switch (strategy.kind) {
     case 'bearer':
       return new BearerSession(strategy.token);
     case 'password':
-      // Eagerly log in via the supplied function. The function itself
-      // is responsible for opening a temporary socket if it doesn't
-      // already have one (see KumaConnectionManager._loginViaSocket).
-      // For the createSession factory path (used in tests and
-      // previews) we just return an un-refreshable session that
-      // surfaces the error on use. Real callers should use
-      // `createSessionAsync` instead.
-      return createPasswordSessionSync(strategy.username, strategy.password, loginFn);
+      return new PasswordSession(
+        strategy.username,
+        strategy.password,
+        initialToken ?? '',
+        loginFn
+      );
   }
-}
-
-/**
- * Synchronous fallback for createSession — returns a session that has
- * not yet logged in. `applyHeaders`/`applySocketAuth` will be no-ops
- * until you call `refresh()`. The refresh will fail loudly if the
- * caller hasn't provided a working loginFn.
- */
-function createPasswordSessionSync(
-  username: string,
-  password: string,
-  loginFn: SocketLoginFn
-): PasswordSession {
-  // We start with a sentinel token; the first refresh() will replace it.
-  return new PasswordSession(username, password, '', loginFn);
 }
 
 /**

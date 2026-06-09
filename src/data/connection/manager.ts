@@ -32,7 +32,7 @@ import { useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { KumaSocket, type KumaEvent, buildSocketLogin } from '@/data/socket/client';
 import { KumaClient, createClient } from '@/data/api/client';
-import { createSession, decodeJwtExpiry, type AuthSession } from '@/data/api/auth';
+import { createSession, type AuthSession } from '@/data/api/auth';
 import { loadCredentials } from '@/data/secure/credentials';
 import { useMonitors } from '@/data/store/monitors';
 import { useServers } from '@/data/store/servers';
@@ -118,10 +118,11 @@ export class KumaConnectionManager {
             rawSocket.off('connect', onConnect);
             reject(new Error('Kuma socket login timed out after 10s'));
           }, 10_000);
-          rawSocket.emit('login', { username: auth.username, password: auth.password }, (res: any) => {
+          rawSocket.emit('login', { username: auth.username, password: auth.password }, (res: unknown) => {
             clearTimeout(timeout);
-            if (res && res.ok && typeof res.token === 'string') {
-              resolve(res.token);
+            const r = res && typeof res === 'object' ? res as Record<string, unknown> : null;
+            if (r?.ok && typeof r.token === 'string') {
+              resolve(r.token);
             } else {
               reject(new Error('Kuma login failed: ' + JSON.stringify(res)));
             }
@@ -144,19 +145,9 @@ export class KumaConnectionManager {
         auth.kind === 'bearer'
           ? ({ kind: 'bearer' as const, token: auth.token })
           : ({ kind: 'password' as const, username: auth.username, password: auth.password });
-      const session: AuthSession = createSession(strategy, server.url, loginFn);
-      // Splice the freshly-issued JWT into password sessions so
-      // applyHeaders / applySocketAuth have something to send.
-      if (session.kind === 'password') {
-        // PasswordSession's internals are private. Reach in via `as unknown`
-        // to set the post-login JWT.
-        const ps = session as unknown as {
-          token: string;
-          tokenExpiresAt: number | null;
-        };
-        ps.token = jwt;
-        ps.tokenExpiresAt = decodeJwtExpiry(jwt);
-      }
+      // Pass the freshly-issued JWT so PasswordSession starts armed
+      // with a real token rather than the empty-string sentinel.
+      const session: AuthSession = createSession(strategy, server.url, loginFn, jwt);
 
       // Step 3: build the KumaSocket + REST client + bridge events.
       const rest = createClient(server, session);

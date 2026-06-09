@@ -200,7 +200,7 @@ function sanitizeDraft(draft: MonitorDraft): MonitorDraft {
   // Kuma 2.3.2 renders `tags: []` as an unquoted empty string,
   // which breaks the INSERT. Omit it entirely — Kuma's default
   // for an empty tag set is "no tags".
-  if (Array.isArray(out.tags) && (out.tags as unknown[]).length === 0) {
+  if (Array.isArray(out.tags) && out.tags.length === 0) {
     delete out.tags;
   }
   // Kuma 2.3.2 has no `follow_redirect` / `follow_redirects` columns.
