@@ -34,7 +34,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   type ListRenderItem,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
@@ -47,8 +47,6 @@ import {
 import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { t } from '@/i18n';
 import { useSettings } from '@/data/store/settings';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
 
 interface Screen {
   key: 'intro' | 'privacy' | 'connect';
@@ -81,6 +79,7 @@ const SCREENS: Screen[] = [
 export default function WelcomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const { surface, brand, brandFill } = useAppTheme();
   const hasOnboarded = useSettings((s) => s.hasOnboarded);
   const setOnboarded = useSettings((s) => s.setOnboarded);
@@ -99,9 +98,9 @@ export default function WelcomeScreen() {
   }, [hasOnboarded, setOnboarded, router]);
 
   const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const i = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+    const i = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
     if (i !== index) setIndex(i);
-  }, [index]);
+  }, [index, screenWidth]);
 
   const goNext = useCallback(() => {
     if (index >= SCREENS.length - 1) {
@@ -112,7 +111,7 @@ export default function WelcomeScreen() {
   }, [index, finish]);
 
   const renderItem: ListRenderItem<Screen> = ({ item }) => (
-    <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
+    <View style={[styles.slide, { width: screenWidth }]}>
       <View
         style={[
           styles.iconCircle,
@@ -174,12 +173,12 @@ export default function WelcomeScreen() {
         onScroll={onScroll}
         scrollEventThrottle={16}
         getItemLayout={(_, i) => ({
-          length: SCREEN_WIDTH,
-          offset: SCREEN_WIDTH * i,
+          length: screenWidth,
+          offset: screenWidth * i,
           index: i,
         })}
         style={{ flex: 1 }}
-        contentContainerStyle={{ width: SCREEN_WIDTH * SCREENS.length }}
+        contentContainerStyle={{ flexGrow: 1 }}
       />
 
       {/* Dot indicators */}
