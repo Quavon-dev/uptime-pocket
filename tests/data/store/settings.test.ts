@@ -23,6 +23,14 @@ jest.mock('@/data/db/settings', () => ({
     quietHoursEndMinute: 420,
     hasOnboarded: false,
     locale: 'system',
+    // privacyConsentDismissed and pinnedMonitorByServer were
+    // added to PersistedSettings after this mock was first
+    // written. The store reads DEFAULT_SETTINGS at module load
+    // time and copies every field onto its initial state, so we
+    // need both fields here or the store will be missing them
+    // and `pinnedMonitorByServer: null` reads will throw.
+    privacyConsentDismissed: false,
+    pinnedMonitorByServer: null,
   },
   settingsRepo: {
     load: () => mockLoad(),
@@ -170,6 +178,73 @@ describe('settings store', () => {
     });
   });
 
+  describe('setPinnedMonitor()', () => {
+    it('pins a monitor for a server when nothing is pinned', () => {
+      useSettings.getState().setPinnedMonitor('server-aaa', 42);
+      expect(useSettings.getState().pinnedMonitorByServer).toEqual({
+        'server-aaa': 42,
+      });
+      return Promise.resolve().then(() => {
+        expect(mockSave).toHaveBeenCalledWith({
+          pinnedMonitorByServer: { 'server-aaa': 42 },
+        });
+      });
+    });
+
+    it('moves the pin when a different monitor is pinned for the same server', () => {
+      useSettings.getState().setPinnedMonitor('server-aaa', 42);
+      useSettings.getState().setPinnedMonitor('server-aaa', 17);
+      expect(useSettings.getState().pinnedMonitorByServer).toEqual({
+        'server-aaa': 17,
+      });
+    });
+
+    it('keeps pins for OTHER servers when one server is unpinned', () => {
+      useSettings.getState().setPinnedMonitor('server-aaa', 42);
+      useSettings.getState().setPinnedMonitor('server-bbb', 99);
+      useSettings.getState().setPinnedMonitor('server-aaa', null);
+      // server-bbb's pin is still there
+      expect(useSettings.getState().pinnedMonitorByServer).toEqual({
+        'server-bbb': 99,
+      });
+    });
+
+    it('writes null (not {}) when the last pin is removed', () => {
+      useSettings.getState().setPinnedMonitor('server-aaa', 42);
+      useSettings.getState().setPinnedMonitor('server-aaa', null);
+      expect(useSettings.getState().pinnedMonitorByServer).toBeNull();
+      return Promise.resolve().then(() => {
+        // The most recent save() call should have null, not {}.
+        const calls = mockSave.mock.calls;
+        const lastPatch = calls[calls.length - 1][0];
+        expect(lastPatch).toEqual({ pinnedMonitorByServer: null });
+      });
+    });
+
+    it('is a no-op when unpinning a server that was never pinned', () => {
+      mockSave.mockClear();
+      useSettings.getState().setPinnedMonitor('server-aaa', null);
+      expect(useSettings.getState().pinnedMonitorByServer).toBeNull();
+      return Promise.resolve().then(() => {
+        // No persist call — we don't need to write "no change" to
+        // disk. The defensive check is the in-memory no-op.
+        expect(mockSave).not.toHaveBeenCalled();
+      });
+    });
+
+    it('keeps the in-memory pin even if save() throws', async () => {
+      mockSave.mockRejectedValue(new Error('disk full'));
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      useSettings.getState().setPinnedMonitor('server-aaa', 42);
+      expect(useSettings.getState().pinnedMonitorByServer).toEqual({
+        'server-aaa': 42,
+      });
+      await new Promise((r) => setTimeout(r, 10));
+      expect(warn).toHaveBeenCalled();
+      warn.mockRestore();
+    });
+  });
+
   describe('resetAll()', () => {
     it('clears on disk and resets in-memory to defaults', async () => {
       mockClear.mockResolvedValue(undefined);
@@ -219,6 +294,10 @@ describe('settings store', () => {
         quietHoursEndMinute: 420,
         hasOnboarded: true,
         locale: 'de',
+        // Defaults from the unset fields — the test above didn't
+        // touch these so they fall through to DEFAULT_SETTINGS.
+        privacyConsentDismissed: false,
+        pinnedMonitorByServer: null,
       });
     });
   });

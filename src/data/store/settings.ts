@@ -52,6 +52,13 @@ interface SettingsState extends PersistedSettings {
   setOnboarded: (v: boolean) => void;
   setLocale: (l: LocalePreference) => void;
   setPrivacyConsentDismissed: (v: boolean) => void;
+  /**
+   * Pin a monitor to the top of the Monitors tab for a given
+   * server. Pass `null` to unpin. The pin is persisted across
+   * app restarts and per-server (pinning on server A doesn't
+   * affect server B).
+   */
+  setPinnedMonitor: (serverId: string, monitorId: number | null) => void;
 
   /** Hard reset back to defaults (and clear on disk). */
   resetAll: () => Promise<void>;
@@ -141,6 +148,35 @@ export const useSettings = create<SettingsState>((set, get) => ({
     void persist({ privacyConsentDismissed });
   },
 
+  setPinnedMonitor: (serverId, monitorId) => {
+    // Optimistic in-memory update. We mutate the per-server map
+    // immutably (new object literal) so any selector that
+    // compares by reference (zustand's default Object.is) picks
+    // up the change. The pattern:
+    //   - If `monitorId` is null AND the map is non-empty: remove
+    //     just this server's key (don't blow away other servers'
+    //     pins).
+    //   - If `monitorId` is null AND the map is empty: write
+    //     `null` (matches the fresh-install state on disk).
+    //   - If `monitorId` is non-null: merge into a new map with
+    //     this server's pin updated.
+    const current = get().pinnedMonitorByServer ?? {};
+    let next: Record<string, number> | null;
+    if (monitorId === null) {
+      if (!(serverId in current)) {
+        // No-op: this server wasn't pinned anyway. Don't trigger
+        // a needless persist.
+        return;
+      }
+      const { [serverId]: _removed, ...rest } = current;
+      next = Object.keys(rest).length > 0 ? rest : null;
+    } else {
+      next = { ...current, [serverId]: monitorId };
+    }
+    set({ pinnedMonitorByServer: next });
+    void persist({ pinnedMonitorByServer: next });
+  },
+
   resetAll: async () => {
     await settingsRepo.clear().catch((err) => {
       console.warn('[settings] clear failed:', err);
@@ -165,5 +201,6 @@ export function getCurrentSettings(): PersistedSettings {
     hasOnboarded: s.hasOnboarded,
     locale: s.locale,
     privacyConsentDismissed: s.privacyConsentDismissed,
+    pinnedMonitorByServer: s.pinnedMonitorByServer,
   };
 }

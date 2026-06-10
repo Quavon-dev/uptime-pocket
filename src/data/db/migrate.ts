@@ -128,6 +128,39 @@ export const MIGRATIONS: Record<number, string> = {
      WHERE type = 'table' AND name = 'servers';
     PRAGMA writable_schema = OFF;
   `,
+
+  8: /* sql */ `
+    -- Pinned-monitor-by-server. The user can long-press a monitor on
+    -- the Monitors tab to pin it to the top of the list (where it
+    -- shows as the large featured card). One user can have one
+    -- pinned monitor per server — so we keep a single TEXT column
+    -- that holds a JSON object: { "serverId": monitorId, ... }.
+    -- NULL when no monitor is pinned on any server (the default).
+    --
+    -- Why a JSON map and not a separate table? A separate table
+    -- (e.g. pinned_monitors(server_id TEXT, monitor_id INTEGER,
+    -- PRIMARY KEY(server_id))) would be more normalized, but:
+    --   - The setting is small (a handful of bytes per server)
+    --   - The settings table is already the home for app-level UI
+    --     preferences (theme, accent, biometric, quiet hours)
+    --   - A separate table would mean a second hydration path
+    --     (the useSettings store currently loads one row from
+    --     disk in a single SELECT; adding a second table would
+    --     double the IO on hydrate)
+    --   - The pin is effectively a per-server UI preference, not
+    --     a first-class data entity
+    -- We accept the trade-off and use a JSON column. The CHECK
+    -- constraint enforces that the column is either NULL or a
+    -- string starting with '{' (we don't bother validating the
+    -- JSON shape in SQL — the JS layer validates on read).
+    --
+    -- If we ever need to query pins across all servers in SQL
+    -- (e.g. for a server-deletion cleanup), we'll add a proper
+    -- table in a later migration. The JSON column is a deliberate
+    -- YAGNI choice.
+    ALTER TABLE settings ADD COLUMN pinned_monitor_by_server TEXT
+      CHECK (pinned_monitor_by_server IS NULL OR pinned_monitor_by_server LIKE '{%');
+  `,
 };
 
 const DB_NAME = 'uptime-pocket.db';

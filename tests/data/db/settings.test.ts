@@ -41,7 +41,8 @@ const defaultWriteImpl = async (sql: string, ...params: unknown[]) => {
         accent_swatch_id: params[7],
         locale: params[8],
         privacy_consent_dismissed: params[9],
-        updated_at: params[10],
+        pinned_monitor_by_server: params[10],
+        updated_at: params[11],
       },
     ];
   } else if (upper.startsWith('DELETE FROM SETTINGS')) {
@@ -104,6 +105,7 @@ describe('settingsRepo', () => {
           accent_swatch_id: 'magenta',
           locale: 'fr',
           privacy_consent_dismissed: 1,
+          pinned_monitor_by_server: null,
           updated_at: '2026-06-01T00:00:00.000Z',
         },
       ];
@@ -119,6 +121,7 @@ describe('settingsRepo', () => {
         hasOnboarded: true,
         locale: 'fr',
         privacyConsentDismissed: true,
+        pinnedMonitorByServer: null,
       });
     });
 
@@ -135,6 +138,7 @@ describe('settingsRepo', () => {
           has_onboarded: 0,
           accent_swatch_id: null,
           privacy_consent_dismissed: 0,
+          pinned_monitor_by_server: null,
           updated_at: '2026-06-01T00:00:00.000Z',
         },
       ];
@@ -182,6 +186,7 @@ describe('settingsRepo', () => {
         null, // accentSwatchId
         'system', // locale (default)
         0, // privacyConsentDismissed (default)
+        null, // pinnedMonitorByServer (default — no monitor pinned)
         expect.any(String) // updated_at
       );
     });
@@ -206,6 +211,112 @@ describe('settingsRepo', () => {
       expect(await settingsRepo.load()).not.toBeNull();
       await settingsRepo.clear();
       expect(await settingsRepo.load()).toBeNull();
+    });
+  });
+
+  describe('pinnedMonitorByServer', () => {
+    it('parses a valid JSON object back into a typed Record', async () => {
+      tables.settings = [
+        {
+          id: 'app',
+          theme: 'system',
+          accent_color: null,
+          biometric_lock: 0,
+          quiet_hours_enabled: 0,
+          quiet_hours_start: 1320,
+          quiet_hours_end: 420,
+          has_onboarded: 0,
+          accent_swatch_id: null,
+          locale: 'system',
+          privacy_consent_dismissed: 0,
+          // Two servers, each with one pinned monitor. IDs are the
+          // Kuma numeric monitor ids.
+          pinned_monitor_by_server: JSON.stringify({
+            'server-aaa': 42,
+            'server-bbb': 17,
+          }),
+          updated_at: '2026-06-01T00:00:00.000Z',
+        },
+      ];
+      const result = await settingsRepo.load();
+      expect(result?.pinnedMonitorByServer).toEqual({
+        'server-aaa': 42,
+        'server-bbb': 17,
+      });
+    });
+
+    it('returns null for an empty JSON object on disk (treated as no pins)', async () => {
+      tables.settings = [
+        {
+          id: 'app',
+          theme: 'system',
+          accent_color: null,
+          biometric_lock: 0,
+          quiet_hours_enabled: 0,
+          quiet_hours_start: 1320,
+          quiet_hours_end: 420,
+          has_onboarded: 0,
+          accent_swatch_id: null,
+          locale: 'system',
+          privacy_consent_dismissed: 0,
+          // An empty object means "no monitors pinned" — our
+          // parser normalizes this to null, matching the
+          // "no row was set" representation.
+          pinned_monitor_by_server: JSON.stringify({}),
+          updated_at: '2026-06-01T00:00:00.000Z',
+        },
+      ];
+      const result = await settingsRepo.load();
+      expect(result?.pinnedMonitorByServer).toBeNull();
+    });
+
+    it('returns null for a corrupt JSON string (defensive)', async () => {
+      tables.settings = [
+        {
+          id: 'app',
+          theme: 'system',
+          accent_color: null,
+          biometric_lock: 0,
+          quiet_hours_enabled: 0,
+          quiet_hours_start: 1320,
+          quiet_hours_end: 420,
+          has_onboarded: 0,
+          accent_swatch_id: null,
+          locale: 'system',
+          privacy_consent_dismissed: 0,
+          // Not valid JSON at all — corrupted row, possible
+          // (e.g. disk corruption, manual edit). We recover by
+          // treating the whole map as "no pins".
+          pinned_monitor_by_server: 'not-valid-json',
+          updated_at: '2026-06-01T00:00:00.000Z',
+        },
+      ];
+      const result = await settingsRepo.load();
+      expect(result?.pinnedMonitorByServer).toBeNull();
+    });
+
+    it('returns null when a value in the map is not a number', async () => {
+      tables.settings = [
+        {
+          id: 'app',
+          theme: 'system',
+          accent_color: null,
+          biometric_lock: 0,
+          quiet_hours_enabled: 0,
+          quiet_hours_start: 1320,
+          quiet_hours_end: 420,
+          has_onboarded: 0,
+          accent_swatch_id: null,
+          locale: 'system',
+          privacy_consent_dismissed: 0,
+          // A string value mixed in — should fail validation and
+          // we drop the whole map rather than partially repair.
+          pinned_monitor_by_server: JSON.stringify({ 'server-aaa': 'abc' }),
+          updated_at: '2026-06-01T00:00:00.000Z',
+        },
+      ];
+      const result = await settingsRepo.load();
+      expect(result?.pinnedMonitorByServer).toBeNull();
     });
   });
 });

@@ -216,6 +216,13 @@
         "body": "Le domaine expire dans {days}.",
         "expired": "Le domaine a expiré."
       }
+    },
+    "pin": {
+      "pinnedToast": "Épinglé en haut",
+      "unpinnedToast": "Désépinglé",
+      "action": "Épingler en haut",
+      "actionUnpin": "Désépingler",
+      "hint": "Appuyez longuement sur un moniteur pour l'épingler en haut"
     }
   },
   "servers": {

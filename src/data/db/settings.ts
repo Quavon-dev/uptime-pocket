@@ -41,6 +41,18 @@ export interface PersistedSettings {
    * boolean rather than just gating on `hasOnboarded`.
    */
   privacyConsentDismissed: boolean;
+  /**
+   * Map of `serverId` → the monitor id pinned to the top of the
+   * Monitors tab for that server. The user long-presses a monitor
+   * to pin / unpin. When `null` or the key is missing, no monitor
+   * is pinned for that server and the Monitors tab shows the
+   * regular list with no featured card.
+   *
+   * Persisted as a JSON string in the `pinned_monitor_by_server`
+   * TEXT column on disk (see migrate.ts v8); typed as a Record
+   * here for the JS layer.
+   */
+  pinnedMonitorByServer: Record<string, number> | null;
 }
 
 interface SettingsRow {
@@ -55,7 +67,53 @@ interface SettingsRow {
   accent_swatch_id: string | null;
   locale: string | null;
   privacy_consent_dismissed: number;
+  // Per-server map of serverId → pinned monitorId, serialized as a
+  // JSON string. NULL on disk ↔ `null` in the typed object.
+  pinned_monitor_by_server: string | null;
   updated_at: string;
+}
+
+/**
+ * Parse the on-disk `pinned_monitor_by_server` string into the typed
+ * `Record<serverId, monitorId>` shape used by the rest of the app.
+ *
+ * Returns `null` on any parse failure (corrupted row, missing key,
+ * non-object JSON, etc.) — corruption here is recoverable: a missing
+ * pin is just a UI state, not data loss. The same approach we use
+ * for the rest of the settings row.
+ */
+function parsePinnedMonitors(raw: string | null): Record<string, number> | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      // Validate that all values are numbers (a single bad entry
+      // would crash the type system downstream; we silently drop
+      // the whole map and start fresh, which is safer than trying
+      // to partially repair).
+      const out: Record<string, number> = {};
+      let valid = true;
+      for (const [k, v] of Object.entries(parsed)) {
+        if (typeof v === 'number' && Number.isFinite(v)) {
+          out[k] = v;
+        } else {
+          valid = false;
+          break;
+        }
+      }
+      // Normalize the empty object back to null so the in-memory
+      // representation matches "no row was set". The store's
+      // setPinnedMonitor writes `null` (not `{}`) when the last
+      // pin is removed, so the on-disk shape is `null` ↔ the
+      // in-memory shape is `null`; a stray `{}` (e.g. a write
+      // from an older version of the app) collapses to the same
+      // representation.
+      return valid && Object.keys(out).length > 0 ? out : null;
+    }
+  } catch {
+    // JSON.parse failed — corrupt row, fall through
+  }
+  return null;
 }
 
 function rowToSettings(row: SettingsRow): PersistedSettings {
@@ -70,6 +128,7 @@ function rowToSettings(row: SettingsRow): PersistedSettings {
     hasOnboarded: row.has_onboarded === 1,
     locale: (row.locale ?? 'system') as LocalePreference,
     privacyConsentDismissed: row.privacy_consent_dismissed === 1,
+    pinnedMonitorByServer: parsePinnedMonitors(row.pinned_monitor_by_server),
   };
 }
 
@@ -85,6 +144,9 @@ export const DEFAULT_SETTINGS: PersistedSettings = {
   hasOnboarded: false,
   locale: 'system',
   privacyConsentDismissed: false,
+  // No monitor pinned by default. The user opts in by long-pressing
+  // a monitor on the Monitors tab.
+  pinnedMonitorByServer: null,
 };
 
 export const settingsRepo = {
@@ -99,7 +161,7 @@ export const settingsRepo = {
       `SELECT id, theme, accent_color, biometric_lock, quiet_hours_enabled,
               quiet_hours_start, quiet_hours_end, has_onboarded,
               accent_swatch_id, locale,
-              privacy_consent_dismissed, updated_at
+              privacy_consent_dismissed, pinned_monitor_by_server, updated_at
          FROM settings
         WHERE id = 'app'`
     );
@@ -119,14 +181,23 @@ export const settingsRepo = {
     const current = (await this.load()) ?? DEFAULT_SETTINGS;
     const next: PersistedSettings = { ...current, ...patch };
 
+    // Serialize the pinned-monitor map. We store `null` as the
+    // string 'null' to keep the SQL simple (TEXT column with
+    // nullable semantics). `JSON.stringify(null)` returns the
+    // string 'null' which our parsePinnedMonitors treats as no
+    // pinning.
+    const pinnedJson = next.pinnedMonitorByServer
+      ? JSON.stringify(next.pinnedMonitorByServer)
+      : null;
+
     await db.runAsync(
       `INSERT OR REPLACE INTO settings
          (id, theme, accent_color, biometric_lock, quiet_hours_enabled,
           quiet_hours_start, quiet_hours_end, has_onboarded,
           accent_swatch_id, locale,
-          privacy_consent_dismissed, updated_at)
+          privacy_consent_dismissed, pinned_monitor_by_server, updated_at)
        VALUES
-         ('app', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         ('app', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       next.theme,
       next.accentColor,
       next.biometricLock ? 1 : 0,
@@ -137,6 +208,7 @@ export const settingsRepo = {
       next.accentSwatchId,
       next.locale,
       next.privacyConsentDismissed ? 1 : 0,
+      pinnedJson,
       new Date().toISOString()
     );
 

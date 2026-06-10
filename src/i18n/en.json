@@ -163,6 +163,13 @@
       "label": "Uptime",
       "caption": "Uptime"
     },
+    "pin": {
+      "pinnedToast": "Pinned to the top",
+      "unpinnedToast": "Unpinned",
+      "action": "Pin to top",
+      "actionUnpin": "Unpin",
+      "hint": "Long-press a monitor to pin it to the top"
+    },
     "list": {
       "title": "Monitors",
       "filterAll": "All",

@@ -216,6 +216,13 @@
         "body": "ドメインはあと {days} で期限切れです。",
         "expired": "ドメインは期限切れです。"
       }
+    },
+    "pin": {
+      "pinnedToast": "一番上に固定しました",
+      "unpinnedToast": "固定を解除しました",
+      "action": "一番上に固定",
+      "actionUnpin": "固定解除",
+      "hint": "モニターを長押しで上部に固定"
     }
   },
   "servers": {

@@ -43,11 +43,16 @@
  *   4 - settings.sentry_enabled column (opt-in crash reporting)
  *   5 - settings.privacy_consent_dismissed column (first-launch consent)
  *   6 - drop settings.sentry_enabled column (Sentry removed)
+ *   7 - drop the 'bearer' auth kind from servers (Kuma 2.x only accepts
+ *       username+password logins, not API keys)
+ *   8 - settings.pinned_monitor_by_server column (JSON map of
+ *       serverId → pinned monitorId; user long-presses a monitor on
+ *       the Monitors tab to pin it to the top of the list)
  *
  * The actual SQL for each migration lives in `migrate.ts` (MIGRATIONS),
  * NOT here. This file just declares the version number.
  */
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 /**
  * Column name → row field mapping helpers. Centralized so we don't have

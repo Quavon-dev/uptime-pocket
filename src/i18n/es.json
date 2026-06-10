@@ -216,6 +216,13 @@
         "body": "El dominio caduca en {days}.",
         "expired": "El dominio ha caducado."
       }
+    },
+    "pin": {
+      "pinnedToast": "Fijado arriba",
+      "unpinnedToast": "Desfijado",
+      "action": "Fijar arriba",
+      "actionUnpin": "Desfijar",
+      "hint": "Mantén pulsado un monitor para fijarlo arriba"
     }
   },
   "servers": {

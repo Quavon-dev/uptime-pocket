@@ -216,6 +216,13 @@
         "body": "Domain läuft in {days} ab.",
         "expired": "Domain ist abgelaufen."
       }
+    },
+    "pin": {
+      "pinnedToast": "Oben angeheftet",
+      "unpinnedToast": "Losgelöst",
+      "action": "Oben anheften",
+      "actionUnpin": "Lösen",
+      "hint": "Halte einen Monitor gedrückt, um ihn oben anzuheften"
     }
   },
   "servers": {
