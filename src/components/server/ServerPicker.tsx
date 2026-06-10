@@ -1,41 +1,40 @@
 /**
- * ServerPicker - "native" bottom-sheet style dropdown for the active
- * Kuma server.
+ * ServerPicker - "native" sheet-style dropdown for the active Kuma
+ * server.
  *
  * Renders as a brand-tinted chip in the top-right of the nav bar
  * (server icon + name + chevron). Tapping it opens a native iOS
- * half-sheet listing all configured servers.
+ * form sheet listing all configured servers.
  *
- * Why a native half-sheet?
- * - It's how iOS itself presents this kind of "pick from a short
- *   list" UX (Apple Music share sheet, Maps place picker, Notes
- *   folder picker). The system handles the rounded top corners,
- *   drag handle, swipe-down-to-dismiss, and the slide-up entrance
- *   animation.
- * - The list of configured Kuma servers is short (1-5 in practice),
- *   so a half-sheet sized to its content is plenty — no scrolling,
- *   no pagination.
- * - Truly native on iOS via `Modal.presentationStyle="pageSheet"`,
- *   which maps to `UIModalPresentationStyle.pageSheet` and is wrapped
- *   in a `UISheetPresentationController` on iOS 15+. We get the
- *   system chrome for free (drag indicator, dimmed backdrop,
- *   keyboard avoidance, dynamic detent sizing).
- * - Android falls back to a fullscreen modal (Material 3). It's not
- *   as nice as the iOS sheet, but it's a native system surface and
- *   it works.
+ * Why `formSheet` and not `pageSheet`?
+ * - `formSheet` maps to `UIModalPresentationFormSheet` on iOS, which
+ *   is a small centered card sized to its content. It has rounded
+ *   corners, a dimmed backdrop, and is dismissed by tap-outside or
+ *   the standard iOS gestures. It's the right primitive for "pick
+ *   from a short list" (Apple's own Mail, Contacts, Reminders use
+ *   it for the same UX).
+ * - `pageSheet` (which we used previously) maps to
+ *   `UIModalPresentationPageSheet`, which on iOS 15+ is wrapped in
+ *   a `UISheetPresentationController`. By default pageSheet expands
+ *   to the full-screen `.large` detent, which is way too big for
+ *   a 1-5 item picker. Constraining it via detents requires
+ *   react-native-screens' `Screen` component, not core RN's
+ *   `Modal` — an extra dependency for a behavior we don't want
+ *   anyway (a bottom-anchored sheet isn't right for a centered
+ *   picker in a nav-bar dropdown).
  *
- * What this component does NOT do:
- * - Render its own backdrop, drag handle, swipe-to-dismiss gesture,
- *   or slide animation. The system handles all of that.
- * - Wrap the modal contents in `Pressable` for "tap backdrop to
- *   dismiss" — the system already does that, and adding our own
- *   `onPress` on a wrapping element can interfere with the iOS
- *   sheet's gesture recognizer.
+ * Why no custom backdrop, drag handle, or animation?
+ * - The system provides all of it. Adding our own `Pressable`
+ *   backdrop or `TouchableWithoutFeedback` dismiss would just
+ *   interfere with the iOS sheet's gesture recognizer.
  *
- * Theme: chip uses brand tint; sheet content uses surface.elevated
+ * Theme: chip uses brand tint; sheet body uses surface.elevated
  * with surface.border for the row separators. Status dot uses
  * `colors.status.up` when connected, `colors.status.paused` when
  * not (we don't use red here because disconnected ≠ down).
+ *
+ * On Android, `formSheet` falls back to a Material fullscreen
+ * modal. Not as polished as the iOS sheet, but native.
  */
 
 import { useState } from 'react';
@@ -122,57 +121,77 @@ export function ServerPicker() {
 
       <Modal
         visible={open}
-        // `pageSheet` → UISheetPresentationController on iOS 15+.
-        // This is the iOS-native half-sheet (rounded top corners,
-        // drag handle, swipe-to-dismiss, automatic detents).
-        // On Android, pageSheet isn't supported, so we fall back
+        // `formSheet` → `UIModalPresentationFormSheet` on iOS, a
+        // small centered card sized to its content with rounded
+        // corners and a dimmed backdrop. This is the right
+        // primitive for a "pick from a short list" picker —
+        // Apple's own Mail, Contacts, and Reminders apps use
+        // formSheet for this same UX.
+        //
+        // We do NOT use `pageSheet` here. `pageSheet` defaults to
+        // the full-screen `.large` detent on iOS 15+ and is way
+        // too big for a 1-5 item picker. (Constraining it requires
+        // react-native-screens' `Screen` component with explicit
+        // `sheetAllowedDetents` props; that's overkill here.)
+        //
+        // On Android, formSheet isn't supported, so we fall back
         // to fullScreen — a Material 3 modal that slides up from
         // the bottom.
+        //
+        // `transparent={false}` because formSheet needs the
+        // `backgroundColor` on the content view to fill the card
+        // — the sheet isn't transparent on iOS.
         {...(Platform.OS === 'ios'
-          ? { presentationStyle: 'pageSheet' as const }
+          ? {
+              presentationStyle: 'formSheet' as const,
+              transparent: false as const,
+            }
           : { presentationStyle: 'fullScreen' as const })}
         animationType="slide"
         // Required by RN. Fires when the user does the
-        // system-level dismiss gesture (swipe-down on iOS,
-        // back button on Android). We mirror that to our local
-        // `open` state.
+        // system-level dismiss gesture (swipe-down on the form
+        // sheet on iOS, back button on Android). We mirror that
+        // to our local `open` state.
         onRequestClose={() => setOpen(false)}
-        // iOS 26+: let the system draw a Material-style
-        // translucent status bar over the sheet's rounded top
-        // corners. Has no effect on Android.
-        statusBarTranslucent={Platform.OS === 'ios'}>
-        {/* The sheet body. The system provides the rounded top
-            corners, drag handle, and backdrop, so we just need
-            to render the content. No `Pressable` wrapper for
-            "tap backdrop to dismiss" — the system handles that
-            natively. No `paddingTop` for a drag handle — the
-            system draws one for us. */}
+        // On iOS the form sheet sizes itself to fit the content
+        // view's intrinsic content size. We don't enable
+        // `statusBarTranslucent` because the form sheet is
+        // centered vertically and doesn't reach the top of the
+        // screen — the status bar is unaffected.
+      >
+        {/* The sheet body. CRITICAL: we do NOT use `flex: 1`
+            here. `formSheet` on iOS sizes the sheet to its
+            content's intrinsic content size; if we set `flex: 1`
+            the sheet asks for "all available height" and the
+            system can't determine a height (it's circular),
+            which causes child rows to render with 0px height for
+            their text columns. Letting the sheet be
+            intrinsic-sized fixes the "name and URL are invisible
+            inside the row" bug. */}
         <View
           style={[
             styles.sheet,
             {
               backgroundColor: surface.elevated,
-              // Top corners match the system sheet's radius
-              // (pageSheet uses ~10pt on iOS). We only round
-              // the top because the sheet is bottom-anchored
-              // and the bottom edge sits flush with the screen
-              // edge when fully expanded.
-              borderTopLeftRadius: 10,
-              borderTopRightRadius: 10,
+              // All four corners rounded to match the system
+              // formSheet's radius (~10pt on iOS). formSheet
+              // centers the card with system-managed padding
+              // around it, so we don't add a custom borderTop
+              // radius — we round all four corners uniformly.
+              borderRadius: 10,
             },
           ]}>
-          {/* The sheet's title bar. This is the closest thing
-              to a "header" that the user sees at the top of the
-              sheet — we render the picker title in the same
-              micro typography we used in the modal version, so
-              a returning user sees the same vocabulary. */}
+          {/* The sheet's header. Renders the picker title in
+              the same micro typography we used in the previous
+              modal, so a returning user sees the same
+              vocabulary. */}
           <Text
             style={[
               typography.micro,
               {
                 color: surface.textMuted,
                 paddingHorizontal: spacing[4],
-                paddingTop: spacing[5],
+                paddingTop: spacing[4],
                 paddingBottom: spacing[2],
               },
             ]}>
@@ -223,18 +242,23 @@ export function ServerPicker() {
                 <View
                   style={[styles.statusDot, { backgroundColor: dotColor }]}
                 />
-                {/* `flex: 1, flexShrink: 1, minWidth: 0` is the
-                    critical combo for the text column: without
-                    `minWidth: 0`, RN's default `minWidth: 'auto'`
-                    keeps the flex child at its content's natural
-                    width, so a long URL pushes the check mark
-                    off the right edge. */}
+                {/* The text column. `flex: 1` claims the remaining
+                    space between the dot and the check. The
+                    Texts inside have `width: '100%'` so they
+                    fill the column and the `numberOfLines={1}`
+                    truncates with an ellipsis if the name or
+                    URL is too long. We do NOT use `minWidth: 0`
+                    here — inside a `formSheet` Modal the row
+                    already has plenty of horizontal space, and
+                    `minWidth: 0` on the text column was
+                    incorrectly causing the Texts to render at
+                    0px width. */}
                 <View style={styles.rowText}>
                   <Text
                     numberOfLines={1}
                     style={[
                       typography.bodyEmphasized,
-                      { color: surface.text, fontSize: 15 },
+                      { color: surface.text, fontSize: 15, width: '100%' },
                     ]}>
                     {s.name}
                   </Text>
@@ -242,7 +266,12 @@ export function ServerPicker() {
                     numberOfLines={1}
                     style={[
                       typography.caption,
-                      { color: surface.textMuted, fontSize: 12, marginTop: 2 },
+                      {
+                        color: surface.textMuted,
+                        fontSize: 12,
+                        marginTop: 2,
+                        width: '100%',
+                      },
                     ]}>
                     {s.url}
                   </Text>
@@ -253,13 +282,9 @@ export function ServerPicker() {
               </Pressable>
             );
           })}
-          {/* Bottom safe-area + breathing room. On iOS the
-              sheet respects the home-indicator area automatically
-              for some content, but the rows don't have a hard
-              bottom edge — we add a bit of padding so the last
-              row's press highlight doesn't sit flush against the
-              screen edge. */}
-          <View style={{ height: spacing[6] + (Platform.OS === 'ios' ? 12 : 24) }} />
+          {/* The system formSheet adds its own bottom padding for
+              the home indicator safe area, so we don't need a
+              custom spacer here. */}
         </View>
       </Modal>
     </>
@@ -290,12 +315,17 @@ const styles = StyleSheet.create({
     maxWidth: 120,
     flexShrink: 1,
   },
-  // The sheet body. We give it `flex: 1` so it fills the entire
-  // sheet (the system draws the rounded top corners and drag
-  // indicator BEHIND/ON TOP of our content). The system handles
-  // the bottom safe-area inset for the home indicator.
+  // The sheet body. We intentionally do NOT set `flex: 1` here
+  // because `formSheet` on iOS sizes the sheet to the content
+  // view's intrinsic content size; `flex: 1` creates a circular
+  // "how tall am I?" question and RN resolves it by collapsing
+  // child rows to 0px height for their text columns. Letting
+  // the sheet be intrinsic-sized fixes that.
   sheet: {
-    flex: 1,
+    // Min width: gives the formSheet a sensible starting size on
+    // iOS. The system may make it wider to accommodate large
+    // content; this is just a floor.
+    minWidth: 280,
   },
   // A single server row in the sheet. `flexDirection: 'row'`
   // puts status dot | text column | check mark in a horizontal
@@ -307,16 +337,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
   },
-  // The text column inside a server row. `flex: 1, flexShrink: 1,
-  // minWidth: 0` lets the texts shrink to a single ellipsized
-  // line rather than pushing the check mark out of the card;
-  // without `minWidth: 0` flex children default to
-  // `minWidth: auto` and refuse to shrink below their content's
-  // natural size.
+  // The text column inside a server row. `flex: 1` claims the
+  // remaining horizontal space between the status dot and the
+  // check mark. The Texts inside this column set `width: '100%'`
+  // to fill the column and use `numberOfLines={1}` to truncate
+  // with an ellipsis if the name or URL is too long.
+  //
+  // We intentionally do NOT use `flexShrink: 1, minWidth: 0` —
+  // those caused the Texts to render at 0px width inside a
+  // `formSheet` Modal (the system-managed content view has its
+  // own intrinsic sizing that conflicts with the override).
   rowText: {
     flex: 1,
-    flexShrink: 1,
-    minWidth: 0,
   },
   // The 10x10 status dot at the start of each row.
   statusDot: {
