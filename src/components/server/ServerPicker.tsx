@@ -1,51 +1,45 @@
 /**
- * ServerPicker - "cooler" dropdown for picking the active Kuma server.
+ * ServerPicker - "native" bottom-sheet style dropdown for the active
+ * Kuma server.
  *
- * Renders as a brand-tinted chip with the active server's name + a
- * chevron, sitting in the top-right of the nav bar. Tapping it opens
- * a centered modal listing all configured servers — each row shows a
- * status dot (green = connected, gray = disconnected), the server
- * name + URL, and a check mark for the currently-active one.
+ * Renders as a brand-tinted chip in the top-right of the nav bar
+ * (server icon + name + chevron). Tapping it opens a native iOS
+ * half-sheet listing all configured servers.
  *
- * Why a Modal instead of a popover?
- * - The chip lives in the nav bar, which doesn't have a natural
- *   anchor for a popover.
- * - A centered modal reads the same on every screen size, doesn't
- *   get clipped by safe areas, and matches the visual language of
- *   the other "action sheets" the app shows.
- * - The list of Kuma servers a user has configured is short (1-5
- *   in practice), so a scrollable modal is plenty.
+ * Why a native half-sheet?
+ * - It's how iOS itself presents this kind of "pick from a short
+ *   list" UX (Apple Music share sheet, Maps place picker, Notes
+ *   folder picker). The system handles the rounded top corners,
+ *   drag handle, swipe-down-to-dismiss, and the slide-up entrance
+ *   animation.
+ * - The list of configured Kuma servers is short (1-5 in practice),
+ *   so a half-sheet sized to its content is plenty — no scrolling,
+ *   no pagination.
+ * - Truly native on iOS via `Modal.presentationStyle="pageSheet"`,
+ *   which maps to `UIModalPresentationStyle.pageSheet` and is wrapped
+ *   in a `UISheetPresentationController` on iOS 15+. We get the
+ *   system chrome for free (drag indicator, dimmed backdrop,
+ *   keyboard avoidance, dynamic detent sizing).
+ * - Android falls back to a fullscreen modal (Material 3). It's not
+ *   as nice as the iOS sheet, but it's a native system surface and
+ *   it works.
  *
- * Modal structure (bulletproof against RN touch-system quirks):
- * - Backdrop: a `TouchableWithoutFeedback` that covers the full
- *   screen and dismisses on tap. We use TWF instead of Pressable
- *   because Pressable on a Modal's root sometimes interferes with
- *   child touches in unpredictable ways on iOS — TWF is the
- *   canonical "tap-anywhere-to-dismiss" wrapper in the RN docs.
- * - Card: a plain `View` with explicit width/maxWidth and no
- *   `onPress`, so taps on it don't bubble up to the backdrop and
- *   dismiss the modal by accident.
- * - Rows: a `Pressable` (which supports the `({ pressed }) => style`
- *   callback form). Each row uses a flex row with explicit `flex: 1,
- *   flexShrink: 1` on the text column so a long server name or URL
- *   truncates with an ellipsis rather than pushing the check mark
- *   off the card.
+ * What this component does NOT do:
+ * - Render its own backdrop, drag handle, swipe-to-dismiss gesture,
+ *   or slide animation. The system handles all of that.
+ * - Wrap the modal contents in `Pressable` for "tap backdrop to
+ *   dismiss" — the system already does that, and adding our own
+ *   `onPress` on a wrapping element can interfere with the iOS
+ *   sheet's gesture recognizer.
  *
- * Theme: chip uses brand tint; modal uses surface.elevated with
- * surface.border for the row separators. Status dot uses
+ * Theme: chip uses brand tint; sheet content uses surface.elevated
+ * with surface.border for the row separators. Status dot uses
  * `colors.status.up` when connected, `colors.status.paused` when
  * not (we don't use red here because disconnected ≠ down).
  */
 
 import { useState } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  Modal,
-  StyleSheet,
-  TouchableWithoutFeedback,
-} from 'react-native';
+import { View, Text, Pressable, Modal, Platform, StyleSheet } from 'react-native';
 import { Check, ChevronDown, Server as ServerIcon } from 'lucide-react-native';
 
 import { useServers, getActiveServer } from '@/data/store/servers';
@@ -54,7 +48,7 @@ import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/them
 import { t, tn } from '@/i18n';
 
 export function ServerPicker() {
-  const { surface, brand, brandFill, isDark } = useAppTheme();
+  const { surface, brand, brandFill } = useAppTheme();
   const servers = useServers((s) => s.servers);
   const activeId = useServers((s) => s.activeServerId);
   const setActive = useServers((s) => s.setActive);
@@ -84,6 +78,22 @@ export function ServerPicker() {
     );
   }
 
+  // The system-provided pageSheet on iOS gives us:
+  // - Rounded top corners (system-rendered, match other iOS sheets)
+  // - A drag indicator at the top (system-rendered)
+  // - Swipe-down to dismiss (gesture recognizer built in)
+  // - Automatic detent sizing (the sheet grows to fit its content;
+  //   the user can also drag it up/down between the .medium and
+  //   .large detents if the content is long enough)
+  // - Dimmed backdrop (the system dims the underlying content)
+  //
+  // We pass `animationType="slide"` so iOS uses the system slide-up
+  // animation. On Android, fullScreen modals animate from the
+  // bottom by default — we don't need to do anything special.
+  //
+  // `onRequestClose` is the iOS contract for the "modal needs to
+  // close" gesture (swipe-down on a sheet, hardware back on
+  // Android). It MUST be set; iOS will warn at runtime if it isn't.
   return (
     <>
       <Pressable
@@ -112,147 +122,154 @@ export function ServerPicker() {
 
       <Modal
         visible={open}
-        transparent
-        animationType="fade"
-        // The Modal's onRequestClose fires on iOS when the user does
-        // the "swipe down to dismiss" gesture on a sheet, and on
-        // Android for the hardware back button. We dismiss from here
-        // too for consistency.
+        // `pageSheet` → UISheetPresentationController on iOS 15+.
+        // This is the iOS-native half-sheet (rounded top corners,
+        // drag handle, swipe-to-dismiss, automatic detents).
+        // On Android, pageSheet isn't supported, so we fall back
+        // to fullScreen — a Material 3 modal that slides up from
+        // the bottom.
+        {...(Platform.OS === 'ios'
+          ? { presentationStyle: 'pageSheet' as const }
+          : { presentationStyle: 'fullScreen' as const })}
+        animationType="slide"
+        // Required by RN. Fires when the user does the
+        // system-level dismiss gesture (swipe-down on iOS,
+        // back button on Android). We mirror that to our local
+        // `open` state.
         onRequestClose={() => setOpen(false)}
-        // Status bar: the iOS default is "light" content over the
-        // modal (because the modal background is dark), but since
-        // we have a translucent backdrop with the page content
-        // visible behind, we leave the status bar as-is. RN's
-        // Modal handles this automatically on iOS 26+.
-        statusBarTranslucent>
-        {/* Backdrop: tap to dismiss. We use TouchableWithoutFeedback
-            because the modal content (a card) sits inside this same
-            wrapper, and Pressable's onPress would consume taps on
-            the card area. TWF is the documented pattern for "tap
-            anywhere outside the card to dismiss". The `accessible`
-            prop is false so screen readers don't try to announce
-            the empty backdrop as a tappable region (the inner card
-            is what should be focused). */}
-        <TouchableWithoutFeedback
-          accessible={false}
-          onPress={() => setOpen(false)}>
-          <View style={styles.backdrop}>
-            {/* The card. A plain View (not Pressable, not
-                TouchableOpacity) so it doesn't intercept any taps
-                that fall inside it; the user's only options are
-                "tap a server row" (handled by the row's own
-                TouchableOpacity) or "tap outside the card" (handled
-                by the TWF backdrop). */}
-            <View
-              style={[
-                styles.card,
-                {
-                  backgroundColor: surface.elevated,
-                  borderColor: surface.border,
-                  // Subtle elevation so the card lifts off the
-                  // backdrop in dark mode (where shadows are
-                  // invisible) and the surface difference alone is
-                  // hard to see.
-                  ...(isDark && {
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 8 },
-                    shadowOpacity: 0.6,
-                    shadowRadius: 24,
-                  }),
-                },
-              ]}>
-              <Text
-                style={[
-                  typography.micro,
+        // iOS 26+: let the system draw a Material-style
+        // translucent status bar over the sheet's rounded top
+        // corners. Has no effect on Android.
+        statusBarTranslucent={Platform.OS === 'ios'}>
+        {/* The sheet body. The system provides the rounded top
+            corners, drag handle, and backdrop, so we just need
+            to render the content. No `Pressable` wrapper for
+            "tap backdrop to dismiss" — the system handles that
+            natively. No `paddingTop` for a drag handle — the
+            system draws one for us. */}
+        <View
+          style={[
+            styles.sheet,
+            {
+              backgroundColor: surface.elevated,
+              // Top corners match the system sheet's radius
+              // (pageSheet uses ~10pt on iOS). We only round
+              // the top because the sheet is bottom-anchored
+              // and the bottom edge sits flush with the screen
+              // edge when fully expanded.
+              borderTopLeftRadius: 10,
+              borderTopRightRadius: 10,
+            },
+          ]}>
+          {/* The sheet's title bar. This is the closest thing
+              to a "header" that the user sees at the top of the
+              sheet — we render the picker title in the same
+              micro typography we used in the modal version, so
+              a returning user sees the same vocabulary. */}
+          <Text
+            style={[
+              typography.micro,
+              {
+                color: surface.textMuted,
+                paddingHorizontal: spacing[4],
+                paddingTop: spacing[5],
+                paddingBottom: spacing[2],
+              },
+            ]}>
+            {t('servers.picker.title')}
+          </Text>
+          {servers.map((s, idx) => {
+            const isActive = s.id === activeId;
+            const dotColor = s.connected ? colors.status.up : colors.status.paused;
+            return (
+              <Pressable
+                key={s.id}
+                accessibilityRole="button"
+                accessibilityLabel={s.name}
+                accessibilityState={{ selected: isActive }}
+                onPress={async () => {
+                  // Close the sheet first so the user sees the
+                  // selection feedback (status pill updates
+                  // on the screen below) immediately, then kick
+                  // off the connection swap. The sheet's exit
+                  // animation runs in parallel with the
+                  // connection handshake so the user perceives
+                  // a single fluid transition.
+                  setOpen(false);
+                  if (isActive) return;
+                  // Persist + switch the connection. The manager
+                  // tears down the socket for the previous server
+                  // and reconnects to the new one. `setActive` is
+                  // sync, so the active-id selector in the rest
+                  // of the UI updates before the socket opens.
+                  setActive(s.id);
+                  try {
+                    await manager.connect(s.id);
+                  } catch {
+                    // Error already surfaced by the
+                    // connection-status banner on the screen
+                    // body; nothing to do here.
+                  }
+                }}
+                style={({ pressed }) => [
+                  styles.row,
                   {
-                    color: surface.textMuted,
-                    paddingHorizontal: spacing[4],
-                    paddingTop: spacing[4],
-                    paddingBottom: spacing[2],
+                    backgroundColor: pressed ? surface.sunken : 'transparent',
+                    // Last row: no bottom border.
+                    borderBottomColor: surface.border,
+                    borderBottomWidth: idx === servers.length - 1 ? 0 : 0.5,
                   },
                 ]}>
-                {t('servers.picker.title')}
-              </Text>
-              {servers.map((s, idx) => {
-                const isActive = s.id === activeId;
-                const dotColor = s.connected ? colors.status.up : colors.status.paused;
-                return (
-                  <Pressable
-                    key={s.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={s.name}
-                    accessibilityState={{ selected: isActive }}
-                    onPress={async () => {
-                      setOpen(false);
-                      if (isActive) return;
-                      // Persist + switch the connection. The manager
-                      // tears down the socket for the previous server
-                      // and reconnects to the new one. `setActive` is
-                      // sync, so the active-id selector in the rest
-                      // of the UI updates before the socket opens.
-                      setActive(s.id);
-                      try {
-                        await manager.connect(s.id);
-                      } catch {
-                        // Error already surfaced by the
-                        // connection-status banner on the screen
-                        // body; nothing to do here.
-                      }
-                    }}
-                    style={({ pressed }) => [
-                      styles.row,
-                      {
-                        backgroundColor: pressed ? surface.sunken : 'transparent',
-                        // Last row: no bottom border.
-                        borderBottomColor: surface.border,
-                        borderBottomWidth: idx === servers.length - 1 ? 0 : 0.5,
-                      },
+                <View
+                  style={[styles.statusDot, { backgroundColor: dotColor }]}
+                />
+                {/* `flex: 1, flexShrink: 1, minWidth: 0` is the
+                    critical combo for the text column: without
+                    `minWidth: 0`, RN's default `minWidth: 'auto'`
+                    keeps the flex child at its content's natural
+                    width, so a long URL pushes the check mark
+                    off the right edge. */}
+                <View style={styles.rowText}>
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      typography.bodyEmphasized,
+                      { color: surface.text, fontSize: 15 },
                     ]}>
-                    <View
-                      style={[styles.statusDot, { backgroundColor: dotColor }]}
-                    />
-                    {/* `flex: 1, flexShrink: 1, minWidth: 0` is the
-                        critical combo for the text column: without
-                        `minWidth: 0`, RN's default `minWidth: 'auto'`
-                        keeps the flex child at its content's natural
-                        width, so a long URL pushes the check mark
-                        off the right edge. */}
-                    <View style={styles.rowText}>
-                      <Text
-                        numberOfLines={1}
-                        style={[
-                          typography.bodyEmphasized,
-                          { color: surface.text, fontSize: 15 },
-                        ]}>
-                        {s.name}
-                      </Text>
-                      <Text
-                        numberOfLines={1}
-                        style={[
-                          typography.caption,
-                          { color: surface.textMuted, fontSize: 12, marginTop: 2 },
-                        ]}>
-                        {s.url}
-                      </Text>
-                    </View>
-                    {isActive && (
-                      <Check size={18} color={brand} strokeWidth={2.5} />
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
+                    {s.name}
+                  </Text>
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      typography.caption,
+                      { color: surface.textMuted, fontSize: 12, marginTop: 2 },
+                    ]}>
+                    {s.url}
+                  </Text>
+                </View>
+                {isActive && (
+                  <Check size={18} color={brand} strokeWidth={2.5} />
+                )}
+              </Pressable>
+            );
+          })}
+          {/* Bottom safe-area + breathing room. On iOS the
+              sheet respects the home-indicator area automatically
+              for some content, but the rows don't have a hard
+              bottom edge — we add a bit of padding so the last
+              row's press highlight doesn't sit flush against the
+              screen edge. */}
+          <View style={{ height: spacing[6] + (Platform.OS === 'ios' ? 12 : 24) }} />
+        </View>
       </Modal>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  // Outer chip: padding + border-radius + background. Children
-  // live inside `chipRow` so the press feedback and the row
-  // layout are decoupled (RN's Pressable can otherwise confuse
+  // The chip in the nav bar: padding + border-radius + background.
+  // Children live inside `chipRow` so the press feedback and the
+  // row layout are decoupled (RN's Pressable can otherwise confuse
   // the row direction in some configurations).
   chip: {
     paddingHorizontal: spacing[3],
@@ -273,30 +290,14 @@ const styles = StyleSheet.create({
     maxWidth: 120,
     flexShrink: 1,
   },
-  // Backdrop: full-screen translucent black, with the card
-  // centered via flexbox. `paddingHorizontal: spacing[6]` gives
-  // the card a comfortable margin from the screen edges.
-  backdrop: {
+  // The sheet body. We give it `flex: 1` so it fills the entire
+  // sheet (the system draws the rounded top corners and drag
+  // indicator BEHIND/ON TOP of our content). The system handles
+  // the bottom safe-area inset for the home indicator.
+  sheet: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing[6],
   },
-  // The card. `width: '100%'` makes it fill the available
-  // horizontal space within the backdrop's padding, capped at
-  // 360pt for a comfortable reading width on iPad. `overflow:
-  // 'hidden'` is what gives the rows their rounded-corner bottom
-  // edge (otherwise the bottom corners would be sharp and the
-  // top corners would have the card's radius).
-  card: {
-    width: '100%',
-    maxWidth: 360,
-    borderRadius: semanticRadius.card,
-    borderWidth: 0.5,
-    overflow: 'hidden',
-  },
-  // A single server row in the picker modal. `flexDirection: 'row'`
+  // A single server row in the sheet. `flexDirection: 'row'`
   // puts status dot | text column | check mark in a horizontal
   // line, with a 12pt gap between each.
   row: {
