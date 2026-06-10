@@ -6,7 +6,8 @@
  * list, filter chips, and route to a detail screen on tap.
  *
  * Layout:
- * - Glass nav bar: [+ add] | [Monitors] | [server picker], then big "Monitors" display title below
+ * - Glass nav bar: [empty] | [Monitors centered] | [+ add on right]
+ *   (mirrors the Servers tab; no server picker, no large title)
  * - Connection status banner (only when not connected)
  * - Filter chips (All / Up / Down)
  * - Featured monitor card (the first one)
@@ -27,7 +28,6 @@ import { Server, WifiOff, Loader, Plus, Search, X } from 'lucide-react-native';
 import { GlassNavBar } from '@/components/glass/GlassNavBar';
 import { Chip, EmptyState, SafeScrollView, SegmentedControl } from '@/components/ui';
 import { MonitorRow, MonitorCard } from '@/components/monitor';
-import { ServerPicker } from '@/components/server';
 import {
   OptInCard,
   useNotificationOptIn,
@@ -177,28 +177,26 @@ export default function MonitorsScreen() {
     <View style={[styles.container, { backgroundColor: surface.background }]}>
       <GlassNavBar
         title={t('tabTitle.monitors')}
-        // iOS large-title pattern: the top row is a 44pt nav bar
-        // with [+ add] | [title] | [server picker], and below it
-        // sits the big left-aligned "Monitors" display title. The
-        // big title is the visual anchor of the screen; the small
-        // title in the nav bar acts as a status row when the big
-        // title has been scrolled away (handled by expo-router's
-        // native iOS header in future scroll-aware work).
-        large
-        left={
+        // Standard 3-column row (no large title): [left empty] |
+        // [Monitors centered] | [+ add on right]. Mirrors the
+        // Servers tab's nav layout — both screens have the same
+        // minimal nav shape with a single right-side action.
+        //
+        // The server picker used to live here; it's been removed.
+        // The only place to choose the active server is now the
+        // Servers tab (long-press a server to make it active).
+        // The Monitors page reflects the active server's data
+        // without exposing the picker — keeps the page focused.
+        right={
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('common.add')}
             onPress={() => router.push('/monitors/add')}
-            style={({ pressed }) => [
-              styles.addBtn,
-              { backgroundColor: brand, opacity: pressed ? 0.7 : 1 },
-            ]}
-            hitSlop={6}>
-            <Plus size={18} color="white" strokeWidth={2.5} />
+            hitSlop={10}
+            style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}>
+            <Plus size={26} color={brand} strokeWidth={2} />
           </Pressable>
         }
-        right={<ServerPicker />}
       />
 
       <SafeScrollView
@@ -395,13 +393,6 @@ function bannerStyle(
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { flex: 1 },
-  addBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
