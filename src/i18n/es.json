@@ -369,7 +369,9 @@
     "accent": "Color de acento",
     "accentSwatch": {
       "title": "Acento",
-      "description": "Se usa para botones, enlaces y el indicador «en línea» de los monitores."
+      "description": "Se usa para botones, enlaces y el indicador «en línea» de los monitores.",
+      "affectsStatus": "Teñir el estado «en línea» con el acento",
+      "affectsStatusDescription": "Cuando está activado, el color verde «en línea» sigue al acento elegido (p. ej., Rosa → rosa). Los demás colores de estado (caído, pendiente, mantenimiento, en pausa) mantienen sus colores estándar."
     },
     "biometric": {
       "title": "Bloquear con biometría",

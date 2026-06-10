@@ -23,7 +23,6 @@ import { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors, spacing, typography, useAppTheme } from '@/theme';
 import type { UptimePoint } from '@/domain/models';
-import { statusColor } from '@/domain/status';
 import { t } from '@/i18n';
 
 interface UptimeBarProps {
@@ -115,20 +114,39 @@ export function UptimeBar({
       ? 'full'
       : 'compact';
 
+  // Status palette from the theme — when the "accent affects
+  // status" toggle is on, `status.up` follows the picked accent
+  // (e.g. rose). The other four colors stay on the static
+  // semantic palette.
+  const { brand: upStatusColor } = useAppTheme();
+
   const { bars, upPct } = useMemo(
     () =>
-      bucketUptimePoints(data, segments, (status) =>
-        status === 'empty' ? surface.sunken : statusColor(status)
+      bucketUptimePoints(
+        data,
+        segments,
+        (s) =>
+          s === 'empty'
+            ? surface.sunken
+            : s === 'up'
+              ? upStatusColor
+              : s === 'down'
+                ? colors.status.down
+                : colors.status.pending
       ),
-    [data, segments, surface.sunken]
+    [data, segments, surface.sunken, upStatusColor]
   );
 
-  // The percentage color follows the same threshold as the rest of the
-  // app: green ≥99%, amber ≥95%, red below. Mirrors the Kuma web SPA
-  // treatment and the existing 24h-stat tile in MonitorCard.
+  // The percentage color follows the same threshold as the rest of
+  // the app: green ≥99%, amber ≥95%, red below. Mirrors the Kuma
+  // web SPA treatment and the existing 24h-stat tile in
+  // MonitorCard. The green color is the same `status.up` we use
+  // for the bar segments, so the bar and the percentage text stay
+  // visually consistent — if the user opted in to "accent affects
+  // status", both will follow the accent.
   const pctColor =
     upPct >= 99
-      ? colors.status.up
+      ? upStatusColor
       : upPct >= 95
         ? colors.status.pending
         : colors.status.down;

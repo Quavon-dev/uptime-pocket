@@ -369,7 +369,9 @@
     "accent": "Akzentfarbe",
     "accentSwatch": {
       "title": "Akzent",
-      "description": "Wird für Schaltflächen, Links und die Online-Anzeige bei Monitoren verwendet."
+      "description": "Wird für Schaltflächen, Links und die Online-Anzeige bei Monitoren verwendet.",
+      "affectsStatus": "Statusfarbe „Online“ mit Akzentfarbe tönen",
+      "affectsStatusDescription": "Wenn aktiviert, folgt die grüne „Online“-Farbe der gewählten Akzentfarbe (z. B. Rosa → rosa). Andere Statusfarben (Offline, Ausstehend, Wartung, Pausiert) bleiben in ihren Standardfarben."
     },
     "biometric": {
       "title": "Mit Biometrie sperren",

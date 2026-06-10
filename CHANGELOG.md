@@ -92,6 +92,67 @@ Kuma protocol, MINOR is a new feature, PATCH is a bugfix.
   filter row the same visual language as the rest of the app.
   Per-tag chips stay in their own horizontal scroller, rendered
   only when at least one monitor has a tag.
+- **Accent color picker actually applies.** Picking an accent in
+  Settings → Accent used to write the hex to SQLite and into the
+  settings store, but the theme hook (`useAppTheme`) hardcoded
+  `brand` to `colors.brand[400]`/`[500]` (the static emerald
+  stops) and never read the user's pick. The hook now
+  subscribes to `accentColor` + `accentSwatchId` from the store
+  and exposes a `resolveBrand(accentColor, accentSwatchId)`
+  pure helper that picks the user's color (preferring the raw
+  hex over the swatch id, falling back to the default swatch
+  when neither is set or when the id no longer exists). Every
+  consumer of `useAppTheme().brand` (buttons, links, focused
+  state, the chart avg line, the kuma-ping palette) now reacts
+  to a change in the accent pick with no extra wiring.
+  - Only the primary `brand` and its translucent fill react
+    to the picker. The full 11-stop brand palette (50..950)
+    in `colors.brand` stays static — those are part of the
+    design system, not user-configurable. A future polish
+    pass could generate the full palette per swatch, but the
+    current scope is "the things that should obviously follow
+    the accent, follow it".
+  - New pure helper `resolveBrand` is unit-tested separately
+    so the resolution rules are locked in (raw color wins
+    over swatch id, empty/whitespace strings are treated as
+    null, stale swatch ids fall back to the default, etc.).
+- **"Accent affects status" toggle (default off).** The "up"
+  status color can now optionally follow the picked accent
+  — flipping the toggle to ON means picking "Rose" turns
+  the green "up" dot rose. The other four status colors
+  (down / pending / maintenance / paused) stay on their
+  static semantic palette regardless of the toggle:
+  "down" must always read as red, "pending" must always
+  read as amber, etc. The toggle lives in Settings →
+  Accent, just below the swatch row.
+  - The toggle is **off by default**. A fresh install keeps
+    the previous behavior (status colors are independent of
+    the accent), and existing installs that upgrade keep
+    their previous behavior too. The user has to opt in.
+  - The bar segments and the percentage text in `UptimeBar`
+    follow the toggle (so the visual stays consistent — if
+    the "up" dot is rose, the bar's "up" segments are also
+    rose). The chart's `kumaPingColors(brand).avg` line also
+    follows the accent when the toggle is on (it's a brand
+    color, not a status color).
+  - The status palette is exposed on `useAppTheme()` as a
+    new `status: { up, down, pending, maintenance, paused }`
+    field. Callers that need a specific status color (the
+    `StatusPill` dot, the `ServerCard` connection indicator,
+    the `ServerPicker` connection dot, the `MonitorCard`
+    24h-uptime tile) read from it directly. The pure
+    `statusColor()` function in `src/domain/status.ts` is
+    unchanged (it's a non-React helper used by code paths
+    that don't have a theme context), and the `useAppTheme`
+    consumers do an `if status === 'up'` swap so only the
+    one slot reacts.
+  - New `accent_affects_status` INTEGER column on the
+    settings table (migration v9). Default 0. CHECK
+    constraint with IN (0, 1) for shape consistency with
+    the other boolean columns.
+  - New i18n keys `settings.accentSwatch.affectsStatus` /
+    `settings.accentSwatch.affectsStatusDescription` in all
+    5 locales (en / de / es / fr / ja).
 
 ### Fixed
 - **Server picker chip layout.** Earlier revisions rendered the

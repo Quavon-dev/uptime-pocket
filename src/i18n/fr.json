@@ -369,7 +369,9 @@
     "accent": "Couleur d'accent",
     "accentSwatch": {
       "title": "Accent",
-      "description": "Utilisé pour les boutons, les liens et l'indicateur « en ligne » des moniteurs."
+      "description": "Utilisé pour les boutons, les liens et l'indicateur « en ligne » des moniteurs.",
+      "affectsStatus": "Teinter le statut « en ligne » avec l'accent",
+      "affectsStatusDescription": "Lorsqu'activé, la couleur verte « en ligne » suit l'accent choisi (par ex. Rose → rose). Les autres couleurs de statut (hors ligne, en attente, maintenance, en pause) conservent leurs couleurs standard."
     },
     "biometric": {
       "title": "Verrouiller avec la biométrie",

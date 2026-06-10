@@ -50,7 +50,7 @@ export function ServerCard({
   monitorCount = 0,
   connectionStatus,
 }: ServerCardProps) {
-  const { surface, brand, statusTints } = useAppTheme();
+  const { surface, brand, statusTints, status: statusPalette } = useAppTheme();
 
   // Map the live status to "is up". A server in `connecting` or
   // `reconnecting` is "in progress" — we still show a status icon
@@ -60,7 +60,7 @@ export function ServerCard({
     connectionStatus === 'connecting' || connectionStatus === 'reconnecting';
   const StatusIcon = isConnected || isPending ? Server : ServerOff;
   const statusColor = isConnected
-    ? colors.status.up
+    ? statusPalette.up
     : isPending
     ? colors.status.pending
     : colors.status.down;

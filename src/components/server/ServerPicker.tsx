@@ -30,8 +30,10 @@
  *
  * Theme: chip uses brand tint; sheet body uses surface.elevated
  * with surface.border for the row separators. Status dot uses
- * `colors.status.up` when connected, `colors.status.paused` when
- * not (we don't use red here because disconnected ≠ down).
+ * `status.up` from `useAppTheme()` when connected,
+ * `colors.status.paused` when not (we don't use red here because
+ * disconnected ≠ down). `status.up` follows the user's accent
+ * when the "Accent affects status" toggle is on.
  *
  * On Android, `formSheet` falls back to a Material fullscreen
  * modal. Not as polished as the iOS sheet, but native.
@@ -47,7 +49,7 @@ import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/them
 import { t, tn } from '@/i18n';
 
 export function ServerPicker() {
-  const { surface, brand, brandFill } = useAppTheme();
+  const { surface, brand, brandFill, status: statusPalette } = useAppTheme();
   const servers = useServers((s) => s.servers);
   const activeId = useServers((s) => s.activeServerId);
   const setActive = useServers((s) => s.setActive);
@@ -199,7 +201,7 @@ export function ServerPicker() {
           </Text>
           {servers.map((s, idx) => {
             const isActive = s.id === activeId;
-            const dotColor = s.connected ? colors.status.up : colors.status.paused;
+            const dotColor = s.connected ? statusPalette.up : colors.status.paused;
             return (
               <Pressable
                 key={s.id}

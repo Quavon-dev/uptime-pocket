@@ -359,7 +359,9 @@
     "accent": "Accent color",
     "accentSwatch": {
       "title": "Accent",
-      "description": "Used for buttons, links, and the up indicator on monitors."
+      "description": "Used for buttons, links, and the up indicator on monitors.",
+      "affectsStatus": "Tint the 'up' status with the accent",
+      "affectsStatusDescription": "When on, the green 'up' color follows the picked accent (e.g. Rose → rose). Other status colors (down, pending, maintenance, paused) stay on their standard colors."
     },
     "biometric": {
       "title": "Lock with biometrics",

@@ -42,6 +42,8 @@ export default function SettingsScreen() {
   const accentSwatchId = useSettings((s) => s.accentSwatchId);
   const setAccentSwatchId = useSettings((s) => s.setAccentSwatchId);
   const setAccentColor = useSettings((s) => s.setAccentColor);
+  const accentAffectsStatus = useSettings((s) => s.accentAffectsStatus);
+  const setAccentAffectsStatus = useSettings((s) => s.setAccentAffectsStatus);
 
   const biometricLock = useSettings((s) => s.biometricLock);
   const setBiometricLock = useSettings((s) => s.setBiometricLock);
@@ -210,6 +212,38 @@ export default function SettingsScreen() {
               ]}>
               {t('settings.accentSwatch.description')}
             </Text>
+          </Card>
+
+          {/* "Accent affects status" toggle. Off by default — the
+              user opts in to having the "up" status color follow
+              the picked accent. The other four status colors
+              (down/pending/maintenance/paused) always stay on the
+              static semantic palette regardless of this toggle. */}
+          <Card>
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <View style={{ flex: 1 }}>
+                  <Text style={typography.body}>
+                    {t('settings.accentSwatch.affectsStatus')}
+                  </Text>
+                  <Text
+                    style={[
+                      typography.caption,
+                      { color: surface.textMuted, marginTop: 2 },
+                    ]}>
+                    {t('settings.accentSwatch.affectsStatusDescription')}
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={accentAffectsStatus}
+                onValueChange={setAccentAffectsStatus}
+                trackColor={{ false: surface.sunken, true: brand }}
+                accessibilityRole="switch"
+                accessibilityLabel={t('settings.accentSwatch.affectsStatus')}
+                accessibilityState={{ checked: accentAffectsStatus }}
+              />
+            </View>
           </Card>
         </Section>
 

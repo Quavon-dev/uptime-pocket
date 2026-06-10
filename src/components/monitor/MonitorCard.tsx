@@ -102,12 +102,16 @@ export function MonitorCard({
   avgPing24h = null,
   serverId,
 }: MonitorCardProps) {
-  const { surface } = useAppTheme();
+  const { surface, status: statusPalette } = useAppTheme();
   const TypeIcon = monitorTypeIcon(monitor.type);
   const pad = compact ? spacing[3] : spacing[4];
   const statSize = compact ? 14 : 16;
   const statLabelSize = compact ? 10 : 11;
-  const s = statusColor(monitor.status);
+  // The 24h uptime tile color follows the status palette from the
+  // theme — `up` follows the user's accent when the "Accent
+  // affects status" toggle is on; other statuses stay on the
+  // static semantic palette.
+  const s = monitor.status === 'up' ? statusPalette.up : statusColor(monitor.status);
 
   // Subscribe to this monitor's heartbeat history (per-monitor
   // subscription so the card re-renders only when its own

@@ -5,13 +5,17 @@
  * repeated component in the app, so it's worth getting right.
  *
  * - The dot's color is the SEMANTIC status color (never decorative)
+ *   for down / pending / maintenance / paused. For "up", the dot
+ *   follows the user's accent color when the "Accent affects
+ *   status" toggle is on in Settings (default off — `up` stays
+ *   on the static emerald).
  * - The label is optional and configurable
  * - The pill itself is rounded-full with a subtle background
  */
 
 import { View, Text } from 'react-native';
 import { statusColor, statusLabel } from '@/domain/status';
-import { typography, semanticRadius } from '@/theme';
+import { typography, semanticRadius, useAppTheme } from '@/theme';
 import type { MonitorStatus } from '@/domain/models';
 
 interface StatusPillProps {
@@ -21,7 +25,14 @@ interface StatusPillProps {
 }
 
 export function StatusPill({ status, size = 'md', showLabel = true }: StatusPillProps) {
-  const color = statusColor(status);
+  // The semantic palette for down/pending/maintenance/paused
+  // stays on the static colors; only `up` follows the accent
+  // when the user opts in. We pull `status` off the theme so
+  // the dot reacts to a change in either the accent pick or
+  // the toggle without callers having to thread a prop
+  // through.
+  const { status: statusPalette } = useAppTheme();
+  const color = status === 'up' ? statusPalette.up : statusColor(status);
   // Slightly larger and more padding for the "hero" size so the pill
   // reads as the dominant visual on a MonitorCard. xl: 12px dot,
   // 15px text, comfortable padding.
