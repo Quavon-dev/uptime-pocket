@@ -15,7 +15,8 @@
 
 import { View, Text } from 'react-native';
 import { statusColor, statusLabel } from '@/domain/status';
-import { typography, semanticRadius, useAppTheme } from '@/theme';
+import { colors, typography, semanticRadius, useAppTheme } from '@/theme';
+import { useSettings } from '@/data/store/settings';
 import type { MonitorStatus } from '@/domain/models';
 
 interface StatusPillProps {
@@ -25,14 +26,30 @@ interface StatusPillProps {
 }
 
 export function StatusPill({ status, size = 'md', showLabel = true }: StatusPillProps) {
-  // The semantic palette for down/pending/maintenance/paused
-  // stays on the static colors; only `up` follows the accent
-  // when the user opts in. We pull `status` off the theme so
-  // the dot reacts to a change in either the accent pick or
-  // the toggle without callers having to thread a prop
-  // through.
+  // The pill's "up" color follows the user's accent only when the
+  // "Accent affects status" toggle is on. When the toggle is off
+  // (the default), the dot stays on the static emerald from
+  // `colors.status.up` — the "up" status is semantically "healthy"
+  // and shouldn't change shape based on a user preference. The
+  // other four statuses (down/pending/maintenance/paused) always
+  // use the static palette regardless of the toggle: "down" must
+  // stay red, "pending" must stay amber, etc.
+  //
+  // We read `accentAffectsStatus` directly from the settings store
+  // (in addition to reading `status` from the theme) so the
+  // gating is local to this component. The theme's
+  // `statusPalette.up` already encodes the toggle, but having the
+  // store read here too makes the intent explicit and means a
+  // future change to the theme can't accidentally hide the
+  // pill from the toggle's effect.
   const { status: statusPalette } = useAppTheme();
-  const color = status === 'up' ? statusPalette.up : statusColor(status);
+  const accentAffectsStatus = useSettings((s) => s.accentAffectsStatus);
+  const color =
+    status === 'up'
+      ? accentAffectsStatus
+        ? statusPalette.up
+        : colors.status.up
+      : statusColor(status);
   // Slightly larger and more padding for the "hero" size so the pill
   // reads as the dominant visual on a MonitorCard. xl: 12px dot,
   // 15px text, comfortable padding.

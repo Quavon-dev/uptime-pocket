@@ -46,10 +46,12 @@ import { Check, ChevronDown, Server as ServerIcon } from 'lucide-react-native';
 import { useServers, getActiveServer } from '@/data/store/servers';
 import { useKumaConnection } from '@/data/connection/manager';
 import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/theme';
+import { useSettings } from '@/data/store/settings';
 import { t, tn } from '@/i18n';
 
 export function ServerPicker() {
   const { surface, brand, brandFill, status: statusPalette } = useAppTheme();
+  const accentAffectsStatus = useSettings((s) => s.accentAffectsStatus);
   const servers = useServers((s) => s.servers);
   const activeId = useServers((s) => s.activeServerId);
   const setActive = useServers((s) => s.setActive);
@@ -201,7 +203,16 @@ export function ServerPicker() {
           </Text>
           {servers.map((s, idx) => {
             const isActive = s.id === activeId;
-            const dotColor = s.connected ? statusPalette.up : colors.status.paused;
+            // Defensive read of the toggle alongside the theme's
+            // resolved status palette — see StatusPill for the
+            // rationale. The hook's `statusPalette.up` already
+            // encodes the toggle, but having the store read here
+            // too makes the intent explicit at the call site.
+            const dotColor = s.connected
+              ? accentAffectsStatus
+                ? statusPalette.up
+                : colors.status.up
+              : colors.status.paused;
             return (
               <Pressable
                 key={s.id}

@@ -41,12 +41,13 @@
 import { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
+import { spacing, typography, semanticRadius, useAppTheme, colors } from '@/theme';
 import { StatusPill } from '@/components/status';
 import { UptimeBar } from '@/components/chart';
 import { monitorTypeIcon } from '@/components/ui/icons';
 import { statusColor } from '@/domain/status';
 import { useMonitors, selectHeartbeatHistory } from '@/data/store/monitors';
+import { useSettings } from '@/data/store/settings';
 import { t } from '@/i18n';
 import {
   formatResponseTime,
@@ -103,6 +104,7 @@ export function MonitorCard({
   serverId,
 }: MonitorCardProps) {
   const { surface, status: statusPalette } = useAppTheme();
+  const accentAffectsStatus = useSettings((s) => s.accentAffectsStatus);
   const TypeIcon = monitorTypeIcon(monitor.type);
   const pad = compact ? spacing[3] : spacing[4];
   const statSize = compact ? 14 : 16;
@@ -110,8 +112,18 @@ export function MonitorCard({
   // The 24h uptime tile color follows the status palette from the
   // theme — `up` follows the user's accent when the "Accent
   // affects status" toggle is on; other statuses stay on the
-  // static semantic palette.
-  const s = monitor.status === 'up' ? statusPalette.up : statusColor(monitor.status);
+  // static semantic palette. The defensive read of
+  // `accentAffectsStatus` from the store makes the gating
+  // explicit at the call site (the theme's `statusPalette.up`
+  // already encodes the toggle, but having the store read here
+  // too means a future change to the theme can't accidentally
+  // hide the tile from the toggle's effect).
+  const s =
+    monitor.status === 'up'
+      ? accentAffectsStatus
+        ? statusPalette.up
+        : colors.status.up
+      : statusColor(monitor.status);
 
   // Subscribe to this monitor's heartbeat history (per-monitor
   // subscription so the card re-renders only when its own

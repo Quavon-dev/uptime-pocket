@@ -24,6 +24,7 @@ import { colors, spacing, typography, semanticRadius, useAppTheme } from '@/them
 import { HeartbeatPulse } from '@/components/status';
 import type { Server as ServerType } from '@/domain/models';
 import type { ConnectionStatus } from '@/data/store/monitors';
+import { useSettings } from '@/data/store/settings';
 import { t, tn } from '@/i18n';
 import { formatRelativeTime } from '@/domain/format';
 
@@ -51,6 +52,7 @@ export function ServerCard({
   connectionStatus,
 }: ServerCardProps) {
   const { surface, brand, statusTints, status: statusPalette } = useAppTheme();
+  const accentAffectsStatus = useSettings((s) => s.accentAffectsStatus);
 
   // Map the live status to "is up". A server in `connecting` or
   // `reconnecting` is "in progress" — we still show a status icon
@@ -59,8 +61,15 @@ export function ServerCard({
   const isPending =
     connectionStatus === 'connecting' || connectionStatus === 'reconnecting';
   const StatusIcon = isConnected || isPending ? Server : ServerOff;
+  // Defensive read of the toggle alongside the theme's resolved
+  // status palette. The hook's `statusPalette.up` already encodes
+  // the toggle, but having the store read here too means a future
+  // change to the theme can't accidentally hide the dot from the
+  // toggle's effect.
   const statusColor = isConnected
-    ? statusPalette.up
+    ? accentAffectsStatus
+      ? statusPalette.up
+      : colors.status.up
     : isPending
     ? colors.status.pending
     : colors.status.down;

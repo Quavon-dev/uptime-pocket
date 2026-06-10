@@ -23,6 +23,7 @@ import { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors, spacing, typography, useAppTheme } from '@/theme';
 import type { UptimePoint } from '@/domain/models';
+import { useSettings } from '@/data/store/settings';
 import { t } from '@/i18n';
 
 interface UptimeBarProps {
@@ -117,8 +118,14 @@ export function UptimeBar({
   // Status palette from the theme — when the "accent affects
   // status" toggle is on, `status.up` follows the picked accent
   // (e.g. rose). The other four colors stay on the static
-  // semantic palette.
+  // semantic palette. The defensive read of the toggle from the
+  // store makes the gating explicit at the call site (the
+  // theme's `statusPalette.up` already encodes the toggle, but
+  // having the store read here too means a future change to
+  // the theme can't accidentally hide the bar from the toggle's
+  // effect).
   const { brand: upStatusColor } = useAppTheme();
+  const accentAffectsStatus = useSettings((s) => s.accentAffectsStatus);
 
   const { bars, upPct } = useMemo(
     () =>
@@ -129,12 +136,14 @@ export function UptimeBar({
           s === 'empty'
             ? surface.sunken
             : s === 'up'
-              ? upStatusColor
+              ? accentAffectsStatus
+                ? upStatusColor
+                : colors.status.up
               : s === 'down'
                 ? colors.status.down
                 : colors.status.pending
       ),
-    [data, segments, surface.sunken, upStatusColor]
+    [data, segments, surface.sunken, upStatusColor, accentAffectsStatus]
   );
 
   // The percentage color follows the same threshold as the rest of
@@ -146,7 +155,9 @@ export function UptimeBar({
   // status", both will follow the accent.
   const pctColor =
     upPct >= 99
-      ? upStatusColor
+      ? accentAffectsStatus
+        ? upStatusColor
+        : colors.status.up
       : upPct >= 95
         ? colors.status.pending
         : colors.status.down;

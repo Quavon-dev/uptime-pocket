@@ -153,6 +153,15 @@ Kuma protocol, MINOR is a new feature, PATCH is a bugfix.
   - New i18n keys `settings.accentSwatch.affectsStatus` /
     `settings.accentSwatch.affectsStatusDescription` in all
     5 locales (en / de / es / fr / ja).
+  - The "up" status consumers (StatusPill, MonitorCard's 24h
+    tile, ServerCard's connection icon, ServerPicker's
+    connection dot, UptimeBar's bar segments + percentage
+    text) all do a defensive read of `accentAffectsStatus`
+    from the store alongside reading the theme. The hook
+    already encodes the toggle in `statusPalette.up`, but
+    the local read makes the gating explicit at the call
+    site — a future change to the theme can't accidentally
+    hide these surfaces from the toggle's effect.
 
 ### Fixed
 - **Server picker chip layout.** Earlier revisions rendered the
