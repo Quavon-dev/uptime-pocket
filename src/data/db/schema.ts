@@ -48,11 +48,17 @@
  *   8 - settings.pinned_monitor_by_server column (JSON map of
  *       serverId → pinned monitorId; user long-presses a monitor on
  *       the Monitors tab to pin it to the top of the list)
+ *   9 - settings.accent_affects_status column (boolean, default 0).
+ *       Off by default. When on, the "up" status color follows the
+ *       picked accent (e.g. picking "Rose" with the toggle on turns
+ *       the green "up" dot rose). The other four status colors stay
+ *       on their static semantic palette — "down" must stay red,
+ *       "pending" must stay amber, etc.
  *
  * The actual SQL for each migration lives in `migrate.ts` (MIGRATIONS),
  * NOT here. This file just declares the version number.
  */
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 /**
  * Column name → row field mapping helpers. Centralized so we don't have

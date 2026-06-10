@@ -42,7 +42,8 @@ const defaultWriteImpl = async (sql: string, ...params: unknown[]) => {
         locale: params[8],
         privacy_consent_dismissed: params[9],
         pinned_monitor_by_server: params[10],
-        updated_at: params[11],
+        accent_affects_status: params[11],
+        updated_at: params[12],
       },
     ];
   } else if (upper.startsWith('DELETE FROM SETTINGS')) {
@@ -106,6 +107,7 @@ describe('settingsRepo', () => {
           locale: 'fr',
           privacy_consent_dismissed: 1,
           pinned_monitor_by_server: null,
+          accent_affects_status: 1,
           updated_at: '2026-06-01T00:00:00.000Z',
         },
       ];
@@ -122,6 +124,7 @@ describe('settingsRepo', () => {
         locale: 'fr',
         privacyConsentDismissed: true,
         pinnedMonitorByServer: null,
+        accentAffectsStatus: true,
       });
     });
 
@@ -139,6 +142,7 @@ describe('settingsRepo', () => {
           accent_swatch_id: null,
           privacy_consent_dismissed: 0,
           pinned_monitor_by_server: null,
+          accent_affects_status: 0,
           updated_at: '2026-06-01T00:00:00.000Z',
         },
       ];
@@ -147,6 +151,7 @@ describe('settingsRepo', () => {
       expect(result?.quietHoursEnabled).toBe(false);
       expect(result?.hasOnboarded).toBe(false);
       expect(result?.privacyConsentDismissed).toBe(false);
+      expect(result?.accentAffectsStatus).toBe(false);
     });
   });
 
@@ -187,8 +192,58 @@ describe('settingsRepo', () => {
         'system', // locale (default)
         0, // privacyConsentDismissed (default)
         null, // pinnedMonitorByServer (default — no monitor pinned)
+        0, // accentAffectsStatus (default — off)
         expect.any(String) // updated_at
       );
+    });
+
+    it('persists accentAffectsStatus=true as 1', async () => {
+      mockRunAsync.mockReset();
+      const writeSpy = mockRunAsync;
+      await settingsRepo.save({ accentAffectsStatus: true });
+      // Find the INSERT INTO settings call. We can't use
+      // `toHaveBeenCalledWith` directly because the migration
+      // runner fires many runAsync calls (one per migration
+      // version) and the bind-arg count check is fragile to
+      // refactors. Instead we look up the call by SQL fragment
+      // and assert the specific bind we care about — the
+      // accentAffectsStatus value (0 or 1) — sits at the
+      // expected position in the args list.
+      //
+      // Note: we look for the FULL settings INSERT statement,
+      // not the schema_version one. The substring
+      // "INSERT OR REPLACE INTO settings" is unique to the
+      // settings table; the schema_version table has its own
+      // INSERT shape.
+      const settingsCall = writeSpy.mock.calls.find(
+        ([sql]) =>
+          typeof sql === 'string' &&
+          sql.includes("INSERT OR REPLACE INTO settings")
+      );
+      expect(settingsCall).toBeDefined();
+      // The mock is called as `runAsync(sql, ...params)`, so
+      // the params come in as additional positional args, not
+      // a single array. `runAsync.mock.calls[0]` is
+      // `[sql, ...params]`. Find the first call that's the
+      // settings INSERT and capture everything after the SQL.
+      const [, ...rest] = settingsCall!;
+      const args = rest;
+      // The accentAffectsStatus bind is somewhere in the args
+      // list. The exact position depends on the column order
+      // in the INSERT statement, which is co-located with the
+      // save() bind order. We assert that the value (1, since
+      // we just set it) is present in the args and that the
+      // last arg is the updatedAt ISO string — that proves
+      // the column was bound and not silently dropped.
+      expect(args).toContain(1);
+      expect(args[args.length - 1]).toEqual(expect.any(String));
+      // Sanity: the count of args matches the count of `?`s
+      // in the SQL — if a future refactor adds a column
+      // without a matching bind, the SQL has more `?`s than
+      // args and this assertion will catch it.
+      const sql = settingsCall![0] as string;
+      const questionMarks = (sql.match(/\?/g) ?? []).length;
+      expect(args.length).toBe(questionMarks);
     });
 
     it('returns the merged state', async () => {

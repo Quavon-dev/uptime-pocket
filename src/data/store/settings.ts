@@ -47,6 +47,15 @@ interface SettingsState extends PersistedSettings {
   setTheme: (t: ThemeMode) => void;
   setAccentColor: (c: string | null) => void;
   setAccentSwatchId: (id: string | null) => void;
+  /**
+   * Toggle whether the "up" status color follows the picked
+   * accent. Default false (status colors are independent of the
+   * accent). When flipped to true, `useAppTheme().status.up` will
+   * equal the active brand color, so picking "Rose" turns the
+   * green "up" dot rose. The other four status colors stay on
+   * the static semantic palette regardless.
+   */
+  setAccentAffectsStatus: (enabled: boolean) => void;
   setBiometricLock: (enabled: boolean) => void;
   setQuietHours: (q: QuietHours) => void;
   setOnboarded: (v: boolean) => void;
@@ -110,6 +119,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
   setAccentSwatchId: (accentSwatchId) => {
     set({ accentSwatchId });
     void persist({ accentSwatchId });
+  },
+
+  setAccentAffectsStatus: (accentAffectsStatus) => {
+    set({ accentAffectsStatus });
+    void persist({ accentAffectsStatus });
   },
 
   setBiometricLock: (biometricLock) => {
@@ -202,5 +216,6 @@ export function getCurrentSettings(): PersistedSettings {
     locale: s.locale,
     privacyConsentDismissed: s.privacyConsentDismissed,
     pinnedMonitorByServer: s.pinnedMonitorByServer,
+    accentAffectsStatus: s.accentAffectsStatus,
   };
 }

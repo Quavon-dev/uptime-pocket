@@ -53,6 +53,19 @@ export interface PersistedSettings {
    * here for the JS layer.
    */
   pinnedMonitorByServer: Record<string, number> | null;
+  /**
+   * When true, the "up" status color follows the picked accent
+   * (e.g. picking "Rose" turns the green "up" dot rose). The
+   * other four status colors (down / pending / maintenance /
+   * paused) stay on their static semantic palette regardless of
+   * this toggle — "down" must stay red, "pending" must stay
+   * amber, etc. Default false: a fresh install has it off, and
+   * the user opts in via the switch in Settings → Accent.
+   *
+   * Persisted as the `accent_affects_status` INTEGER column
+   * (0 | 1) on the settings row (see migrate.ts v9).
+   */
+  accentAffectsStatus: boolean;
 }
 
 interface SettingsRow {
@@ -70,6 +83,10 @@ interface SettingsRow {
   // Per-server map of serverId → pinned monitorId, serialized as a
   // JSON string. NULL on disk ↔ `null` in the typed object.
   pinned_monitor_by_server: string | null;
+  // 0 | 1. When 1, the "up" status color follows the picked
+  // accent; when 0, status colors stay on the static semantic
+  // palette (default). See migrate.ts v9.
+  accent_affects_status: number;
   updated_at: string;
 }
 
@@ -129,6 +146,7 @@ function rowToSettings(row: SettingsRow): PersistedSettings {
     locale: (row.locale ?? 'system') as LocalePreference,
     privacyConsentDismissed: row.privacy_consent_dismissed === 1,
     pinnedMonitorByServer: parsePinnedMonitors(row.pinned_monitor_by_server),
+    accentAffectsStatus: row.accent_affects_status === 1,
   };
 }
 
@@ -147,6 +165,11 @@ export const DEFAULT_SETTINGS: PersistedSettings = {
   // No monitor pinned by default. The user opts in by long-pressing
   // a monitor on the Monitors tab.
   pinnedMonitorByServer: null,
+  // "Accent affects status" defaults to OFF. The user has to opt
+  // in via the switch in Settings → Accent. Existing installs
+  // upgrading to schema v9 keep the previous behavior (status
+  // colors are independent of the accent).
+  accentAffectsStatus: false,
 };
 
 export const settingsRepo = {
@@ -161,7 +184,8 @@ export const settingsRepo = {
       `SELECT id, theme, accent_color, biometric_lock, quiet_hours_enabled,
               quiet_hours_start, quiet_hours_end, has_onboarded,
               accent_swatch_id, locale,
-              privacy_consent_dismissed, pinned_monitor_by_server, updated_at
+              privacy_consent_dismissed, pinned_monitor_by_server,
+              accent_affects_status, updated_at
          FROM settings
         WHERE id = 'app'`
     );
@@ -195,9 +219,10 @@ export const settingsRepo = {
          (id, theme, accent_color, biometric_lock, quiet_hours_enabled,
           quiet_hours_start, quiet_hours_end, has_onboarded,
           accent_swatch_id, locale,
-          privacy_consent_dismissed, pinned_monitor_by_server, updated_at)
+          privacy_consent_dismissed, pinned_monitor_by_server,
+          accent_affects_status, updated_at)
        VALUES
-         ('app', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         ('app', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       next.theme,
       next.accentColor,
       next.biometricLock ? 1 : 0,
@@ -209,6 +234,7 @@ export const settingsRepo = {
       next.locale,
       next.privacyConsentDismissed ? 1 : 0,
       pinnedJson,
+      next.accentAffectsStatus ? 1 : 0,
       new Date().toISOString()
     );
 

@@ -161,6 +161,29 @@ export const MIGRATIONS: Record<number, string> = {
     ALTER TABLE settings ADD COLUMN pinned_monitor_by_server TEXT
       CHECK (pinned_monitor_by_server IS NULL OR pinned_monitor_by_server LIKE '{%');
   `,
+
+  9: /* sql */ `
+    -- "Accent affects status" toggle (default off). When the user
+    -- turns this on in Settings, the "up" status color follows the
+    -- picked accent — e.g. picking "Rose" turns the green "up" dot
+    -- rose. The other four status colors stay on their static
+    -- semantic palette (red down, amber pending, blue maintenance,
+    -- gray paused). "Down" must stay red regardless of what
+    -- accent is picked — the accent is for the app's brand chrome,
+    -- not for health signals.
+    --
+    -- Default 0: a fresh install has the toggle off, and an
+    -- existing install that upgrades keeps the previous behavior
+    -- (status colors are independent of the accent). The user has
+    -- to opt in.
+    --
+    -- CHECK constraint with IN (0, 1) is the same pattern as the
+    -- other boolean columns on this table (biometric_lock,
+    -- privacy_consent_dismissed, etc.) so the on-disk shape is
+    -- uniform.
+    ALTER TABLE settings ADD COLUMN accent_affects_status INTEGER NOT NULL DEFAULT 0
+      CHECK (accent_affects_status IN (0, 1));
+  `,
 };
 
 const DB_NAME = 'uptime-pocket.db';

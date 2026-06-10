@@ -23,14 +23,15 @@ jest.mock('@/data/db/settings', () => ({
     quietHoursEndMinute: 420,
     hasOnboarded: false,
     locale: 'system',
-    // privacyConsentDismissed and pinnedMonitorByServer were
-    // added to PersistedSettings after this mock was first
-    // written. The store reads DEFAULT_SETTINGS at module load
-    // time and copies every field onto its initial state, so we
-    // need both fields here or the store will be missing them
-    // and `pinnedMonitorByServer: null` reads will throw.
+    // privacyConsentDismissed, pinnedMonitorByServer, and
+    // accentAffectsStatus were added to PersistedSettings after
+    // this mock was first written. The store reads DEFAULT_SETTINGS
+    // at module load time and copies every field onto its initial
+    // state, so we need every field here or the store will be
+    // missing one and reads of it will throw.
     privacyConsentDismissed: false,
     pinnedMonitorByServer: null,
+    accentAffectsStatus: false,
   },
   settingsRepo: {
     load: () => mockLoad(),
@@ -114,6 +115,21 @@ describe('settings store', () => {
       return Promise.resolve().then(() => {
         expect(mockSave).toHaveBeenCalledWith({ accentColor: '#FF00FF' });
       });
+    });
+
+    it('setAccentAffectsStatus() updates memory and calls save({ accentAffectsStatus })', () => {
+      expect(useSettings.getState().accentAffectsStatus).toBe(false);
+      useSettings.getState().setAccentAffectsStatus(true);
+      expect(useSettings.getState().accentAffectsStatus).toBe(true);
+      return Promise.resolve().then(() => {
+        expect(mockSave).toHaveBeenCalledWith({ accentAffectsStatus: true });
+      });
+    });
+
+    it('setAccentAffectsStatus() can be flipped back to false', () => {
+      useSettings.getState().setAccentAffectsStatus(true);
+      useSettings.getState().setAccentAffectsStatus(false);
+      expect(useSettings.getState().accentAffectsStatus).toBe(false);
     });
 
     it('setBiometricLock() updates memory and calls save()', () => {
@@ -257,6 +273,7 @@ describe('settings store', () => {
         quietHoursStartMinute: 1380,
         quietHoursEndMinute: 480,
         hasOnboarded: true,
+        accentAffectsStatus: true,
         hydrated: true,
       });
       await useSettings.getState().resetAll();
@@ -265,6 +282,7 @@ describe('settings store', () => {
       expect(s.accentColor).toBeNull();
       expect(s.biometricLock).toBe(false);
       expect(s.hasOnboarded).toBe(false);
+      expect(s.accentAffectsStatus).toBe(false);
       expect(s.hydrated).toBe(true);
       expect(mockClear).toHaveBeenCalled();
     });
@@ -282,6 +300,7 @@ describe('settings store', () => {
         quietHoursEndMinute: 420,
         hasOnboarded: true,
         locale: 'de',
+        accentAffectsStatus: true,
         hydrated: true,
       });
       expect(getCurrentSettings()).toEqual({
@@ -298,6 +317,7 @@ describe('settings store', () => {
         // touch these so they fall through to DEFAULT_SETTINGS.
         privacyConsentDismissed: false,
         pinnedMonitorByServer: null,
+        accentAffectsStatus: true,
       });
     });
   });
