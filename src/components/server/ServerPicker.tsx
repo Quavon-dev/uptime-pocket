@@ -159,25 +159,25 @@ export function ServerPicker() {
         // centered vertically and doesn't reach the top of the
         // screen — the status bar is unaffected.
       >
-        {/* The sheet body. CRITICAL: we do NOT use `flex: 1`
-            here. `formSheet` on iOS sizes the sheet to its
-            content's intrinsic content size; if we set `flex: 1`
-            the sheet asks for "all available height" and the
-            system can't determine a height (it's circular),
-            which causes child rows to render with 0px height for
-            their text columns. Letting the sheet be
-            intrinsic-sized fixes the "name and URL are invisible
-            inside the row" bug. */}
+        {/* The sheet body.
+            ───────────────
+            We give the sheet an EXPLICIT `width: '100%'` (with a
+            `maxWidth` cap for iPad) so the system knows how wide
+            the content is. Without this, the formSheet on iOS
+            18+ reports a 0-width content view to its children
+            (because the sheet's size is content-sized and the
+            content's width is the sheet's width — circular), and
+            the row's `flexDirection: 'row'` collapses to a
+            vertical stack of zero-width children. The fix is to
+            break the cycle by giving the sheet a concrete width.
+            `alignSelf: 'center'` then centers it within the
+            formSheet's max width on iPad.
+            ─────────────── */}
         <View
           style={[
             styles.sheet,
             {
               backgroundColor: surface.elevated,
-              // All four corners rounded to match the system
-              // formSheet's radius (~10pt on iOS). formSheet
-              // centers the card with system-managed padding
-              // around it, so we don't add a custom borderTop
-              // radius — we round all four corners uniformly.
               borderRadius: 10,
             },
           ]}>
@@ -315,17 +315,24 @@ const styles = StyleSheet.create({
     maxWidth: 120,
     flexShrink: 1,
   },
-  // The sheet body. We intentionally do NOT set `flex: 1` here
-  // because `formSheet` on iOS sizes the sheet to the content
-  // view's intrinsic content size; `flex: 1` creates a circular
-  // "how tall am I?" question and RN resolves it by collapsing
-  // child rows to 0px height for their text columns. Letting
-  // the sheet be intrinsic-sized fixes that.
+  // The sheet body. We give it a concrete `width: '100%'` and
+  // `maxWidth` cap. This is what fixes the "rows render as a
+  // vertical stack" bug on iOS 18+ formSheet modals: the
+  // formSheet's content view reports a 0-width frame to its
+  // children (the content's size is supposed to size the sheet,
+  // and the sheet's size is supposed to size the content —
+  // circular). Giving the sheet a concrete width breaks the
+  // cycle and the children can measure themselves properly.
+  //
+  // We do NOT use `flex: 1` here because that would make the
+  // sheet claim all available width (and force the system to
+  // expand it to a full-width sheet). `width: '100%'` with
+  // `alignSelf: 'center'` gives us a content-sized sheet
+  // centered in the formSheet's max width.
   sheet: {
-    // Min width: gives the formSheet a sensible starting size on
-    // iOS. The system may make it wider to accommodate large
-    // content; this is just a floor.
-    minWidth: 280,
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
   },
   // A single server row in the sheet. `flexDirection: 'row'`
   // puts status dot | text column | check mark in a horizontal
