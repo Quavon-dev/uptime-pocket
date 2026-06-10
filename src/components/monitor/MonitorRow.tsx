@@ -30,6 +30,7 @@
 
 import { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { StatusPill } from '@/components/status';
 import { UptimeBar } from '@/components/chart';
@@ -45,6 +46,20 @@ import type { Monitor, UptimePoint } from '@/domain/models';
 interface MonitorRowProps {
   monitor: Monitor;
   onPress?: () => void;
+  /**
+   * Long-press handler. When provided, the row is press-and-hold
+   * tappable (e.g. for the "pin to top" gesture on the Monitors
+   * tab). We surface a subtle haptic on long-press so the user
+   * gets feedback that the gesture registered. See MonitorCard
+   * for the same pattern; the two components intentionally have
+   * matching onLongPress semantics.
+   */
+  onLongPress?: () => void;
+  /**
+   * Accessibility hint for the long-press action. Only used when
+   * `onLongPress` is provided.
+   */
+  longPressHint?: string;
   /** Show the URL/hostname */
   showUrl?: boolean;
   /** Show the stats on the right */
@@ -61,6 +76,8 @@ interface MonitorRowProps {
 export function MonitorRow({
   monitor,
   onPress,
+  onLongPress,
+  longPressHint,
   showUrl = true,
   showStats = true,
   serverId,
@@ -85,11 +102,22 @@ export function MonitorRow({
   return (
     <Pressable
       onPress={onPress}
+      // Long-press: see MonitorCard for the same pattern. We
+      // fire a `Medium` impact haptic when the gesture registers
+      // so the user has a clear physical signal. The handler is
+      // `undefined` when the parent doesn't pass one, which
+      // disables long-press detection entirely (Pressable
+      // respects this — no spurious callbacks).
+      onLongPress={onLongPress ? () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        onLongPress();
+      } : undefined}
       // a11y: see MonitorCard — composite label, role=button.
       accessibilityRole="button"
       accessibilityLabel={[monitor.name, t(`status.${monitor.status}`)]
         .filter(Boolean)
         .join(', ')}
+      accessibilityHint={longPressHint}
       style={({ pressed }) => [
         styles.row,
         {

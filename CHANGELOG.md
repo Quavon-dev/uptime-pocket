@@ -31,6 +31,46 @@ Kuma protocol, MINOR is a new feature, PATCH is a bugfix.
     status pill convey the state instead.
   - New i18n keys `monitors.bar.label` / `monitors.bar.caption`
     in all 5 locales (en / de / es / fr / ja).
+- **Long-press a monitor to pin it to the top.** The user
+  long-presses any monitor on the Monitors tab (the featured
+  card OR a row in the list) to pin it as the featured
+  monitor — the one shown in the large card at the top of the
+  page. Long-pressing the currently-featured monitor unpins it
+  (the featured slot disappears; the monitor returns to the
+  list in its alphabetical position). The pin is per-server
+  (each Kuma server has its own featured monitor, persisted
+  across app restarts).
+  - Default state has no featured card. The user has to opt
+    in by long-pressing. We don't auto-pin the first monitor
+    in the list — the user explicitly chooses what's at the top.
+  - Haptic feedback fires on long-press (medium impact, the
+    same one iOS uses for context-menu reveals) so the user
+    has a physical signal that the gesture registered.
+  - `MonitorCard` and `MonitorRow` got an `onLongPress` prop
+    + `longPressHint` (a11y). Both use the same pattern; the
+    handler is `undefined` when the parent doesn't pass one,
+    which disables long-press detection entirely.
+  - The pin lives in a new `pinned_monitor_by_server` TEXT
+    column on the `settings` table (migration v8). The column
+    is a JSON map of `serverId → monitorId`. NULL on disk
+    ↔ `null` in the typed object. A separate normalized
+    table would be cleaner but the JSON column keeps the
+    hydration path a single SELECT (the settings store
+    already loads one row in disk-read).
+  - Defensive parsing: the on-disk JSON is validated on read
+    (each value must be a finite number, the outer shape
+    must be an object) and an empty `{}` is normalized to
+    `null` so the in-memory representation matches "no row
+    was set". A corrupt row falls back to `null` rather
+    than throwing.
+  - `useSettings.setPinnedMonitor(serverId, monitorId | null)`
+    handles the in-memory + persistence write; the persist
+    call is awaited via the existing `persist` helper, so
+    disk failures don't break the in-memory state.
+  - New i18n keys `monitors.pin.hint` /
+    `monitors.pin.action` / `monitors.pin.actionUnpin` /
+    `monitors.pin.pinnedToast` / `monitors.pin.unpinnedToast`
+    in all 5 locales (en / de / es / fr / ja).
 - **Server picker (cooler dropdown) in the nav bar.** The server
   switcher used to be a small chip floating in the top-right
   corner of the monitors tab, well above the title. It now sits
@@ -87,6 +127,13 @@ Kuma protocol, MINOR is a new feature, PATCH is a bugfix.
   "Monitors" title at body-emphasized 15pt, right = server
   picker chip). The screen header is one tight band instead of
   two stacked rows.
+- **Monitors tab nav bar: `+` lives next to the big "Monitors"
+  headline, on the same row.** The `+` add-monitor button is
+  rendered in the new `inline` slot on `GlassNavBar`, so the
+  big left-aligned "Monitors" title and the `+` sit in the
+  same row and read as a single visual band at the top of the
+  screen. The top 44pt nav row is empty (no small title) since
+  the big title already conveys the section name.
 - **SegmentedControl indicator no longer overflows the track.**
   Earlier revisions used a hardcoded `height` on the absolutely
   positioned indicator, which on iOS could render taller than
@@ -106,12 +153,9 @@ Kuma protocol, MINOR is a new feature, PATCH is a bugfix.
   fire `incident` for pending in practice).
 
 ### Removed
-- **Server picker `inline` slot is no longer used.** The tab
-  screen previously passed the server picker via the `inline`
-  prop of `GlassNavBar` (paired with the large title on the
-  same row). With the layout switched to the standard row, the
-  `inline` prop is no longer wired up. The prop is still part
-  of the `GlassNavBar` API for screens that want it.
+- (none in this release — the `inline` slot on `GlassNavBar` is
+  back in use; the `+` add-monitor button is rendered there so
+  it sits on the same row as the big "Monitors" headline.)
 
 ### Changed
 - **Auth: bearer-token option removed.** The form previously offered

@@ -40,6 +40,7 @@
 
 import { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { spacing, typography, semanticRadius, useAppTheme } from '@/theme';
 import { StatusPill } from '@/components/status';
 import { UptimeBar } from '@/components/chart';
@@ -57,6 +58,18 @@ import type { Monitor, UptimePoint } from '@/domain/models';
 interface MonitorCardProps {
   monitor: Monitor;
   onPress?: () => void;
+  /**
+   * Long-press handler. When provided, the card is press-and-hold
+   * tappable (e.g. for the "pin to top" gesture on the Monitors
+   * tab). We surface a subtle haptic on long-press so the user
+   * gets feedback that the gesture registered.
+   */
+  onLongPress?: () => void;
+  /**
+   * Accessibility hint for the long-press action (e.g. "Pin to top").
+   * Only used when `onLongPress` is provided; ignored otherwise.
+   */
+  longPressHint?: string;
   /** Show the URL/hostname in the subtitle line */
   showUrl?: boolean;
   /** Show the last check line */
@@ -81,6 +94,8 @@ interface MonitorCardProps {
 export function MonitorCard({
   monitor,
   onPress,
+  onLongPress,
+  longPressHint,
   showUrl = true,
   showLastCheck = true,
   compact = false,
@@ -118,6 +133,24 @@ export function MonitorCard({
   return (
     <Pressable
       onPress={onPress}
+      // Long-press: when the parent provides a handler (e.g. the
+      // "pin to top" gesture on the Monitors tab), we wire it here
+      // and surface a haptic so the user feels the gesture register.
+      // We use Pressable's `delayLongPress` (defaults to 500ms on
+      // iOS, 370ms on Android — close enough to "long press") so
+      // the haptic fires when the gesture is recognized, not on
+      // touch-down. We also fire a `Medium` impact haptic — the
+      // same one iOS uses for context-menu reveals and reorder
+      // gestures, so the user has a frame of reference for the
+      // physical feedback.
+      onLongPress={onLongPress ? () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {
+          // Haptic failures are non-fatal — the visual state
+          // change (the monitor reorders to the top) is the
+          // primary signal. Swallow the error.
+        });
+        onLongPress();
+      } : undefined}
       // a11y: a single composite label tells the screen reader user
       // what this monitor is, what its status is, and the key stats
       // they care about. Without this, VoiceOver / TalkBack would
@@ -134,6 +167,11 @@ export function MonitorCard({
       ]
         .filter(Boolean)
         .join(', ')}
+      // a11y hint for the long-press action (e.g. "Long-press to
+      // pin to top"). iOS reads this after a slight pause when
+      // the user holds the element; Android reads it as part of
+      // the long-press announcement.
+      accessibilityHint={longPressHint}
       style={({ pressed }) => [
         styles.card,
         {
